@@ -40,7 +40,8 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
 - **`lib/importNixFiles.nix`** — recursive importer used by both `default.nix` importers. It skips
   `default.nix` (would recurse) and `hardware-configuration.nix`. Consequence: **drop-in modules**
   — creating `modules/nixos/foo.nix` makes it active with zero import edits.
-- **`hosts/<name>/default.nix`** — pure switch-flipping; no implementation logic.
+- **`hosts/<name>/default.nix`** — switch-flipping plus the per-host nixos-hardware import
+  (Phase 2); no implementation logic.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.

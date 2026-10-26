@@ -274,7 +274,7 @@ Every feature module follows one shape:
 | `audio.nix` | `cfg.audio.enable` | PipeWire (`alsa`, `pulse`), `security.rtkit.enable` |
 | `graphics.nix` | `cfg.graphics.enable` (+ `.enable32Bit`) | `hardware.graphics` OpenGL/VA-API base stack; 32-bit off unless something turns it on (e.g. gaming) |
 | `ssh.nix` | `cfg.ssh.enable` (+ `cfg.ssh.port`, default 22; `cfg.ssh.authorizedKeys`, list of strings) | OpenSSH server, password authentication **off**, `authorizedKeys` applied to the main user (without it, keys-only SSH on a fresh host is a lockout), firewall opened on `cfg.ssh.port` |
-| `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd; an enabled daemon adds `cfg.user.name` to its group |
+| `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd; an enabled daemon adds `cfg.user.name` to its group; libvirt also pulls `programs.virt-manager` (GUI management) |
 | `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
@@ -451,14 +451,34 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 
 - [ ] Run `nixos-generate-config` on each machine → replace its placeholder
       `hardware-configuration.nix` (keep the host's `default.nix` wiring intact)
-- [ ] `desktop`: GPU driver specifics per `lspci` (NVIDIA vs AMD), finalize gaming toggles
-- [ ] `laptop`: power management (`power-profiles-daemon` or `tlp`), touchpad, firmware updates
-      (`fwupd`)
+- [ ] `desktop`: import the matching **nixos-hardware** GPU module per `lspci`
+      (`common-gpu-nvidia` / `common-gpu-amd` — the module owns `videoDrivers`, modesetting, power
+      management; current Hyprland handles the compositor side via explicit sync), finalize gaming
+      toggles
+- [ ] `laptop`: import the model's **nixos-hardware** module (quirks, firmware, sensors); power
+      management (`power-profiles-daemon` or `tlp`), touchpad, firmware updates (`fwupd`)
 - [ ] `server`: networking approach (static IP or DHCP reservation; also NetworkManager vs
       `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit),
       fail2ban consideration, monitoring placeholder
 - [ ] Disk layout decisions per host (encryption? btrfs/zfs?) — record in ARCHITECTURE.md;
-      disko (Phase 6) can make the chosen layout declarative
+      disko (Phase 6) can make the chosen layout declarative. Disk layout, snapshots, `backup.nix`,
+      and impermanence (Phase 6) are one **state-management decision per host** — pick the
+      combination together, not independently
+
+**nixos-hardware (all hosts)** — the default mechanism for per-model/per-GPU wiring (driver
+modules, quirks, firmware), not a laptop-only candidate. Add the input, then import per host — no
+`mkHost` change needed, since `mkHost` already passes `inputs` via `specialArgs`:
+
+```nix
+# hosts/<name>/default.nix
+imports = [ inputs.nixos-hardware.nixosModules.<model-or-common> ];
+```
+
+The pin tracks `master` (no release branches; see decisions log) and is refreshed by the weekly
+flake-update cron.
+
+**Rollout order** — server (or a `build-vm` sandbox) first, laptop second, daily-driver desktop
+last: the first real deploy exercises the spec on the lowest-stakes machine.
 
 ### 2.1 Standard-defaults modules (all hosts) `[ ]`
 
@@ -493,14 +513,17 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
   `services.fprintd` (fingerprint login; PAM wiring follows), `services.undervolt` /
   `services.throttled` (older-Intel thermal fixes), logind lid-switch handling, Wi-Fi
   powersave / MAC randomization (`networking.networkmanager.wifi.*`), `hardware.sensor.iio`,
-  hibernation wiring; add the **nixos-hardware** flake input for per-model quirks (module
-  collection, not a package — see decisions log)
+  hibernation wiring (the nixos-hardware import itself is the promoted Phase 2 flow above, not a
+  candidate toggle)
 - **server**: `hardening.nix` (kernel/sysctl baseline), `services.fail2ban` (or a
-  `cfg.ssh.fail2ban.enable`), `virtualisation.oci-containers`
+  `cfg.ssh.fail2ban.enable`), `services.chrony` (NTP; default timesyncd is serviceable),
+  `virtualisation.oci-containers`
   (+ rootless `virtualisation.podman` with `dockerCompat` as a docker alternative),
   `services.samba` (+ wsdd) / `services.nfs.server`, `services.caddy` (ACME),
   `services.adguardhome` or `services.blocky`, `services.jellyfin`, monitoring
-  (`services.prometheus.exporters.node` + grafana, or `services.netdata`, `services.uptime-kuma`),
+  (`services.prometheus.exporters.node` + grafana, or `services.netdata`, `services.uptime-kuma`)
+  paired with a push-alert channel (ntfy topic / healthchecks.io ping — dashboards alone don't
+  page anyone),
   `services.forgejo` / `services.vaultwarden` / `services.paperless` / `services.nextcloud`,
   `services.home-assistant` (long-lived state — pair with the backup decision),
   `services.qbittorrent` (media pipeline with Jellyfin), `services.ddclient` (dynamic DNS —
@@ -511,16 +534,26 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 ## Phase 3 — Secrets (sops-nix) `[ ]`
 
 - [ ] Add `sops-nix` input (follows nixpkgs)
-- [ ] age key per host; `.sops.yaml` creation rules; `secrets/*.yaml` committed **encrypted only**
+- [ ] Host keys: prefer `sops.age.sshKeyPaths` (derive from each host's existing SSH host key — no
+      separate enrollment step); document manual age-identity enrollment only as fallback
+- [ ] Back up the master age identity **off-repo** — losing it makes every committed secret
+      unrecoverable
+- [ ] `.sops.yaml` creation rules; `secrets/*.yaml` committed **encrypted only**
 - [ ] `modules/nixos/secrets.nix` behind `cfg.secrets.enable`
-- [ ] Add "wire a secret" recipe to AGENTS.md
+- [ ] Add "wire a secret" recipe to AGENTS.md, including the **store-leak rule**: never
+      interpolate a decrypted value into a config — anything that lands in the Nix store is
+      world-readable. Consumers (NixOS or HM modules) reference the decrypted file via
+      `config.sops.secrets.<name>.path`, never the value
 
 ## Phase 4 — Per-DE home configs `[ ]`
 
 - [ ] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable`
 - [ ] Plasma: HM config (evaluate the `plasma-manager` input) gated on
       `osConfig.cfg.desktop.plasma.enable`
-- [ ] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock)
+- [ ] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
+      notification daemon — mako or swaync, screenshots — grim + slurp); also set the
+      Electron/Chromium Wayland env vars (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `NIXOS_OZONE_WL=1`)
+      so Slack/Discord/VS Code run native — needed on any Wayland session, not just Hyprland
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 
@@ -597,7 +630,8 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
   password). `isoImage.isoName` was renamed → `image.baseName` / `image.fileName` in 25.05.
   Build: `nixos-rebuild build-image --flake .#<host> --image-variant iso` (bare
   `build-image` lists all variants); artifact also at `config.system.build.images.iso`.
-- [ ] impermanence (stateless root) — decide per host
+- [ ] impermanence (stateless root) — decide per host as part of the Phase 2 state-management
+      decision (with disk layout, snapshots, and `backup.nix`), never alone
 - [ ] Secure boot via lanzaboote
 - [ ] plymouth boot splash
 - [ ] colmena / deploy-rs for remote server deploys
@@ -642,4 +676,4 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | Nix implementation | Lix via `nix.package = pkgs.lixPackageSets.latest.lix` | maintained fork with better errors; ships in the pinned nixpkgs — no extra flake input |
 | home.stateVersion | set centrally in `mkHost` via `home-manager.sharedModules` | HM has no default; a first-install marker must not follow nixpkgs pin bumps |
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |
-| nixos-hardware | permitted as a flake input (Phase 2 laptop) | module collection, not a package — doesn't violate the unstable-overlay-only rule |
+| nixos-hardware | flake input, imported per host via `specialArgs` `inputs` (all hosts, Phase 2) | module collection for per-model/per-GPU wiring — not a package, doesn't violate the unstable-overlay-only rule; tracks `master` (no release branches), refreshed by the weekly flake-update cron |
