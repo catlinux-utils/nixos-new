@@ -5,6 +5,8 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 ## Next
 
 - [ ] Implement **PLAN.md Phase 1** (scaffold) — full executable spec in PLAN.md §1
+- [ ] Bootstrap local nix: import the NixOS-WSL tarball with `wsl --import` (PLAN Phase 1.5) —
+      makes this Windows machine nix-capable, unblocking local validation
 - [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine

@@ -447,6 +447,37 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 
 ---
 
+## Phase 1.5 — WSL dev host `[ ]`
+
+Promoted from Phase 6: the highest-leverage item — it dissolves the "no nix on the dev machine"
+constraint. The WSL distro becomes a fourth host (`wsl`) managed by this flake, and all validation
+(`nix flake check`, `nix fmt`, `nix flake update`, `build-vm`) runs locally — including from agent
+sessions via `wsl.exe`.
+
+Bootstrap (no chicken-and-egg — the prebuilt tarball needs no repo or nix machine):
+
+- [ ] Import the NixOS-WSL bootstrap tarball from their releases:
+      `wsl --import nixos <dir> <tarball>`
+- [ ] Inside WSL: clone the repo to `~/nixos-new` — **must live on the Linux side** (`/mnt/c` is
+      9p and too slow for nix); edit from Windows via `\\wsl$` / VS Code WSL remote
+- [ ] With nix available: run the Phase 1 verification steps ([§1.10](#110-verification-strategy))
+      locally instead of on an external machine
+
+Host wiring (once Phase 1 exists):
+
+- [ ] Add `nixos-wsl` input (`github:nix-community/NixOS-WSL`, module `nixosModules.wsl`,
+      `inputs.nixpkgs.follows = "nixpkgs"`)
+- [ ] Register `nixosConfigurations.wsl = mkHost { hostname = "wsl"; };`
+- [ ] `hosts/wsl/default.nix`: import the wsl module, `wsl.enable = true`,
+      `wsl.defaultUser = cfg.user.name` (must agree with the user `users.nix` creates); leave
+      `boot`/`networking`/`audio`/`graphics` off — WSLg handles graphics/audio on the Windows side,
+      NetworkManager is meaningless under WSL NAT; never touch `boot.loader*` inside WSL.
+      Always-on `nix`/`nh`/`logging`/`locale`/`users` apply fine
+- [ ] Set `cfg.nh.flakeDir` to the in-WSL repo path
+- [ ] Rewrite AGENTS.md "Environment constraints" + TODO once validation is local
+
+---
+
 ## Phase 2 — Real hardware per host `[ ]`
 
 - [ ] Run `nixos-generate-config` on each machine → replace its placeholder
@@ -642,8 +673,7 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       Secure Boot via lanzaboote)
 - [ ] Scheduled auto-updates — systemd timer running `nh os switch` (or `system.autoUpgrade`);
       a deliberate trade-off against the manual nh workflow, decide per host
-- [ ] NixOS-WSL host variant (`nixos-wsl` input) — a host that runs under Windows; would make the
-      dev machine itself a nix-capable environment (the "Ground truth" constraint goes away)
+- [ ] NixOS-WSL host variant — promoted to Phase 1.5
 
 ---
 
@@ -677,3 +707,4 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | home.stateVersion | set centrally in `mkHost` via `home-manager.sharedModules` | HM has no default; a first-install marker must not follow nixpkgs pin bumps |
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |
 | nixos-hardware | flake input, imported per host via `specialArgs` `inputs` (all hosts, Phase 2) | module collection for per-model/per-GPU wiring — not a package, doesn't violate the unstable-overlay-only rule; tracks `master` (no release branches), refreshed by the weekly flake-update cron |
+| Dev-machine validation | NixOS-WSL host (Phase 1.5), bootstrapped from the prebuilt tarball | dissolves the no-nix-on-Windows constraint; repo lives on the WSL Linux filesystem, agent sessions validate via `wsl.exe` |
