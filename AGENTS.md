@@ -8,7 +8,7 @@ Guidance for AI agents (and humans) working in this repo. The roadmap lives in
 
 A NixOS flake managing multiple machines (`desktop`, `laptop`, `server`) with Home Manager wired in
 as a NixOS module. All custom options live under the `cfg.*` namespace. Rebuilds happen
-through `nh`.
+through `nh`. Hosts run Lix, pinned to nixpkgs **26.05** + Home Manager **release-26.05**.
 
 ## Environment constraints (read first)
 
@@ -33,10 +33,15 @@ flake.nix              inputs + outputs; declares the hosts via mkHost
 lib/                   mkHost.nix (host assembler), importNixFiles.nix (auto-importer)
 overlays/unstable.nix  pkgs.unstable.<pkg> for everything
 hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix
-modules/nixos/         system feature modules (auto-imported, cfg.* options)
-modules/home/          home-manager feature modules (auto-imported)
-docs/                  ARCHITECTURE.md
-PLAN.md TODO.md        what to do / what to do next
+hosts/installer/       ISO media module — image, not a host (deferred, PLAN Phase 6)
+modules/nixos/         system feature modules (auto-imported, cfg.* options);
+                       includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
+                       sandbox.nix
+modules/home/          home-manager feature modules (auto-imported); includes
+                       xdg.nix, home-tools.nix
+docs/ARCHITECTURE.md   how it all fits together
+PLAN.md TODO.md        roadmap / actionable next steps
+AGENTS.md README.md    this file / project overview
 ```
 
 ## Markdown maintenance rules
@@ -45,6 +50,8 @@ PLAN.md TODO.md        what to do / what to do next
   phases or decisions.
 - **TODO.md** — only currently actionable items. When done: tick in PLAN.md, drop from here.
 - **docs/ARCHITECTURE.md** — update whenever the folder scheme, option tree, or data flow changes.
+- **AGENTS.md** — update in the same change whenever a convention itself changes (namespace, pin
+  bumps, new patterns); this is the first file a fresh agent reads.
 - **README.md** — keep the host table and usage commands accurate.
 - Keep every md file self-contained enough that a fresh session can orient without conversation
   history.
@@ -55,6 +62,8 @@ PLAN.md TODO.md        what to do / what to do next
   one line when they fit, final newline. Don't hand-format against nixfmt's choices.
 - Prefer `lib.mkEnableOption` / `lib.mkIf` / `lib.mkOption` over raw attrsets.
 - One feature per file; the file is named after the feature (`ssh.nix`, `gaming.nix`).
+- Bleeding-edge packages come only via `pkgs.unstable.<pkg>` (the one overlay) — never add extra
+  nixpkgs inputs for single packages.
 
 ## Feature-module pattern (checklist)
 
@@ -66,6 +75,8 @@ PLAN.md TODO.md        what to do / what to do next
 5. Enable nothing by default — hosts flip the switches in `hosts/<name>/default.nix`.
 6. A feature that implies another uses `mkDefault`/direct set of the other's switch (see
    `desktop/hyprland.nix` setting `cfg.desktop.enable` in PLAN.md §1.5).
+7. The auto-importer skips files named `default.nix` and `hardware-configuration.nix` — never
+   give a feature module either name.
 
 ## Recipes
 
@@ -76,7 +87,9 @@ PLAN.md TODO.md        what to do / what to do next
 2. Create `hosts/<name>/hardware-configuration.nix` — real one from `nixos-generate-config` on the
    machine (never hand-write disk config).
 3. Register in `flake.nix`: `nixosConfigurations.<name> = mkHost { hostname = "<name>"; };`
-4. Update README host table, PLAN.md status, ARCHITECTURE.md if the scheme changed.
+4. Foreign-arch binaries: set `boot.binfmt.emulatedSystems` directly in the host file — per-host
+   decision, no toggle.
+5. Update README host table, PLAN.md status, ARCHITECTURE.md if the scheme changed.
 
 ### Add a NixOS module
 
@@ -88,6 +101,8 @@ PLAN.md TODO.md        what to do / what to do next
 
 1. Create `modules/home/<feature>.nix` following the pattern checklist (auto-imported).
 2. Use `osConfig.cfg.*` when user config must follow a system switch.
+3. Never force-overwrite existing user files — `mkHost` sets
+   `home-manager.backupFileExtension = "backup"` as the safety net.
 
 ### Wire a secret
 
@@ -96,6 +111,8 @@ Only after Phase 3 (sops-nix) is implemented — see PLAN.md. Never commit plain
 
 ## Commit hygiene
 
-- Small, focused commits; imperative subject ("add nh module", not "added nh module").
+- Terse conventional commits, subject-only: `<type>(<scope>): <imperative summary>`, ≤50 chars,
+  no trailing period (e.g. `docs: add compat module (nix-ld, envfs, appimage)`). Body only when
+  the why isn't obvious from the diff.
 - Resolve `flake.lock` conflicts by regenerating on a Nix machine (`nix flake update` for full
   refresh, `nix flake lock --update-input <input>` for one), never by hand-editing.
