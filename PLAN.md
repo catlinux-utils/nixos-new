@@ -192,6 +192,9 @@ lib.nixosSystem {
           home-manager.users.${config.cfg.user.name} = import ../modules/home;
           # HM has no home.stateVersion default — set it here, once, per host
           # (first-install marker: do NOT bump it together with the nixpkgs pin)
+          # TODO(verify): confirm the pinned HM release auto-defaults
+          # home.username / home.homeDirectory from the NixOS user; if not, set
+          # both here from config.cfg.user.name
           home-manager.sharedModules = [ { home.stateVersion = "26.05"; } ];
         }
       )
@@ -261,21 +264,21 @@ Every feature module follows one shape:
 
 | File | Option | Enables |
 |---|---|---|
-| `boot.nix` | `cfg.boot.enable` | systemd-boot, `efi.canTouchEfiVariables`, `boot.initrd.systemd.enable`, `boot.tmp.cleanOnBoot`, quiet boot, `zramSwap` |
+| `boot.nix` | `cfg.boot.enable` | systemd-boot (`configurationLimit` ~10 — belt-and-suspenders alongside `nh clean`), `efi.canTouchEfiVariables`, `boot.initrd.systemd.enable`, `boot.tmp.cleanOnBoot`, quiet boot, `zramSwap` |
 | `logging.nix` | always on | journald: persistent storage across reboots + size cap (`SystemMaxUse`) — unbounded journal is a silent disk-filler |
-| `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs` |
+| `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs`, `nix.channel.enable = false` + `nix.nixPath = [ "nixpkgs=flake:nixpkgs" ]` (pure-flake hosts carry no channel state; Phase 4's nix-index/comma replaces command-not-found) |
 | `nh.nix` | always on (+ `cfg.nh.flakeDir` option) | see [1.8](#18-nh) |
-| `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"`) |
-| `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell); password via `passwd` on first boot (optional `initialHashedPassword` option applied when non-null) |
-| `networking.nix` | `cfg.networking.networkManager.enable` (+ `cfg.networking.firewall.enable`, default true) | NetworkManager; firewall with per-host allowed ports (+ `networkmanagerapplet` is a home-side concern); `NetworkManager-wait-online` disabled (avoids multi-minute boot stall) |
+| `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"` — sets both `console.keyMap` and `services.xserver.xkb.layout`; GDM reads the latter) |
+| `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell) with `programs.zsh.enable = true` system-side so the shell is valid (`/etc/shells`); password via `passwd` on first boot (optional `initialHashedPassword` option applied when non-null) |
+| `networking.nix` | `cfg.networking.networkManager.enable` (+ `cfg.networking.firewall.enable`, default true) | NetworkManager; firewall on the nftables backend (`networking.nftables.enable`) with per-host allowed ports (+ `networkmanagerapplet` is a home-side concern); `NetworkManager-wait-online` disabled (avoids multi-minute boot stall) |
 | `audio.nix` | `cfg.audio.enable` | PipeWire (`alsa`, `pulse`), `security.rtkit.enable` |
 | `graphics.nix` | `cfg.graphics.enable` (+ `.enable32Bit`) | `hardware.graphics` OpenGL/VA-API base stack; 32-bit off unless something turns it on (e.g. gaming) |
-| `ssh.nix` | `cfg.ssh.enable` (+ `cfg.ssh.port`, default 22) | OpenSSH server, password authentication **off**, firewall opened on `cfg.ssh.port` |
+| `ssh.nix` | `cfg.ssh.enable` (+ `cfg.ssh.port`, default 22; `cfg.ssh.authorizedKeys`, list of strings) | OpenSSH server, password authentication **off**, `authorizedKeys` applied to the main user (without it, keys-only SSH on a fresh host is a lockout), firewall opened on `cfg.ssh.port` |
 | `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd; an enabled daemon adds `cfg.user.name` to its group |
 | `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
-| `desktop/base.nix` | `cfg.desktop.enable` | fonts (nerdfonts + noto), `xdg.portal`, `xdg-user-dirs` |
+| `desktop/base.nix` | `cfg.desktop.enable` | fonts (nerdfonts + noto), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
 | `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland; also `security.polkit` + a polkit agent (`hyprpolkitagent` — wlroots sessions ship none), and `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
@@ -427,8 +430,10 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
    every option name, the `cfg.*` namespace consistency.
 2. On any Nix machine (or WSL2 with nix): `nix flake check` — the placeholder hardware configs are
    deliberately minimal-but-valid so this passes pre-Phase-2.
-3. `nix fmt` (the formatter output is part of the scaffold) — clean before every commit.
-4. Per real host (Phase 2): swap in real hardware config, then `nh os switch --dry` → `nh os test`
+3. Same machine: `nixos-rebuild build-vm --flake .#desktop` — boots the full config in QEMU,
+   smoke-testing the real module stack (fonts, portals, DE wiring) without touching an actual host.
+4. `nix fmt` (the formatter output is part of the scaffold) — clean before every commit.
+5. Per real host (Phase 2): swap in real hardware config, then `nh os switch --dry` → `nh os test`
    → `nh os switch`.
 
 ### 1.11 Phase 1 acceptance criteria
@@ -449,9 +454,11 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 - [ ] `desktop`: GPU driver specifics per `lspci` (NVIDIA vs AMD), finalize gaming toggles
 - [ ] `laptop`: power management (`power-profiles-daemon` or `tlp`), touchpad, firmware updates
       (`fwupd`)
-- [ ] `server`: networking approach (static IP or DHCP reservation), fail2ban consideration,
-      monitoring placeholder
-- [ ] Disk layout decisions per host (encryption? btrfs/zfs?) — record in ARCHITECTURE.md
+- [ ] `server`: networking approach (static IP or DHCP reservation; also NetworkManager vs
+      `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit),
+      fail2ban consideration, monitoring placeholder
+- [ ] Disk layout decisions per host (encryption? btrfs/zfs?) — record in ARCHITECTURE.md;
+      disko (Phase 6) can make the chosen layout declarative
 
 ### 2.1 Standard-defaults modules (all hosts) `[ ]`
 
@@ -464,6 +471,8 @@ against pinned 26.05 at implementation.
 - [ ] `bluetooth.nix` — `cfg.bluetooth.enable`: `hardware.bluetooth` + blueman (desktop/laptop)
 - [ ] `printing.nix` — `cfg.printing.enable`: CUPS + Avahi discovery + `hardware.sane` scanning
       (desktop/laptop)
+- [ ] `geolocation.nix` — `cfg.geolocation.enable`: `services.geoclue2` (desktop/laptop — feeds
+      gammastep/redshift night light, automatic timezone, map apps)
 - [ ] `tailscale.nix` — `cfg.tailscale.enable`: `services.tailscale` (all hosts; server remote
       access without port-forwarding)
 - [ ] `syncthing.nix` — `cfg.syncthing.enable`: `services.syncthing` (all hosts)
@@ -475,18 +484,28 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 - **desktop**: `hardware.nvidia` stack (open-kernel-module choice — pending `lspci`),
   `services.ratbag` + piper, `hardware.openrazer` / `hardware.opentabletdriver` (peripheral
   toggles, gaming-adjacent), `programs.kdeconnect`, `virtualisation.waydroid`, Sunshine
-  (game-stream host), zen-kernel option on `boot.nix`
-- **laptop**: `power.nix` — `services.power-profiles-daemon` vs `services.tlp` (mutually
-  exclusive, one toggle each), `services.thermald` (Intel), logind lid-switch handling, Wi-Fi
+  (game-stream host), zen-kernel option on `boot.nix`, `services.ollama` (local LLM host;
+  acceleration rides the nvidia/ROCm GPU decision), `services.input-remapper` (keyboard/button
+  remapping — ratbag only covers mice), `hardware.keyboard.qmk` / `hardware.keyboard.zsa`
+  (custom-keyboard flashing udev rules), `services.usbmuxd` (iPhone pairing/tethering)
+- **laptop**: `power.nix` — `services.power-profiles-daemon` vs `services.tlp` vs
+  `services.auto-cpufreq` (mutually exclusive, one toggle each), `services.thermald` (Intel),
+  `services.fprintd` (fingerprint login; PAM wiring follows), `services.undervolt` /
+  `services.throttled` (older-Intel thermal fixes), logind lid-switch handling, Wi-Fi
   powersave / MAC randomization (`networking.networkmanager.wifi.*`), `hardware.sensor.iio`,
   hibernation wiring; add the **nixos-hardware** flake input for per-model quirks (module
   collection, not a package — see decisions log)
-- **server**: `services.fail2ban` (or a `cfg.ssh.fail2ban.enable`), `virtualisation.oci-containers`
+- **server**: `hardening.nix` (kernel/sysctl baseline), `services.fail2ban` (or a
+  `cfg.ssh.fail2ban.enable`), `virtualisation.oci-containers`
   (+ rootless `virtualisation.podman` with `dockerCompat` as a docker alternative),
   `services.samba` (+ wsdd) / `services.nfs.server`, `services.caddy` (ACME),
   `services.adguardhome` or `services.blocky`, `services.jellyfin`, monitoring
   (`services.prometheus.exporters.node` + grafana, or `services.netdata`, `services.uptime-kuma`),
-  `services.forgejo` / `services.vaultwarden` / `services.paperless`, initrd network unlock
+  `services.forgejo` / `services.vaultwarden` / `services.paperless` / `services.nextcloud`,
+  `services.home-assistant` (long-lived state — pair with the backup decision),
+  `services.qbittorrent` (media pipeline with Jellyfin), `services.ddclient` (dynamic DNS —
+  Caddy ACME without a static IP), shared backing stores (`services.postgresql`,
+  `services.redis`) for the self-hosted apps, initrd network unlock
   (`boot.initrd.network`) if the disk decision picks an encrypted root
 
 ## Phase 3 — Secrets (sops-nix) `[ ]`
@@ -510,15 +529,28 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [ ] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration; pairs with
       keys-only ssh)
 - [ ] `browser.nix` — `programs.firefox` (policies, profiles)
-- [ ] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi
+- [ ] `ssh.nix` — `programs.ssh` client: per-host aliases, ControlMaster multiplexing, key
+      preferences; pairs with the keys-only server in `modules/nixos/ssh.nix`
+- [ ] `vscode.nix` — `programs.vscode` with declarative profiles/extensions (server-side
+      vscode-server is why `server` enables nix-ld)
+- [ ] `easyeffects.nix` — `services.easyeffects` (PipeWire EQ/compressor presets); pairs with
+      `cfg.audio.enable`
+- [ ] `nix-index.nix` — `programs.nix-index` + comma (channel-less command-not-found)
+- [ ] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
 - [ ] Theming: gtk/qt + cursor module; evaluate **Stylix** (single base16 palette across DE,
       terminal, apps) as the heavier alternative
-- [ ] Small: tmux (server; pairs with ssh), mpv / OBS (desktop), HM-side syncthing tray
+- [ ] Small: tmux (server; pairs with ssh), mpv / OBS (desktop), HM-side syncthing tray,
+      `programs.password-store` (pairs with gpg.nix)
 
 ## Phase 5 — CI `[ ]`
 
 - [ ] GitHub Actions on push/PR: install nix (DeterminateSystems/nix-installer-action),
       `nix fmt --check`, `nix flake check`
+- [ ] CI builds each host's toplevel (`nix build
+      .#nixosConfigurations.<host>.config.system.build.toplevel`) — `nix flake check` evaluates
+      only; real build breakage should surface on PRs, not on the machines
+- [ ] Weekly `nix flake update` cron opening a PR — keeps the 26.05 pin fresh and surfaces nixpkgs
+      breakage early
 - [ ] Cache strategy (Cachix or GH actions cache) if checks get slow
 
 ## Phase 6 — Extras (unscheduled) `[ ]`
@@ -570,6 +602,14 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [ ] plymouth boot splash
 - [ ] colmena / deploy-rs for remote server deploys
 - [ ] own binary cache (attic)
+- [ ] disko + nixos-anywhere — declarative disk partitioning and hands-off installs from any
+      machine (Phase 2 disk decisions then live in the repo, not on the machine)
+- [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
+      Secure Boot via lanzaboote)
+- [ ] Scheduled auto-updates — systemd timer running `nh os switch` (or `system.autoUpgrade`);
+      a deliberate trade-off against the manual nh workflow, decide per host
+- [ ] NixOS-WSL host variant (`nixos-wsl` input) — a host that runs under Windows; would make the
+      dev machine itself a nix-capable environment (the "Ground truth" constraint goes away)
 
 ---
 

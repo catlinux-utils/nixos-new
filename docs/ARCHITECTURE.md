@@ -42,12 +42,13 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
   — creating `modules/nixos/foo.nix` makes it active with zero import edits.
 - **`hosts/<name>/default.nix`** — pure switch-flipping; no implementation logic.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
-  enable it themselves, so a host sets exactly one switch to get a working session.
+  enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
+  guard makes enabling two DEs fail evaluation.
 
 ## The option tree
 
 All switches live under `cfg.*`. Current/planned options (authoritative list grows in
-PLAN.md §1.5–1.6):
+PLAN.md — §1.5–1.6 for Phase 1, §2.1/§4 for the planned backlog):
 
 | Option | Type | Where defined | Purpose |
 |---|---|---|---|
@@ -58,7 +59,7 @@ PLAN.md §1.5–1.6):
 | `cfg.networking.networkManager.enable` / `.firewall.enable` | bool | `networking.nix` | desktop networking; firewall (default on), per-host ports |
 | `cfg.audio.enable` | bool | `audio.nix` | PipeWire stack |
 | `cfg.graphics.enable` (+ `.enable32Bit`) | bool | `graphics.nix` | GPU base stack |
-| `cfg.ssh.enable` (+ `.port`) | bool, port | `ssh.nix` | OpenSSH, keys only |
+| `cfg.ssh.enable` (+ `.port`, `.authorizedKeys`) | bool, port, strList | `ssh.nix` | OpenSSH, keys only |
 | `cfg.virtualisation.docker.enable` / `.libvirt.enable` | bool | `virtualisation.nix` | containers / VMs |
 | `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamescope, gamemode, MangoHud, xpadneo |
 | `cfg.compat.{nix-ld,envfs,appimage}.enable` | bool (+ libraries) | `compat.nix` | run non-Nix binaries, shebangs, AppImages |
