@@ -15,7 +15,8 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 
 ## Backlog
 
-- [ ] Installer ISO (e.g. `image.modules.iso` pattern) — deferred for now
+- [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
+      `nixos-rebuild build-image --flake .#<host> --image-variant iso`
 - [ ] Phase 3 — sops-nix secrets
 - [ ] Phase 4 — GNOME / Plasma home-manager configs
 - [ ] Phase 5 — CI (fmt + flake check)

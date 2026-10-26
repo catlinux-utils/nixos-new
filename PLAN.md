@@ -451,6 +451,48 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 
 ## Phase 6 — Extras (unscheduled) `[ ]`
 
+- [ ] Installer ISO — deferred; expand the `iso` variant (defaults to
+      `installer/cd-dvd/iso-image.nix`, merged via `extendModules`):
+
+  ```nix
+  image.modules.iso = { lib, config, pkgs, ... }: {
+    # never inherit the host hardware layout (same trick installation-cd-base.nix uses)
+    swapDevices = lib.mkImageMediaOverride [ ];
+    boot.initrd.luks.devices = lib.mkImageMediaOverride { };
+
+    fileSystems = lib.mkImageMediaOverride (
+      config.lib.isoFileSystems or {
+        "/" = {
+          fsType = "tmpfs";
+          options = [ "mode=0755" ];
+        };
+      }
+    );
+
+    isoImage.makeEfiBootable = true;
+    isoImage.makeUsbBootable = true;
+    # isoImage.makeBiosBootable defaults to true on x86
+
+    isoImage.volumeID = "nixos-nixos-new"; # ≤32 chars; stage 1 mounts the CD by it
+    isoImage.configurationName = "nixos-new";
+    isoImage.appendToMenuLabel = " Live";
+    isoImage.squashfsCompression = "zstd -Xcompression-level 6"; # default is 19
+    # isoImage.compressImage = true;                  # whole-ISO zstd → .iso.zst
+    # isoImage.includeSystemBuildDependencies = true; # offline installs (large)
+
+    # flake-aware live env (Lix like the hosts)
+    # nix.package = pkgs.lixPackageSets.latest.lix;
+    # nix.settings.experimental-features = [ "nix-command" "flakes" ];
+    # environment.systemPackages = with pkgs; [ git nh vim ];
+    # services.openssh.enable = true; # set a root password or key first
+  };
+  ```
+
+  Variants: `iso` (live media) vs `iso-installer` (`installation-cd-base.nix`: installer
+  profiles, git, memtest, `hardware.enableAllHardware`, `live.nixos.passwd=` cmdline
+  password). `isoImage.isoName` was renamed → `image.baseName` / `image.fileName` in 25.05.
+  Build: `nixos-rebuild build-image --flake .#<host> --image-variant iso` (bare
+  `build-image` lists all variants); artifact also at `config.system.build.images.iso`.
 - [ ] impermanence (stateless root) — decide per host
 - [ ] Secure boot via lanzaboote
 - [ ] plymouth boot splash
