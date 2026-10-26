@@ -10,7 +10,7 @@ and recipes see [../AGENTS.md](../AGENTS.md).
 
 ```
 flake.nix
-  ├─ inputs: nixpkgs (25.05) ◄── home-manager (release-25.05, follows nixpkgs)
+  ├─ inputs: nixpkgs (26.05) ◄── home-manager (release-26.05, follows nixpkgs)
   │          nixpkgs-unstable
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
@@ -35,7 +35,8 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
 - **`lib/mkHost.nix`** — the only place host assembly happens. One host = one directory under
   `hosts/` + one line in `flake.nix`. It sets `networking.hostName`, applies the unstable overlay,
   imports `modules/nixos/` and `hosts/<name>/`, and wires `home-manager.nixosModules.home-manager`
-  to the user named by `config.cfg.user.name`.
+  to the user named by `config.cfg.user.name`. Unmanaged files that HM takes over are backed up
+  (`home-manager.backupFileExtension = "backup"`) instead of failing activation.
 - **`lib/importNixFiles.nix`** — recursive importer used by both `default.nix` importers. It skips
   `default.nix` (would recurse) and `hardware-configuration.nix`. Consequence: **drop-in modules**
   — creating `modules/nixos/foo.nix` makes it active with zero import edits.
@@ -54,15 +55,15 @@ PLAN.md §1.5–1.6):
 | `cfg.locale.timeZone` / `.defaultLocale` / `.keyboard` | str | `locale.nix` | defaults: `Europe/Warsaw`, `en_US.UTF-8`, `pl` |
 | `cfg.nh.flakeDir` | path | `nh.nix` | flake location on the machine; drives nh + `$FLAKE` |
 | `cfg.boot.enable` | bool | `boot.nix` | systemd-boot, zram |
-| `cfg.networking.networkManager.enable` | bool | `networking.nix` | desktop networking |
+| `cfg.networking.networkManager.enable` / `.firewall.enable` | bool | `networking.nix` | desktop networking; firewall (default on), per-host ports |
 | `cfg.audio.enable` | bool | `audio.nix` | PipeWire stack |
-| `cfg.graphics.enable` | bool | `graphics.nix` | GPU base stack |
-| `cfg.ssh.enable` | bool | `ssh.nix` | OpenSSH, keys only |
+| `cfg.graphics.enable` (+ `.enable32Bit`) | bool | `graphics.nix` | GPU base stack |
+| `cfg.ssh.enable` (+ `.port`) | bool, port | `ssh.nix` | OpenSSH, keys only |
 | `cfg.virtualisation.docker.enable` / `.libvirt.enable` | bool | `virtualisation.nix` | containers / VMs |
 | `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamemode |
 | `cfg.desktop.enable` | bool | `desktop/base.nix` | shared desktop plumbing |
 | `cfg.desktop.{gnome,hyprland,plasma}.enable` | bool | `desktop/<de>.nix` | session choice |
-| `cfg.home.<feature>.enable` | bool | `modules/home/*` | shell, git, terminal, neovim |
+| `cfg.home.<feature>.enable` | bool | `modules/home/*` | shell, git, terminal, neovim, xdg, home-manager CLI |
 | `cfg.secrets.enable` | bool (Phase 3) | `secrets.nix` | sops-nix |
 
 ## The `osConfig` bridge
@@ -83,7 +84,7 @@ configuration for it. Both sides read the same switch.
 
 `overlays/unstable.nix` (applied by `mkHost`) exposes a second package set as `pkgs.unstable`.
 Any module — system or home (via `useGlobalPkgs = true`) — can pin a bleeding-edge package with
-`pkgs.unstable.<name>` while everything else stays on stable 25.05. This is the only unstable
+`pkgs.unstable.<name>` while everything else stays on stable 26.05. This is the only unstable
 mechanism; don't add alternate import paths.
 
 ## Host assembly walkthrough (what `nh os switch` evaluates)

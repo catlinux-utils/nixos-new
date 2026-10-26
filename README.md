@@ -1,7 +1,7 @@
 # nixos-new
 
 ThePolishcat's NixOS configuration flake — multiple hosts, Home Manager wired in as a NixOS
-module, `nh` for rebuilds, Lix as the Nix implementation, stable nixpkgs (25.05) with unstable
+module, `nh` for rebuilds, Lix as the Nix implementation, stable nixpkgs (26.05) with unstable
 available as `pkgs.unstable.<pkg>`.
 
 > **Status:** scaffold specified, not yet built. [PLAN.md](PLAN.md) contains the full executable

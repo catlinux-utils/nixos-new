@@ -15,7 +15,7 @@ A single NixOS flake managing every machine from one repo:
   user configuration together.
 - **Toggleable feature modules** — every feature (desktop environments, audio, gaming, docker, ssh,
   …) sits behind a `cfg.*.enable` option; hosts flip switches, modules stay machine-agnostic.
-- **Stable base + unstable on tap** — `nixpkgs` 25.05 is primary; unstable reachable everywhere as
+- **Stable base + unstable on tap** — `nixpkgs` 26.05 is primary; unstable reachable everywhere as
   `pkgs.unstable.<pkg>` via one overlay.
 - **nh** for all rebuild and cleanup operations.
 
@@ -47,11 +47,11 @@ Inputs:
 ```nix
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -136,10 +136,12 @@ outputs =
 │   │       └── plasma.nix
 │   └── home/
 │       ├── default.nix             # auto-imports every sibling .nix
-│       ├── shell.nix               # zsh + starship + aliases
-│       ├── git.nix                 # programs.git; email via option
+│       ├── shell.nix               # zsh + starship + fzf/eza/btop + aliases
+│       ├── git.nix                 # git + delta/lfs; email via option
 │       ├── terminal.nix            # kitty
-│       ├── neovim.nix              # base programs.neovim
+│       ├── neovim.nix              # defaultEditor, aliases
+│       ├── xdg.nix                 # xdg.enable, user dirs, mime defaults
+│       ├── home-tools.nix          # programs.home-manager.enable
 │       └── hyprland.nix            # osConfig-gated example (1.6)
 └── secrets/
     └── README.md                   # placeholder until Phase 3 (sops-nix)
@@ -182,6 +184,8 @@ lib.nixosSystem {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = { inherit inputs; };
+          # unmanaged files HM takes over get a .backup copy instead of failing activation
+          home-manager.backupFileExtension = "backup";
           # user name comes from users.nix's option (lazy evaluation makes this work)
           home-manager.users.${config.cfg.user.name} = import ../modules/home;
         }
@@ -252,16 +256,16 @@ Every feature module follows one shape:
 
 | File | Option | Enables |
 |---|---|---|
-| `boot.nix` | `cfg.boot.enable` | systemd-boot, `efi.canTouchEfiVariables`, quiet boot, `zramSwap` |
+| `boot.nix` | `cfg.boot.enable` | systemd-boot, `efi.canTouchEfiVariables`, `boot.initrd.systemd.enable`, `boot.tmp.cleanOnBoot`, quiet boot, `zramSwap` |
 | `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs` |
 | `nh.nix` | always on (+ `cfg.nh.flakeDir` option) | see [1.8](#18-nh) |
 | `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"`) |
 | `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`; password via `passwd` on first boot (optional `initialHashedPassword` option applied when non-null) |
-| `networking.nix` | `cfg.networking.networkManager.enable` | NetworkManager (+ `networkmanagerapplet` is a home-side concern) |
+| `networking.nix` | `cfg.networking.networkManager.enable` (+ `cfg.networking.firewall.enable`, default true) | NetworkManager; firewall with per-host allowed ports (+ `networkmanagerapplet` is a home-side concern) |
 | `audio.nix` | `cfg.audio.enable` | PipeWire (`alsa`, `pulse`), `security.rtkit.enable` |
 | `graphics.nix` | `cfg.graphics.enable` (+ `.enable32Bit`) | `hardware.graphics` OpenGL/VA-API base stack; 32-bit off unless something turns it on (e.g. gaming) |
-| `ssh.nix` | `cfg.ssh.enable` | OpenSSH server, password authentication **off** |
-| `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker / libvirtd |
+| `ssh.nix` | `cfg.ssh.enable` (+ `cfg.ssh.port`, default 22) | OpenSSH server, password authentication **off**, firewall opened on `cfg.ssh.port` |
+| `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd |
 | `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
 | `desktop/base.nix` | `cfg.desktop.enable` | fonts (nerdfonts + noto), `xdg.portal`, `xdg-user-dirs` |
@@ -269,7 +273,7 @@ Every feature module follows one shape:
 | `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland; also `security.polkit`, and `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
 
-Option names are quoted for **nixpkgs 25.05**. When implementing, verify against the pinned
+Option names are quoted for **nixpkgs 26.05**. When implementing, verify against the pinned
 nixpkgs (grep the store path on a Nix machine, or search.nixos.org for the pinned release).
 
 Example of the DE wiring pattern (`desktop/hyprland.nix`):
@@ -299,10 +303,14 @@ Example of the DE wiring pattern (`desktop/hyprland.nix`):
 Same option-gated shape as system modules (`cfg.home.<feature>.enable`, all defaulting to
 `true` so hosts get a sane user environment for free):
 
-- `shell.nix` — zsh + starship + aliases
-- `git.nix` — `programs.git`; identity via `cfg.home.git.email` / `.name` options
-- `terminal.nix` — kitty
-- `neovim.nix` — base `programs.neovim`
+- `shell.nix` — zsh (autosuggestions, syntaxHighlighting, history opts) + starship + aliases +
+  fzf, eza, btop
+- `git.nix` — `programs.git` (+ delta, lfs, `init.defaultBranch = "main"`); identity via
+  `cfg.home.git.email` / `.name` options
+- `terminal.nix` — kitty (font + theme via `settings`)
+- `neovim.nix` — `programs.neovim` (`defaultEditor`, `viAlias`, `vimAlias`)
+- `xdg.nix` — `xdg.enable`, user dirs, sane mime defaults
+- `home-tools.nix` — `programs.home-manager.enable` (HM CLI in the user env)
 - `hyprland.nix` — **no own switch**; gated on the *system* switch via `osConfig`. This is the
   worked example of the NixOS ↔ HM bridge:
 
@@ -320,7 +328,9 @@ Same option-gated shape as system modules (`cfg.home.<feature>.enable`, all defa
 }
 ```
 
-GNOME / Plasma home-side config is Phase 4.
+GNOME / Plasma home-side config is Phase 4. Existing unmanaged files that HM takes over are
+backed up automatically (`home-manager.backupFileExtension = "backup"`, set in `mkHost`) —
+never force-overwrite user files.
 
 ### 1.7 `hosts/`
 
@@ -506,7 +516,7 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 | Decision | Choice | Why |
 |---|---|---|
 | HM integration | NixOS module per host | one `nh os switch` applies OS + user config; standard, least moving parts |
-| nixpkgs | stable 25.05 base + unstable overlay | fewer breakages on updates; escape hatch via `pkgs.unstable.<pkg>` |
+| nixpkgs | stable 26.05 base + unstable overlay | fewer breakages on updates; escape hatch via `pkgs.unstable.<pkg>` |
 | Feature toggles | `cfg.*.enable` + `mkIf` | hosts differ (headless vs desktop) without forking modules |
 | Unstable mechanism | overlay only | single way to reach unstable; works in HM because `useGlobalPkgs = true` |
 | Rebuild tool | nh | simple UX, `FLAKE`-aware, built-in weekly GC via `nh clean` |
