@@ -60,7 +60,8 @@ PLAN.md §1.5–1.6):
 | `cfg.graphics.enable` (+ `.enable32Bit`) | bool | `graphics.nix` | GPU base stack |
 | `cfg.ssh.enable` (+ `.port`) | bool, port | `ssh.nix` | OpenSSH, keys only |
 | `cfg.virtualisation.docker.enable` / `.libvirt.enable` | bool | `virtualisation.nix` | containers / VMs |
-| `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamemode |
+| `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamescope, gamemode, MangoHud, xpadneo |
+| `cfg.compat.{nix-ld,envfs,appimage}.enable` | bool (+ libraries) | `compat.nix` | run non-Nix binaries, shebangs, AppImages |
 | `cfg.desktop.enable` | bool | `desktop/base.nix` | shared desktop plumbing |
 | `cfg.desktop.{gnome,hyprland,plasma}.enable` | bool | `desktop/<de>.nix` | session choice |
 | `cfg.home.<feature>.enable` | bool | `modules/home/*` | shell, git, terminal, neovim, xdg, home-manager CLI |

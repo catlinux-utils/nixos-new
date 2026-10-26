@@ -129,6 +129,7 @@ outputs =
 │   │   ├── virtualisation.nix      # docker + libvirtd behind enables
 │   │   ├── gaming.nix              # Steam + gamescope/gamemode/MangoHud behind enable
 │   │   ├── sandbox.nix             # Flatpak (+Flathub, Flatseal) / firejail behind enables
+│   │   ├── compat.nix              # nix-ld + envfs + appimage (run non-Nix binaries)
 │   │   └── desktop/
 │   │       ├── base.nix            # cfg.desktop.enable: fonts, portals, xdg
 │   │       ├── gnome.nix
@@ -268,6 +269,7 @@ Every feature module follows one shape:
 | `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd |
 | `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
+| `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
 | `desktop/base.nix` | `cfg.desktop.enable` | fonts (nerdfonts + noto), `xdg.portal`, `xdg-user-dirs` |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
 | `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland; also `security.polkit`, and `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
@@ -353,11 +355,15 @@ sets `cfg.nh.flakeDir` to the real repo path on that machine. Hostname is set by
 
 Host matrix (the switches each host flips):
 
-| Host | Role | Session | boot | audio | graphics | NetworkManager | ssh | docker | gaming |
-|---|---|---|---|---|---|---|---|---|---|
-| `desktop` | workstation | **Hyprland** | ✓ | ✓ | ✓ | ✓ | ✓ | – | ✓ |
-| `laptop` | portable | **GNOME** | ✓ | ✓ | ✓ | ✓ | ✓ | – | – |
-| `server` | headless | none | ✓ | – | – | – | ✓ | ✓ | – |
+| Host | Role | Session | boot | audio | graphics | NetworkManager | ssh | docker | gaming | compat |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `desktop` | workstation | **Hyprland** | ✓ | ✓ | ✓ | ✓ | ✓ | – | ✓ | ✓ |
+| `laptop` | portable | **GNOME** | ✓ | ✓ | ✓ | ✓ | ✓ | – | – | ✓ |
+| `server` | headless | none | ✓ | – | – | – | ✓ | ✓ | – | nix-ld only |
+
+`compat` = nix-ld + envfs + AppImage; `server` enables nix-ld only (vscode-server) — envfs and
+AppImage are desktop concerns. Foreign-arch binaries (`boot.binfmt.emulatedSystems`, e.g.
+aarch64 on desktop) are set per host directly — not a toggle.
 
 ### 1.8 nh
 
