@@ -149,6 +149,12 @@ outputs =
 │       ├── nix-index.nix           # nix-index + comma (Phase 4)
 │       ├── gpg.nix                 # gpg + gpg-agent w/ ssh-agent (Phase 4)
 │       ├── ssh.nix                 # ssh client defaults (Phase 4)
+│       ├── browser.nix             # firefox (rides cfg.desktop.enable)
+│       ├── vscode.nix              # editor (rides cfg.desktop.enable)
+│       ├── mpv.nix                 # video player (rides cfg.desktop.enable)
+│       ├── easyeffects.nix         # PipeWire EQ (audio + desktop)
+│       ├── password-store.nix      # pass (pairs with gpg.nix)
+│       ├── tmux.nix                # opt-in; ssh-serving hosts flip it
 │       ├── home-tools.nix          # programs.home-manager.enable
 │       └── hyprland/               # osConfig-gated Hyprland session (1.6)
 └── secrets/
@@ -654,19 +660,25 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [x] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration; pairs with
       keys-only ssh). 26.05 HM: pinentry is `services.gpg-agent.pinentry.package` — the flat
       `pinentryPackage` is only a deprecated alias
-- [ ] `browser.nix` — `programs.firefox` (policies, profiles)
+- [x] `browser.nix` — `programs.firefox` (rides `cfg.desktop.enable`; policies/profiles when
+      wanted)
 - [x] `ssh.nix` — `programs.ssh` client: per-host aliases, ControlMaster multiplexing, key
       preferences; pairs with the keys-only server in `modules/nixos/ssh.nix`
-- [ ] `vscode.nix` — `programs.vscode` with declarative profiles/extensions (server-side
-      vscode-server is why `server` enables nix-ld)
-- [ ] `easyeffects.nix` — `services.easyeffects` (PipeWire EQ/compressor presets); pairs with
-      `cfg.audio.enable`
+- [x] `vscode.nix` — `programs.vscode` (rides `cfg.desktop.enable`; extensions stay mutable until
+      a declarative extension set is decided; server-side vscode-server is why `server` enables
+      nix-ld)
+- [x] `easyeffects.nix` — `services.easyeffects` (PipeWire EQ/compressor presets); gated on its
+      switch + `cfg.audio` + `cfg.desktop` (26.05 HM wants `programs.dconf.enable` system-side —
+      set in `desktop/base.nix`)
 - [x] `nix-index.nix` — `programs.nix-index` + comma (channel-less command-not-found)
 - [x] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
 - [ ] Theming: gtk/qt + cursor module; evaluate **Stylix** (single base16 palette across DE,
       terminal, apps) as the heavier alternative
-- [ ] Small: tmux (server; pairs with ssh), mpv / OBS (desktop), HM-side syncthing tray,
-      `programs.password-store` (pairs with gpg.nix)
+- [x] `tmux.nix` — opt-in (default false); hosts that serve ssh sessions flip it (server does)
+- [x] `mpv.nix` — desktop video player (rides `cfg.desktop.enable`)
+- [x] `password-store.nix` — `programs.password-store` (pairs with gpg.nix)
+- [ ] OBS (desktop) — opt-in screen recording, when wanted
+- [ ] HM-side syncthing tray — blocked on Phase 2.1 (`cfg.syncthing.enable`)
 
 ## Phase 5 — CI `[ ]`
 

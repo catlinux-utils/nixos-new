@@ -35,6 +35,9 @@ in
       ];
     };
 
+    # gsettings/dconf backend for desktop apps (HM's easyeffects, gtk theming)
+    programs.dconf.enable = true;
+
     xdg.portal = {
       enable = true;
       extraPortals = [ pkgs.xdg-desktop-portal-gtk ];

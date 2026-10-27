@@ -22,6 +22,7 @@
     # only (vscode-server) — host matrix: PLAN.md §1.7
     boot.enable = true;
     ssh.enable = true;
+    home.tmux.enable = true; # ssh sessions survive disconnects
     virtualisation.docker.enable = true;
     compat.nix-ld.enable = true;
   };

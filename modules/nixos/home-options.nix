@@ -79,6 +79,24 @@
       description = "ssh client defaults (agent, connection multiplexing)";
     };
 
+    easyeffects.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "EasyEffects daemon (PipeWire EQ/compressor); needs audio + a desktop session";
+    };
+
+    password-store.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "pass (password store; pairs with gpg)";
+    };
+
+    tmux.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "tmux — opt-in; hosts that serve ssh sessions flip this on";
+    };
+
     hyprland.wallpaper = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
