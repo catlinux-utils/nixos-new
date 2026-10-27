@@ -629,14 +629,17 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 
 ## Phase 3 — Secrets (sops-nix) `[ ]`
 
-- [ ] Add `sops-nix` input (follows nixpkgs)
-- [ ] Host keys: prefer `sops.age.sshKeyPaths` (derive from each host's existing SSH host key — no
-      separate enrollment step); document manual age-identity enrollment only as fallback
+- [x] Add `sops-nix` input (follows nixpkgs)
+- [x] Host keys: prefer `sops.age.sshKeyPaths` (derive from each host's existing SSH host key — no
+      separate enrollment step); document manual age-identity enrollment only as fallback (set
+      `sops.age.keyFile` on such hosts)
 - [ ] Back up the master age identity **off-repo** — losing it makes every committed secret
-      unrecoverable
-- [ ] `.sops.yaml` creation rules; `secrets/*.yaml` committed **encrypted only**
-- [ ] `modules/nixos/secrets.nix` behind `cfg.secrets.enable`
-- [ ] Add "wire a secret" recipe to AGENTS.md, including the **store-leak rule**: never
+      unrecoverable (user action; blocks the next two)
+- [x] `.sops.yaml` creation rules (placeholder recipient until the master key exists);
+      `secrets/*.yaml` committed **encrypted only** (gitignore allows them, nothing else)
+- [x] `modules/nixos/secrets.nix` behind `cfg.secrets.enable` — no host enables it until secrets
+      exist
+- [x] Add "wire a secret" recipe to AGENTS.md, including the **store-leak rule**: never
       interpolate a decrypted value into a config — anything that lands in the Nix store is
       world-readable. Consumers (NixOS or HM modules) reference the decrypted file via
       `config.sops.secrets.<name>.path`, never the value

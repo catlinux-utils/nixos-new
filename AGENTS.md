@@ -141,8 +141,25 @@ in the same commit.
 
 ### Wire a secret
 
-Only after Phase 3 (sops-nix) is implemented — see PLAN.md. Never commit plaintext secrets;
-`.gitignore` guards `secrets/` until sops lands.
+One-time setup (see TODO.md): generate the master age identity, back it up **off-repo** (losing
+it makes every committed secret unrecoverable), and replace the placeholder recipient in
+`.sops.yaml`. Then, per secret:
+
+1. `cfg.secrets.enable = true;` in the host file.
+2. Add the key to `secrets/secrets.yaml` (or a per-host file): `sops secrets/secrets.yaml` —
+   sops encrypts via the `.sops.yaml` creation rules; commit **encrypted only**
+   (`.gitignore` allows `secrets/*.yaml` and nothing else plaintext).
+3. Declare it in a module: `sops.secrets.<name> = { };` (plus `owner`/`group`/`restartUnits`
+   when needed). Default source file: `sops.defaultSopsFile` (set in `modules/nixos/secrets.nix`).
+4. Consume by **file, never value** — the store-leak rule: anything interpolated into a Nix
+   expression lands in the world-readable Nix store. Reference the decrypted file via
+   `config.sops.secrets.<name>.path` (e.g. `EnvironmentFile`, `XDG_AUTOSTART`-style options,
+   HM `sops`-aware integrations) instead of copying its content into config.
+
+Hosts decrypt with their SSH ed25519 host key (`sops.age.sshKeyPaths`, set in
+`modules/nixos/secrets.nix`) — a newly enrolled host's derived age recipient must be appended to
+`.sops.yaml` and files re-encrypted (`sops updatekeys <file>`) to decrypt secrets created
+before it existed.
 
 ## Commit hygiene
 

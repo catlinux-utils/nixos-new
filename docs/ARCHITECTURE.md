@@ -13,6 +13,7 @@ flake.nix
   ├─ inputs: nixpkgs (26.05) ◄── home-manager (release-26.05, follows nixpkgs)
   │          nixpkgs-unstable
   │          nixos-wsl (follows nixpkgs) — imported by the wsl host only
+  │          sops-nix (follows nixpkgs) — secrets module (cfg.secrets.enable)
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
   │

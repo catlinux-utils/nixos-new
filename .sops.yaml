@@ -1,0 +1,9 @@
+# sops creation rules — which key encrypts what. The recipient below is a
+# PLACEHOLDER: generate the master age identity (`age-keygen -o
+# ~/.config/sops/age/keys.txt`), back it up off-repo, then paste its public
+# key here before creating any secret. Later-enrolled hosts append their
+# SSH-host-key-derived age recipient to this rule and re-encrypt with
+# `sops updatekeys <file>`.
+creation_rules:
+  - path_regex: secrets/[^/]+\.(yaml|yml|json|env)$
+    age: age1REPLACE_WITH_MASTER_AGE_PUBLIC_KEY

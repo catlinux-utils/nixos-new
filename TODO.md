@@ -4,6 +4,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 
 ## Next
 
+- [ ] Phase 3 key setup (one-time, on a nix-capable machine): `nix run nixpkgs#age -- --version`
+      → generate the master identity (`age-keygen -o ~/.config/sops/age/keys.txt`), back it up
+      **off-repo**, replace the placeholder recipient in `.sops.yaml` with its public key
 - [ ] Bootstrap local nix: import the NixOS-WSL tarball with `wsl --import` (PLAN Phase 1.5) —
       makes this Windows machine nix-capable, unblocking local validation. The `wsl` host is
       already registered (`cfg.nh.flakeDir` points at `~/nixos-new` on the WSL Linux side)

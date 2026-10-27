@@ -4,6 +4,8 @@ result-*
 .zcode/
 *.swp
 
-# plaintext secrets are forbidden; sops-nix (Phase 3) replaces this guard
+# sops-nix (Phase 3): encrypted files (*.yaml) are committable; everything
+# else in secrets/ stays untracked — plaintext secrets are forbidden
 secrets/*
 !secrets/README.md
+!secrets/*.yaml
