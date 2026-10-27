@@ -88,8 +88,9 @@ system switches instead: `browser.nix`, `vscode.nix`, `desktop-apps.nix`, `themi
 `cfg.audio.enable`; vscode configures settings/extensions declaratively; theming enables HM
 `dconf` and sets dark gtk + qt adwaita for every desktop), `gaming.nix` on `cfg.gaming.enable`,
 `kdeconnect.nix` on `cfg.kdeconnect.enable`, `gnome.nix` on `cfg.desktop.gnome.enable`,
-`syncthing-tray.nix` on `cfg.syncthing.enable` + `cfg.desktop.enable`, and the `hyprland/`
-folder on `cfg.desktop.hyprland.enable`.
+`plasma.nix` on `cfg.desktop.plasma.enable` (also imports the plasma-manager HM module, inert
+without the switch), `syncthing-tray.nix` on `cfg.syncthing.enable` + `cfg.desktop.enable`, and
+the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|
@@ -107,6 +108,7 @@ folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.easyeffects.enable` | bool, on | EasyEffects (also needs audio + desktop) |
 | `cfg.home.password-store.enable` | bool, on | pass (`pass init <gpg-id>` on first use) |
 | `cfg.home.tmux.enable` | bool, **off** | tmux — ssh-serving hosts flip it (server does) |
+| `cfg.home.obs.enable` | bool, **off** | OBS Studio screen recording (needs a desktop session) |
 | `cfg.home.hyprland.wallpaper` | nullOr path, `null` | hyprpaper image; null = hyprpaper off |
 
 ## Per-host values

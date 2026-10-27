@@ -14,6 +14,8 @@ flake.nix
   │          nixpkgs-unstable
   │          nixos-wsl (follows nixpkgs) — imported by the wsl host only
   │          sops-nix (follows nixpkgs) — secrets module (cfg.secrets.enable)
+  │          plasma-manager (follows nixpkgs + home-manager) — HM module for the
+  │            dormant plasma home config (no host enables cfg.desktop.plasma.enable yet)
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
   │

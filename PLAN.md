@@ -784,12 +784,16 @@ Medium — new modules/options:
 - [x] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable` — minimal sane
       defaults (weekday in clock, tap-to-click); extend with more `dconf.settings` entries as
       preferences emerge (the dark color scheme and `gtk.enable` moved to `theming.nix`, Phase 4)
-- [ ] Plasma: HM config gated on `osConfig.cfg.desktop.plasma.enable` — **evaluated**: use
+- [x] Plasma: HM config gated on `osConfig.cfg.desktop.plasma.enable` — **evaluated**: use
       [plasma-manager](https://github.com/nix-community/plasma-manager)
-      (`homeManagerModules.default`, `inputs.home-manager.follows`; supports Plasma 6 via its
-      `trunk` branch, actively maintained; `rc2nix` converts an existing KDE config to Nix).
-      No host enables Plasma yet — wire the input and module when one does; mind that
-      `overrideConfig` deletes existing KDE config on activation
+      (supports Plasma 6 via its `trunk` branch, actively maintained; `rc2nix` converts an
+      existing KDE config to Nix). **Wired dormant** — input `plasma-manager` (follows nixpkgs +
+      home-manager) and `modules/home/plasma.nix` (imports `homeModules.plasma-manager` — trunk
+      renamed the attr from `homeManagerModules`, which now warns; minimal default
+      `workspace.lookAndFeel = "org.kde.breezedark.desktop"`). `overrideConfig` verified to
+      default **false** on trunk — user-made KDE settings outside plasma-manager are preserved
+      (its activation otherwise deletes them; keep it unset). No host enables Plasma yet — flip
+      `cfg.desktop.plasma.enable` when one does
 - [x] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
       notification daemon — mako or swaync, screenshots — grim + slurp); also set the
       Electron/Chromium Wayland env vars (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `NIXOS_OZONE_WL=1`)
@@ -841,7 +845,8 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [x] `tmux.nix` — opt-in (default false); hosts that serve ssh sessions flip it (server does)
 - [x] `mpv.nix` — desktop video player (rides `cfg.desktop.enable`)
 - [x] `password-store.nix` — `programs.password-store` (pairs with gpg.nix)
-- [ ] OBS (desktop) — opt-in screen recording, when wanted
+- [x] OBS (desktop) — opt-in: `modules/home/obs.nix` behind `cfg.home.obs.enable` (default off;
+      also needs a desktop session)
 - [x] HM-side syncthing tray — unblocked by Phase 2.1; `modules/home/syncthing-tray.nix` gates
       `services.syncthing.tray` on `cfg.syncthing.enable` + `cfg.desktop.enable` (the quickshell
       bar hosts the StatusNotifier icon on hyprland; GNOME has its own tray)

@@ -97,6 +97,12 @@
       description = "tmux — opt-in; hosts that serve ssh sessions flip this on";
     };
 
+    obs.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "OBS Studio — opt-in screen recording";
+    };
+
     hyprland.wallpaper = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
