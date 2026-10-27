@@ -290,7 +290,7 @@ Every feature module follows one shape:
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
 | `desktop/base.nix` | `cfg.desktop.enable` | fonts (`pkgs.nerd-fonts.<font>` + noto — the old monolithic `nerdfonts` package throws at eval), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
-| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland launched via uwsm (`programs.hyprland.withUWSM` — activates `graphical-session.target`); `security.polkit`; user-side pieces (polkit agent, waybar, wallpaper) live in `modules/home/hyprland/`; `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
+| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland launched via uwsm (`programs.hyprland.withUWSM` — activates `graphical-session.target`); `security.polkit`; `security.pam.services.hyprlock` (backs the user-side hyprlock locker); user-side pieces (waybar, hypridle, hyprlock, mako, hyprshot, wallpaper, polkit agent) live in `modules/home/hyprland/`; `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
 
 Option names are quoted for **nixpkgs 26.05** and were verified against the `nixos-26.05` module
