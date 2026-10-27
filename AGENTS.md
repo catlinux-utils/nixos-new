@@ -85,6 +85,23 @@ AGENTS.md README.md    this file / project overview
    is auto-imported, so the folder must not contain a `default.nix`. Keep one writer per shared
    settings key across the folder's files (no double-owned config).
 
+## Repo helper skills
+
+Project skills live in `.agents/skills/<name>/SKILL.md` and are auto-discovered by ZCode
+sessions in this repo. They encode the recipes below as step-by-step procedures — prefer
+invoking the matching skill over improvising:
+
+- `add-nixos-module` — new system feature module in `modules/nixos/`
+- `add-home-module` — new Home Manager module in `modules/home/` (+ options in
+  `home-options.nix`)
+- `add-host` — register a machine (`hosts/<name>/` + `flake.nix` entry)
+- `nix-validate` — verification protocol for the no-nix-on-Windows constraint (self-review
+  pass + what must run on a Nix machine)
+- `sync-docs` — bring PLAN/TODO/ARCHITECTURE/AGENTS/README back in sync after a change
+
+Keep a skill and the matching recipe here consistent — when a recipe changes, update the skill
+in the same commit.
+
 ## Recipes
 
 ### Add a host
