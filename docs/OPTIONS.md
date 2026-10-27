@@ -117,6 +117,7 @@ folder on `cfg.desktop.hyprland.enable`.
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
 | `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/polishcat/nixos-new` |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
+| `cfg.home.hyprland.wallpaper` | `./wallpaper.png` (vendored placeholder) | – | – | – |
 
 `cfg.home.git.email` is `88453875+PolskiKocurek@users.noreply.github.com` on all four hosts (the
 legacy flake's commit identity).

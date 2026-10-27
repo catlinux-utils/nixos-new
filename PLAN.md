@@ -497,10 +497,12 @@ constraint. The WSL distro becomes a fourth host (`wsl`) managed by this flake, 
 (`nix flake check`, `nix fmt`, `nix flake update`, `build-vm`) runs locally — including from agent
 sessions via `wsl.exe`.
 
-Bootstrap (no chicken-and-egg — the prebuilt tarball needs no repo or nix machine):
+Bootstrap (no chicken-and-egg — the prebuilt image needs no repo or nix machine):
 
-- [ ] Import the NixOS-WSL bootstrap tarball from their releases:
-      `wsl --import nixos <dir> <tarball>`
+- [ ] Install the NixOS-WSL distro from their releases (checked 2026-10-27: tag 2605.7.2,
+      releases ship `.wsl` bundles now, no tarballs): download `nixos.wsl`, then
+      `wsl --install --from-file nixos.wsl` (older releases' tarball flow
+      `wsl --import nixos <dir> <tarball>` works too)
 - [ ] Inside WSL: clone the repo to `~/nixos-new` — **must live on the Linux side** (`/mnt/c` is
       9p and too slow for nix); edit from Windows via `\\wsl$` / VS Code WSL remote
 - [ ] With nix available: run the Phase 1 verification steps ([§1.10](#110-verification-strategy))
@@ -800,7 +802,10 @@ Medium — new modules/options:
       (`systemdTarget` pinned to `graphical-session.target` since uwsm owns activation) +
       hyprlock (HM `programs.hyprlock`, backed by `security.pam.services.hyprlock` set
       system-side in `desktop/hyprland.nix`), mako notifications, hyprshot screenshot binds
-      (Print full screen, $mod+Print region). Only open bit: pick a wallpaper per host
+      (Print full screen, $mod+Print region). Wallpaper: desktop sets
+      `cfg.home.hyprland.wallpaper` to the vendored placeholder gradient
+      `hosts/desktop/wallpaper.png` (palette matches the quickshell bar) — replace the file to
+      change it
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 
