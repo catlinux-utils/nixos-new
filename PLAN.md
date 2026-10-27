@@ -62,11 +62,12 @@ Outputs (sketch):
 
 ```nix
 outputs =
-  { self, nixpkgs, nixpkgs-unstable, home-manager }:
+  # inputs@ binds the whole attrset — modules reach later-added inputs
+  # (nixos-wsl, nixos-hardware, sops-nix) through specialArgs.inputs
+  inputs@{ self, nixpkgs, nixpkgs-unstable, home-manager }:
   let
     system = "x86_64-linux";
     lib = nixpkgs.lib;
-    inputs = { inherit nixpkgs nixpkgs-unstable home-manager; };
     unstable-overlay = import ./overlays/unstable.nix nixpkgs-unstable;
     mkHost = import ./lib/mkHost.nix {
       inherit lib home-manager inputs unstable-overlay;
@@ -98,7 +99,7 @@ outputs =
 .
 ├── flake.nix
 ├── flake.lock                      # born on first build (Nix machine)
-├── .gitignore                      # result*, .direnv/, secrets/ (until Phase 3)
+├── .gitignore                      # result*, .direnv/, secrets/* (except README, until Phase 3)
 ├── .editorconfig                   # nix: 2-space, utf-8, lf
 ├── README.md
 ├── PLAN.md  TODO.md  AGENTS.md
@@ -113,7 +114,7 @@ outputs =
 │   ├── desktop/{default.nix, hardware-configuration.nix}
 │   ├── laptop/{default.nix, hardware-configuration.nix}
 │   ├── server/{default.nix, hardware-configuration.nix}
-│   └── installer/default.nix        # live-ISO config, not a deployable host (§1.9)
+│   └── installer/default.nix        # live-ISO config, not a deployable host (Phase 6)
 ├── modules/
 │   ├── nixos/
 │   │   ├── default.nix             # auto-imports every sibling .nix
@@ -213,7 +214,9 @@ lib: dir:
 map (path: import path) (
   lib.filter (
     path:
-    baseNameOf path != "default.nix" && baseNameOf path != "hardware-configuration.nix"
+    lib.hasSuffix ".nix" path
+    && baseNameOf path != "default.nix"
+    && baseNameOf path != "hardware-configuration.nix"
   ) (lib.filesystem.listFilesRecursive dir)
 );
 ```
@@ -269,7 +272,10 @@ Every feature module follows one shape:
 | `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs`, `nix.channel.enable = false` + `nix.nixPath = [ "nixpkgs=flake:nixpkgs" ]` (pure-flake hosts carry no channel state; Phase 4's nix-index/comma replaces command-not-found) |
 | `nh.nix` | always on (+ `cfg.nh.flakeDir` option) | see [1.8](#18-nh) |
 | `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"` — sets both `console.keyMap` and `services.xserver.xkb.layout`; GDM reads the latter) |
-| `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell) with `programs.zsh.enable = true` system-side so the shell is valid (`/etc/shells`); password via `passwd` on first boot (optional `initialHashedPassword` option applied when non-null) |
+| `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell) with `programs.zsh.enable = true` system-side so the shell is valid (`/etc/shells`); password via `passwd` on first boot (optional `initialHashedPassword` option applied when
+  non-null) — **no password = locked account**: key-SSH still works but `sudo`, console and GDM
+  login all fail, so a fresh host needs `initialHashedPassword` (or root SSH keys) at first deploy
+  (see Phase 2 rollout) |
 | `networking.nix` | `cfg.networking.networkManager.enable` (+ `cfg.networking.firewall.enable`, default true) | NetworkManager; firewall on the nftables backend (`networking.nftables.enable`) with per-host allowed ports (+ `networkmanagerapplet` is a home-side concern); `NetworkManager-wait-online` disabled (avoids multi-minute boot stall) |
 | `audio.nix` | `cfg.audio.enable` | PipeWire (`alsa`, `pulse`), `security.rtkit.enable` |
 | `graphics.nix` | `cfg.graphics.enable` (+ `.enable32Bit`) | `hardware.graphics` OpenGL/VA-API base stack; 32-bit off unless something turns it on (e.g. gaming) |
@@ -278,7 +284,7 @@ Every feature module follows one shape:
 | `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
-| `desktop/base.nix` | `cfg.desktop.enable` | fonts (nerdfonts + noto), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
+| `desktop/base.nix` | `cfg.desktop.enable` | fonts (`pkgs.nerd-fonts.<font>` + noto — the old monolithic `nerdfonts` package throws at eval), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
 | `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland; also `security.polkit` + a polkit agent (`hyprpolkitagent` — wlroots sessions ship none), and `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
@@ -415,8 +421,9 @@ host, targeting `nixosConfigurations.<hostname>` of this flake.
 
 ### 1.9 Root files
 
-- `.gitignore` — `result`, `result-*`, `.direnv/`, `secrets/*` (until sops-nix replaces it in
-  Phase 3), `*.swp`
+- `.gitignore` — `result`, `result-*`, `.direnv/`, `secrets/*` + `!secrets/README.md` (until
+  sops-nix replaces it in Phase 3), `*.swp` — the negation keeps the placeholder README
+  committable; plain `secrets/` would exclude the whole directory and cannot be re-included
 - `.editorconfig` — `[*] utf-8, lf, trim_trailing_whitespace`; `[*.nix] indent_style = space,
   indent_size = 2`
 - `secrets/README.md` — states that secrets land here in Phase 3 (sops-nix); nothing sensitive is
@@ -510,6 +517,11 @@ flake-update cron.
 
 **Rollout order** — server (or a `build-vm` sandbox) first, laptop second, daily-driver desktop
 last: the first real deploy exercises the spec on the lowest-stakes machine.
+
+**First deploy, every host** — set `cfg.user.initialHashedPassword` (or enroll the admin key into
+root's `openssh.authorizedKeys`) before the first `nh os switch`: with no password set the account
+is locked — key-SSH works, but `sudo`, console and GDM login all fail, leaving nothing fixable
+remotely.
 
 ### 2.1 Standard-defaults modules (all hosts) `[ ]`
 

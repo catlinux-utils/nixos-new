@@ -13,7 +13,8 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] Set real values: confirm username (`polishcat`), git name/email, timezone (`Europe/Warsaw`
       default), keyboard layout (`pl` default)
 - [ ] Clone the repo onto each machine at its real path; set `cfg.nh.flakeDir` per host
-- [ ] First deploy per host: `nh os switch --dry` → `nh os test` → `nh os switch`
+- [ ] First deploy per host: set `cfg.user.initialHashedPassword` first (locked account otherwise
+      — see PLAN Phase 2), then `nh os switch --dry` → `nh os test` → `nh os switch`
 
 ## Backlog
 
