@@ -30,9 +30,10 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 
 Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items first, medium after:
 
-- [ ] `nix flake check` + `nix fmt` on a nix machine (WSL once bootstrapped) — §2.2's **verify**
-      option names were checked against the pinned branch sources (raw nixpkgs/HM files) and
-      mynixos.com package pages; what remains is the real eval/format run
+- [ ] `nix flake check` + `nix fmt` on a nix machine (WSL once bootstrapped) — every module was
+      audited against the pinned branch sources (raw nixpkgs/HM files, mynixos) on 2026-10-27:
+      ~65 module files verified, 4 eval-breaking bugs found and fixed (font attrs, flatseal,
+      delta rename); what remains is the real eval/format run
 
 ## Backlog
 
