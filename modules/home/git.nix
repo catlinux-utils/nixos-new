@@ -5,9 +5,11 @@
 }:
 {
   config = lib.mkIf osConfig.cfg.home.git.enable {
+    # delta moved to its own programs.delta tree on release-26.05
+    programs.delta.enable = true;
+
     programs.git = {
       enable = true;
-      delta.enable = true;
       lfs.enable = true;
       settings = lib.mkMerge [
         { init.defaultBranch = "main"; }
