@@ -1,0 +1,9 @@
+result
+result-*
+.direnv/
+.zcode/
+*.swp
+
+# plaintext secrets are forbidden; sops-nix (Phase 3) replaces this guard
+secrets/*
+!secrets/README.md
