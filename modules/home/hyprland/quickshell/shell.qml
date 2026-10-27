@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Wayland
@@ -41,10 +42,13 @@ ShellRoot {
     property var lastCpuTotal: 0
     property int batteryPerc: 0
     property bool hasBattery: false
-    property bool hasBatteryChecked: false
-    property string audioTitle
-    property string audioAuthor
+    property string batteryPath: ""
     property real cpuTemp: 0
+    property string tempPath: ""
+    // media comes from MPRIS (event-driven); prefer a playing player, else the first
+    readonly property MprisPlayer activePlayer: Mpris.players.values.find((p) => p.isPlaying) ?? Mpris.players.values[0] ?? null
+    property string audioTitle: root.activePlayer?.trackTitle ?? ""
+    property string audioAuthor: root.activePlayer?.trackArtist ?? ""
 
     FileView {
         id: cpuLoader
@@ -58,20 +62,23 @@ ShellRoot {
         path: "/proc/meminfo"
     }
 
-    Process {
-        id: tempProc
+    FileView {
+        id: tempLoader
 
-        // Try thermal_zone files first, fall back to hwmon temp*_input
-        command: ["sh", "-c", "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -n1 || cat /sys/class/hwmon/hwmon*/temp*_input 2>/dev/null | head -n1 || echo 0"]
-        running: false
+        path: root.tempPath
+    }
+
+    // resolve the CPU sensor once — zone0 is often acpitz or the wifi card,
+    // so match the sensor by its type/name instead of taking the first file
+    Process {
+        id: tempResolve
+
+        command: ["sh", "-c", "for z in /sys/class/thermal/thermal_zone*; do case $(cat \"$z/type\" 2>/dev/null) in *x86_pkg_temp*|*cpu*|*k10temp*) echo \"$z/temp\"; exit 0;; esac; done; for h in /sys/class/hwmon/hwmon*; do case $(cat \"$h/name\" 2>/dev/null) in coretemp|k10temp|zenpower|cpu_thermal) for f in \"$h\"/temp*_input; do [ -e \"$f\" ] && { echo \"$f\"; exit 0; }; done;; esac; done; echo /sys/class/thermal/thermal_zone0/temp"]
+        Component.onCompleted: running = true
 
         stdout: SplitParser {
             onRead: (data) => {
-                var raw = parseInt(data.trim()) || 0;
-                if (raw > 1000)
-                    root.cpuTemp = raw / 1000;
-                else
-                    root.cpuTemp = raw;
+                root.tempPath = data.trim();
             }
         }
     }
@@ -79,35 +86,21 @@ ShellRoot {
     FileView {
         id: batteryLoader
 
-        path: "/sys/class/power_supply/BAT1/capacity"
+        path: root.batteryPath
     }
 
     Process {
-        id: songProcTitle
+        id: batteryResolve
 
-        command: ["sh", "-c", "playerctl metadata title || echo ''"]
+        command: ["sh", "-c", "for d in /sys/class/power_supply/BAT*; do [ -e \"$d/capacity\" ] && { echo \"$d/capacity\"; exit 0; }; done; exit 1"]
         Component.onCompleted: running = true
 
         stdout: SplitParser {
             onRead: (data) => {
-                audioTitle = data.trim();
+                root.batteryPath = data.trim();
+                root.hasBattery = root.batteryPath !== "";
             }
         }
-
-    }
-
-    Process {
-        id: songProcAuthor
-
-        command: ["sh", "-c", "playerctl metadata artist || echo ''"]
-        Component.onCompleted: running = true
-
-        stdout: SplitParser {
-            onRead: (data) => {
-                audioAuthor = data.trim();
-            }
-        }
-
     }
 
     Timer {
@@ -124,7 +117,8 @@ ShellRoot {
             var iowait = parseInt(parts[5]) || 0;
             var irq = parseInt(parts[6]) || 0;
             var softirq = parseInt(parts[7]) || 0;
-            var total = user + nice + system + idle + iowait + irq + softirq;
+            var steal = parseInt(parts[8]) || 0;
+            var total = user + nice + system + idle + iowait + irq + softirq + steal;
             var idleTime = idle + iowait;
             if (root.lastCpuTotal > 0) {
                 var totalDiff = total - root.lastCpuTotal;
@@ -148,28 +142,32 @@ ShellRoot {
             if (memTotal > 0 && memAvailable > 0)
                 root.memUsage = Math.round(100 * (memTotal - memAvailable) / memTotal);
 
-            // Trigger temperature read (Process will pick an appropriate sysfs file)
-            tempProc.running = true;
-            if (hasBattery && hasBatteryChecked) {
-                batteryLoader.reload();
-                var batteryText = batteryLoader.text().trim();
-                var perc = parseInt(batteryText);
+        }
+    }
+
+    Timer {
+        interval: 2000
+        running: root.tempPath !== ""
+        triggeredOnStart: true
+        repeat: true
+        onTriggered: {
+            tempLoader.reload();
+            var raw = parseInt(tempLoader.text().trim()) || 0;
+            root.cpuTemp = raw > 1000 ? raw / 1000 : raw;
+        }
+    }
+
+    Timer {
+        interval: 15000
+        running: root.batteryPath !== ""
+        triggeredOnStart: true
+        repeat: true
+        onTriggered: {
+            batteryLoader.reload();
+            var perc = parseInt(batteryLoader.text().trim());
+            if (!isNaN(perc))
                 root.batteryPerc = perc;
-            }
-            if (!hasBatteryChecked) {
-                batteryLoader.reload();
-                var batteryText = batteryLoader.text().trim();
-                root.hasBatteryChecked = true;
-                var perc = parseInt(batteryText);
-                if (!isNaN(perc)) {
-                    root.batteryPerc = perc;
-                    root.hasBattery = true;
-                } else {
-                    root.hasBattery = false;
-                }
-            }
-            songProcTitle.running = true;
-            songProcAuthor.running = true;
+
         }
     }
 
@@ -240,7 +238,7 @@ ShellRoot {
                             height: parent.height
 
                             Repeater {
-                                model: 9
+                                model: 10
 
                                 Rectangle {
                                     property int wsId: index + 1
@@ -390,10 +388,21 @@ ShellRoot {
 
                         }
 
+                        Process {
+                            id: pavucontrolProc
+
+                            command: ["uwsm", "app", "--", "pavucontrol"]
+                            running: false
+                        }
+
                         MouseArea {
                             anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton
-                            onClicked: {
+                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                            onClicked: (event) => {
+                                if (event.button === Qt.MiddleButton) {
+                                    pavucontrolProc.running = true;
+                                    return ;
+                                }
                                 if (volumeRoot.defaultSink?.audio)
                                     volumeRoot.defaultSink.audio.muted = !volumeRoot.defaultSink.audio.muted;
                             }
@@ -460,7 +469,7 @@ ShellRoot {
                         Process {
                             id: btop
 
-                            command: ["kitty", "-e", "btop"]
+                            command: ["sh", "-c", "pidof btop >/dev/null || uwsm app -- kitty -e btop"]
                             running: false
                         }
 

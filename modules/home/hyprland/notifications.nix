@@ -11,9 +11,10 @@
       settings = {
         anchor = "top-right";
         font = "JetBrainsMono Nerd Font 11";
-        background-color = "#1e1e2e";
-        text-color = "#cdd6f4";
-        border-color = "#89b4fa";
+        # match the quickshell bar's Theme.qml (col0 / colFg / col1)
+        background-color = "#18161a";
+        text-color = "#ebeffe";
+        border-color = "#707f9b";
         border-size = 2;
         border-radius = 8;
         default-timeout = 5000;

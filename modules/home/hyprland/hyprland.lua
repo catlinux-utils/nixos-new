@@ -136,7 +136,9 @@ function monitors_setup()
         end
     end
 
-    if connected["DP-3"] or connected["HDMI-A-1"] then
+    -- pin the 1-5 / 6-10 ranges only when both monitors are present;
+    -- on a single monitor the workspaces stay unbound
+    if connected["DP-3"] and connected["HDMI-A-1"] then
         for mon_name, range in pairs(workspace_map) do
             for i = range.start_w, range.end_w do
                 hl.workspace_rule({
@@ -346,7 +348,7 @@ hl.bind("SUPER + W", hl.dsp.exec_cmd("uwsm app -- brave-browser.desktop"))
 hl.bind("SUPER + C", hl.dsp.exec_cmd("uwsm app -- code.desktop"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("uwsm app -- nemo.desktop"))
 hl.bind("SUPER + R", hl.dsp.exec_cmd(
-    "pidof rofi & killall rofi || uwsm app -- rofi -show drun -location 1 -config ~/.config/rofi/config.rasi -terminal kitty -run-command 'uwsm app -- {cmd}'"))
+    "killall rofi || uwsm app -- rofi -show drun -location 1 -config ~/.config/rofi/config.rasi -terminal kitty -run-command 'uwsm app -- {cmd}'"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("hyprshot -m region -z"))
 
 hl.bind("SUPER + left", hl.dsp.focus({
@@ -519,8 +521,9 @@ hl.window_rule({
     render_unfocused = true
 })
 hl.window_rule({
+    -- steam game windows are class steam_app_<appid>
     match = {
-        class = "^steam21$"
+        class = "^(steam_app_\\d+)$"
     },
     idle_inhibit = "fullscreen"
 })
