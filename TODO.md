@@ -7,9 +7,8 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] Bootstrap local nix: import the NixOS-WSL tarball with `wsl --import` (PLAN Phase 1.5) —
       makes this Windows machine nix-capable, unblocking local validation
 - [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold
-- [ ] Finish Hyprland home config (PLAN Phase 4): idle/lock (hypridle + hyprlock — needs
-      `security.pam.services.hyprlock` system-side), notifications (mako or swaync), screenshots
-      (grim + slurp); pick a `cfg.home.hyprland.wallpaper` per host in `hosts/<name>/default.nix`
+- [ ] Pick a `cfg.home.hyprland.wallpaper` per host in `hosts/<name>/default.nix` (hyprpaper is
+      wired; it just needs the image)
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
 - [ ] Set real values in `hosts/*/default.nix`: git email (commented TODO), confirm the username

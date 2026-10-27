@@ -49,8 +49,8 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
   guard makes enabling two DEs fail evaluation.
 - **Hyprland session flow** — the system side launches the session through uwsm
   (`programs.hyprland.withUWSM`), which activates `graphical-session.target`. User units (waybar,
-  hyprpaper, the polkit agent) bind to it from the home side (`modules/home/hyprland/`), so
-  nothing is autostarted via `exec-once`. Hyprland's own HM systemd integration is disabled
+  hypridle, hyprpaper, the polkit agent) bind to it from the home side (`modules/home/hyprland/`),
+  so nothing is autostarted via `exec-once`. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
 
 ## The option tree

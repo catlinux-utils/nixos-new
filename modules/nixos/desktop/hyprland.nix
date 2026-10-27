@@ -19,5 +19,10 @@
     };
 
     security.polkit.enable = true;
+
+    # PAM service for the user-side hyprlock screen locker
+    # (modules/home/hyprland/lock.nix) — without it its password prompt
+    # cannot authenticate
+    security.pam.services.hyprlock = { };
   };
 }

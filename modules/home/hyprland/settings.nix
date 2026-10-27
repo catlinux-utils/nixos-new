@@ -34,6 +34,9 @@
           "$mod, M, exit"
           "$mod, Space, togglefloating"
           "$mod, F, fullscreen"
+          "$mod, L, exec, hyprlock"
+          ", Print, exec, hyprshot -m output -o /tmp -f screenshot.png"
+          "$mod, Print, exec, hyprshot -m region -o /tmp -f screenshot.png"
         ];
 
         bindm = [

@@ -348,7 +348,8 @@ free):
 - `neovim.nix` — `programs.neovim` (`defaultEditor`, `viAlias`, `vimAlias`)
 - `xdg.nix` — `xdg.enable`, user dirs, sane mime defaults
 - `home-tools.nix` — `programs.home-manager.enable` (HM CLI in the user env)
-- `hyprland/` — feature folder (settings, waybar, wallpaper, polkit agent), **no own switch**;
+- `hyprland/` — feature folder (settings/binds, waybar, hypridle, hyprlock, mako, screenshots,
+  wallpaper, polkit agent), **no own switch**;
   gated on the *system* switch via `osConfig`. This is the
   worked example of the NixOS ↔ HM bridge:
 
@@ -617,7 +618,7 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 - [ ] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable`
 - [ ] Plasma: HM config (evaluate the `plasma-manager` input) gated on
       `osConfig.cfg.desktop.plasma.enable`
-- [ ] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
+- [x] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
       notification daemon — mako or swaync, screenshots — grim + slurp); also set the
       Electron/Chromium Wayland env vars (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `NIXOS_OZONE_WL=1`)
       so Slack/Discord/VS Code run native — needed on any Wayland session, not just Hyprland.
@@ -625,8 +626,11 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
       HM's hyprland systemd integration stays off so user units bind to
       `graphical-session.target`), and `modules/home/hyprland/` ships settings/binds, wofi
       launcher, waybar, hyprpaper wallpaper (`cfg.home.hyprland.wallpaper`), the polkit agent
-      (HM `services.hyprpolkitagent`) and the Electron env vars — still open: idle/lock,
-      notification daemon, screenshots
+      (HM `services.hyprpolkitagent`) and the Electron env vars. *Finished:* hypridle
+      (`systemdTarget` pinned to `graphical-session.target` since uwsm owns activation) +
+      hyprlock (HM `programs.hyprlock`, backed by `security.pam.services.hyprlock` set
+      system-side in `desktop/hyprland.nix`), mako notifications, hyprshot screenshot binds
+      (Print full screen, $mod+Print region). Only open bit: pick a wallpaper per host
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 
