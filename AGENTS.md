@@ -45,6 +45,7 @@ modules/nixos/         system feature modules (auto-imported, cfg.* options);
 modules/home/          home-manager feature modules (auto-imported); includes
                        xdg.nix, home-tools.nix, hyprland/ (session config)
 docs/ARCHITECTURE.md   how it all fits together
+docs/OPTIONS.md        every cfg.* option: type, default, effect, per-host matrix
 PLAN.md TODO.md        roadmap / actionable next steps
 AGENTS.md README.md    this file / project overview
 ```
@@ -55,6 +56,8 @@ AGENTS.md README.md    this file / project overview
   phases or decisions.
 - **TODO.md** — only currently actionable items. When done: tick in PLAN.md, drop from here.
 - **docs/ARCHITECTURE.md** — update whenever the folder scheme, option tree, or data flow changes.
+- **docs/OPTIONS.md** — the complete `cfg.*` reference (types, defaults, per-host matrix); update
+  in the same change whenever an option is added, renamed, or a host wiring flips.
 - **AGENTS.md** — update in the same change whenever a convention itself changes (namespace, pin
   bumps, new patterns); this is the first file a fresh agent reads.
 - **README.md** — keep the host table and usage commands accurate.

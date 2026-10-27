@@ -41,4 +41,6 @@ nix fmt         # format the repo (RFC 101 style)
 - [AGENTS.md](AGENTS.md) — conventions, environment constraints, recipes for agents
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the flake fits together (data flow, option
   tree, host assembly)
+- [docs/OPTIONS.md](docs/OPTIONS.md) — every `cfg.*` option: type, default, effect, per-host
+  matrix
 - [TODO.md](TODO.md) — actionable next steps

@@ -60,27 +60,10 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
 
 ## The option tree
 
-All switches live under `cfg.*`. Current/planned options (authoritative list grows in
-PLAN.md — §1.5–1.6 for Phase 1, §2.1/§4 for the planned backlog):
-
-| Option | Type | Where defined | Purpose |
-|---|---|---|---|
-| `cfg.user.name` / `.fullName` | str | `users.nix` | main user identity |
-| `cfg.locale.timeZone` / `.defaultLocale` / `.keyboard` | str | `locale.nix` | defaults: `Europe/Warsaw`, `en_US.UTF-8`, `pl` |
-| `cfg.nh.flakeDir` | path | `nh.nix` | flake location on the machine; drives nh via `NH_FLAKE` |
-| `cfg.boot.enable` | bool | `boot.nix` | systemd-boot, zram |
-| `cfg.networking.networkManager.enable` / `.firewall.enable` | bool | `networking.nix` | desktop networking; firewall (default on), per-host ports |
-| `cfg.audio.enable` | bool | `audio.nix` | PipeWire stack |
-| `cfg.graphics.enable` (+ `.enable32Bit`) | bool | `graphics.nix` | GPU base stack |
-| `cfg.ssh.enable` (+ `.port`, `.authorizedKeys`) | bool, port, strList | `ssh.nix` | OpenSSH, keys only |
-| `cfg.virtualisation.docker.enable` / `.libvirt.enable` | bool | `virtualisation.nix` | containers / VMs |
-| `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamescope, gamemode, MangoHud, xpadneo |
-| `cfg.compat.{nix-ld,envfs,appimage}.enable` | bool (+ libraries) | `compat.nix` | run non-Nix binaries, shebangs, AppImages |
-| `cfg.{firmware,storage,bluetooth,printing,geolocation,tailscale,syncthing}.enable` | bool | `<feature>.nix` | standard defaults (PLAN §2.1) — fwupd, fstrim+smartd, bluez+blueman, CUPS+avahi+SANE, geoclue2, tailscaled, syncthing |
-| `cfg.desktop.enable` | bool | `desktop/base.nix` | shared desktop plumbing |
-| `cfg.desktop.{gnome,hyprland,plasma}.enable` | bool | `desktop/<de>.nix` | session choice |
-| `cfg.home.*` | bool / nullOr str / path | `modules/nixos/home-options.nix` | home features (shell, git, terminal, neovim, xdg, home-manager CLI, direnv, nix-index, gpg, ssh, easyeffects, password-store, tmux, Hyprland wallpaper) — declared in the NixOS tree so hosts set them under the same flat `cfg.*` namespace |
-| `cfg.secrets.enable` | bool (Phase 3) | `secrets.nix` | sops-nix |
+All switches live under the flat `cfg.*` namespace. The complete reference — every option with
+type, default, effect and which hosts set it — lives in [OPTIONS.md](OPTIONS.md); when an option
+is added, changed or a host wiring flips, update that file in the same change (the sync-docs
+skill covers it).
 
 ## The `osConfig` bridge
 
