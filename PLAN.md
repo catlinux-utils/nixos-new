@@ -548,9 +548,9 @@ Implementation notes (verified against the NixOS-WSL `main` module sources, 2026
       `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit),
       fail2ban consideration, monitoring placeholder
 - [ ] Disk layout decisions per host (encryption? btrfs/zfs?) — record in ARCHITECTURE.md;
-      disko (Phase 6) can make the chosen layout declarative. Disk layout, snapshots, `backup.nix`,
-      and impermanence (Phase 6) are one **state-management decision per host** — pick the
-      combination together, not independently
+      disko (Phase 6) can make the chosen layout declarative. Disk layout, snapshots, and
+      `backup.nix` are one **state-management decision per host** — pick the combination together,
+      not independently (stateless root declined, see Phase 6)
 
 **nixos-hardware (all hosts)** — the default mechanism for per-model/per-GPU wiring (driver
 modules, quirks, firmware), not a laptop-only candidate. Add the input, then import per host — no
@@ -907,8 +907,10 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
   password). `isoImage.isoName` was renamed → `image.baseName` / `image.fileName` in 25.05.
   Build: `nixos-rebuild build-image --flake .#<host> --image-variant iso` (bare
   `build-image` lists all variants); artifact also at `config.system.build.images.iso`.
-- [ ] impermanence (stateless root) — decide per host as part of the Phase 2 state-management
-      decision (with disk layout, snapshots, and `backup.nix`), never alone
+- **impermanence (stateless root) — declined** (2026-10-27, user decision): the stateless-root
+  workflow doesn't fit how these machines are used; hosts keep a conventional persistent root.
+  Preservation was evaluated as the modern alternative — moot with this decision. The Phase 2
+  state-management decision per host reduces to disk layout + snapshots + `backup.nix`
 - [ ] Secure boot via lanzaboote
 - [x] plymouth boot splash — ported early as `cfg.boot.plymouth.enable` by §2.2 boot extras
 - [ ] colmena / deploy-rs for remote server deploys
@@ -954,3 +956,4 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |
 | nixos-hardware | flake input, imported per host via `specialArgs` `inputs` (all hosts, Phase 2) | module collection for per-model/per-GPU wiring — not a package, doesn't violate the unstable-overlay-only rule; tracks `master` (no release branches), refreshed by the weekly flake-update cron |
 | Dev-machine validation | NixOS-WSL host (Phase 1.5), bootstrapped from the prebuilt tarball | dissolves the no-nix-on-Windows constraint; repo lives on the WSL Linux filesystem, agent sessions validate via `wsl.exe` |
+| Stateless root | declined — impermanence (and the preservation alternative) stay out | the stateless-root workflow doesn't fit the user's workflow; hosts keep a conventional persistent root (2026-10-27) |
