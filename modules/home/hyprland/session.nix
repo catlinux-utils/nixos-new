@@ -17,8 +17,10 @@
 
     # the session config is the legacy flake's hyprland.lua vendored verbatim —
     # a plain file with no Nix interpolation, so it can be copied to non-NixOS
-    # machines as-is. Hyprland (>= 0.53) loads it from ~/.config/hypr/ next to
-    # the near-empty hyprland.conf HM generates.
+    # machines as-is; Hyprland (>= 0.53) loads it from ~/.config/hypr/.
+    # Do NOT set wayland.windowManager.hyprland.settings/extraConfig: on
+    # release-26.05 (configType defaults to "lua") HM generates the same
+    # hypr/hyprland.lua path and would fight this file for ownership.
     xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
 
     # shutdown menu for the SUPER+M bind (the bind itself falls back to
