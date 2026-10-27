@@ -34,5 +34,14 @@
     compat.nix-ld.enable = true;
     compat.envfs.enable = true;
     compat.appimage.enable = true;
+
+    # standard defaults — PLAN.md §2.1
+    firmware.enable = true;
+    storage.enable = true;
+    bluetooth.enable = true;
+    printing.enable = true;
+    geolocation.enable = true;
+    tailscale.enable = true;
+    syncthing.enable = true;
   };
 }

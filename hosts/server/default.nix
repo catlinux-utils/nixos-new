@@ -25,5 +25,11 @@
     home.tmux.enable = true; # ssh sessions survive disconnects
     virtualisation.docker.enable = true;
     compat.nix-ld.enable = true;
+
+    # standard defaults — PLAN.md §2.1 (headless subset)
+    firmware.enable = true;
+    storage.enable = true;
+    tailscale.enable = true;
+    syncthing.enable = true;
   };
 }

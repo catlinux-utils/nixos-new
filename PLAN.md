@@ -574,19 +574,26 @@ remotely.
 Drop-in §1.5-pattern modules; enable per host in `hosts/<name>/default.nix`. Verify option names
 against pinned 26.05 at implementation.
 
-- [ ] `firmware.nix` — `cfg.firmware.enable`: `services.fwupd` (all hosts)
-- [ ] `storage.nix` — `cfg.storage.enable`: weekly `services.fstrim` + `services.smartd`; add
+- [x] `firmware.nix` — `cfg.firmware.enable`: `services.fwupd` (desktop/laptop/server)
+- [x] `storage.nix` — `cfg.storage.enable`: weekly `services.fstrim` + `services.smartd`; add
       `services.btrfs.autoScrub` behind an extra toggle if the disk decision picks btrfs
-- [ ] `bluetooth.nix` — `cfg.bluetooth.enable`: `hardware.bluetooth` + blueman (desktop/laptop)
-- [ ] `printing.nix` — `cfg.printing.enable`: CUPS + Avahi discovery + `hardware.sane` scanning
+- [x] `bluetooth.nix` — `cfg.bluetooth.enable`: `hardware.bluetooth` + blueman (desktop/laptop)
+- [x] `printing.nix` — `cfg.printing.enable`: CUPS + Avahi discovery + `hardware.sane` scanning
       (desktop/laptop)
-- [ ] `geolocation.nix` — `cfg.geolocation.enable`: `services.geoclue2` (desktop/laptop — feeds
+- [x] `geolocation.nix` — `cfg.geolocation.enable`: `services.geoclue2` (desktop/laptop — feeds
       gammastep/redshift night light, automatic timezone, map apps)
-- [ ] `tailscale.nix` — `cfg.tailscale.enable`: `services.tailscale` (all hosts; server remote
-      access without port-forwarding)
-- [ ] `syncthing.nix` — `cfg.syncthing.enable`: `services.syncthing` (all hosts)
+- [x] `tailscale.nix` — `cfg.tailscale.enable`: `services.tailscale` (desktop/laptop/server; server
+      remote access without port-forwarding)
+- [x] `syncthing.nix` — `cfg.syncthing.enable`: `services.syncthing` (desktop/laptop/server)
 - [ ] `backup.nix` — restic/borg job options — **blocked on Phase 3** (needs sops-nix for
       credentials)
+
+The `wsl` host enables none of these: no real firmware or disks, and the Windows side owns VPN
+and networking. 26.05 notes (verified against `nixos-26.05` module sources): `services.avahi`
+has no `nssmdns` — the live name is `nssmdns4`/`nssmdns6`; `services.tailscale` owns its firewall
+ports via `openFirewall` and `useRoutingFeatures = "client"` relaxes reverse-path filtering;
+`services.syncthing` defaults to `overrideDevices`/`overrideFolders = true` — set both `false`
+so the Web UI owns devices/folders until they are declared.
 
 Candidate toggles (one service = one module; add on demand, not scheduled):
 

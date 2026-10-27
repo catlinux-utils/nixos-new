@@ -76,6 +76,7 @@ PLAN.md — §1.5–1.6 for Phase 1, §2.1/§4 for the planned backlog):
 | `cfg.virtualisation.docker.enable` / `.libvirt.enable` | bool | `virtualisation.nix` | containers / VMs |
 | `cfg.gaming.enable` | bool | `gaming.nix` | Steam + gamescope, gamemode, MangoHud, xpadneo |
 | `cfg.compat.{nix-ld,envfs,appimage}.enable` | bool (+ libraries) | `compat.nix` | run non-Nix binaries, shebangs, AppImages |
+| `cfg.{firmware,storage,bluetooth,printing,geolocation,tailscale,syncthing}.enable` | bool | `<feature>.nix` | standard defaults (PLAN §2.1) — fwupd, fstrim+smartd, bluez+blueman, CUPS+avahi+SANE, geoclue2, tailscaled, syncthing |
 | `cfg.desktop.enable` | bool | `desktop/base.nix` | shared desktop plumbing |
 | `cfg.desktop.{gnome,hyprland,plasma}.enable` | bool | `desktop/<de>.nix` | session choice |
 | `cfg.home.*` | bool / nullOr str / path | `modules/nixos/home-options.nix` | home features (shell, git, terminal, neovim, xdg, home-manager CLI, direnv, nix-index, gpg, ssh, easyeffects, password-store, tmux, Hyprland wallpaper) — declared in the NixOS tree so hosts set them under the same flat `cfg.*` namespace |
