@@ -21,7 +21,8 @@
 
   outputs =
     # inputs@ binds the whole attrset — modules reach later-added inputs
-    # (nixos-wsl, nixos-hardware, sops-nix) through specialArgs.inputs
+    # (nixos-wsl, sops-nix; nixos-hardware joins in Phase 2) through
+    # specialArgs.inputs
     inputs@{
       self,
       nixpkgs,
