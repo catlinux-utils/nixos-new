@@ -24,6 +24,10 @@
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
+    # hyprland wallpaper (hyprpaper) — vendored placeholder gradient
+    # (palette matches the quickshell bar); replace the file to change it
+    home.hyprland.wallpaper = ./wallpaper.png;
+
     # features — host matrix: PLAN.md §1.7
     boot.enable = true;
     boot.zenKernel.enable = true;
