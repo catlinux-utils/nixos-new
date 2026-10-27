@@ -12,6 +12,7 @@ and recipes see [../AGENTS.md](../AGENTS.md).
 flake.nix
   ├─ inputs: nixpkgs (26.05) ◄── home-manager (release-26.05, follows nixpkgs)
   │          nixpkgs-unstable
+  │          nixos-wsl (follows nixpkgs) — imported by the wsl host only
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
   │
@@ -43,7 +44,9 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
   — creating `modules/nixos/foo.nix` makes it active with zero import edits.
 - **`hosts/<name>/default.nix`** — the self-contained host entry: one `cfg = { ... }` tree,
   sectioned identity (`user`), locale, `nh.flakeDir`, git identity (`home.git`), then feature
-  switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic.
+  switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
+  `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
+  and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.

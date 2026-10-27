@@ -497,16 +497,27 @@ Bootstrap (no chicken-and-egg — the prebuilt tarball needs no repo or nix mach
 
 Host wiring (once Phase 1 exists):
 
-- [ ] Add `nixos-wsl` input (`github:nix-community/NixOS-WSL`, module `nixosModules.wsl`,
+- [x] Add `nixos-wsl` input (`github:nix-community/NixOS-WSL`, module `nixosModules.wsl`,
       `inputs.nixpkgs.follows = "nixpkgs"`)
-- [ ] Register `nixosConfigurations.wsl = mkHost { hostname = "wsl"; };`
-- [ ] `hosts/wsl/default.nix`: import the wsl module, `wsl.enable = true`,
+- [x] Register `nixosConfigurations.wsl = mkHost { hostname = "wsl"; };`
+- [x] `hosts/wsl/default.nix`: import the wsl module, `wsl.enable = true`,
       `wsl.defaultUser = cfg.user.name` (must agree with the user `users.nix` creates); leave
       `boot`/`networking`/`audio`/`graphics` off — WSLg handles graphics/audio on the Windows side,
       NetworkManager is meaningless under WSL NAT; never touch `boot.loader*` inside WSL.
       Always-on `nix`/`nh`/`logging`/`locale`/`users` apply fine
-- [ ] Set `cfg.nh.flakeDir` to the in-WSL repo path
+- [x] Set `cfg.nh.flakeDir` to the in-WSL repo path
 - [ ] Rewrite AGENTS.md "Environment constraints" + TODO once validation is local
+
+Implementation notes (verified against the NixOS-WSL `main` module sources, 2026-10):
+
+- the module defines no `fileSystems` and disables GRUB — `hosts/wsl/` needs no
+  `hardware-configuration.nix` (their own tarball `nixosConfigurations.default` ships none either);
+  `system.stateVersion` is set in the host file instead
+- their user creation (`isNormalUser`, `uid = mkDefault 1000`, `extraGroups = [ "wheel" ]`) merges
+  cleanly with our `users.nix` definition of the same user (list concat, no conflicting leaves)
+- the module defaults `security.sudo.wheelNeedsPassword = false` — passwordless sudo works on WSL
+  even before a password is set, and `wsl -d <distro> -u root` is always available from Windows;
+  the bare-metal locked-account first-deploy rule does not bite here
 
 ---
 

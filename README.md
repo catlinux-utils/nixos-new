@@ -5,8 +5,9 @@ module, `nh` for rebuilds, Lix as the Nix implementation, stable nixpkgs (26.05)
 available as `pkgs.unstable.<pkg>`.
 
 > **Status:** scaffold implemented — not yet machine-validated (`nix flake check` / `nix fmt` need
-> a Nix machine; see [TODO.md](TODO.md)). [PLAN.md](PLAN.md) contains the full spec and roadmap.
-> Agents working in this repo: start with [AGENTS.md](AGENTS.md).
+> a Nix machine; see [TODO.md](TODO.md)). The `wsl` host (Phase 1.5) is the planned local
+> validation path — its distro bootstrap is pending. [PLAN.md](PLAN.md) contains the full spec and
+> roadmap. Agents working in this repo: start with [AGENTS.md](AGENTS.md).
 
 ## Hosts
 
@@ -15,6 +16,7 @@ available as `pkgs.unstable.<pkg>`.
 | `desktop` | workstation | Hyprland |
 | `laptop` | portable | GNOME |
 | `server` | headless | none (ssh + docker) |
+| `wsl` | NixOS-WSL dev host (local validation from Windows, Phase 1.5) | none |
 
 All features are toggleable modules under the `cfg.*` option namespace — hosts flip
 switches, modules stay machine-agnostic. The per-host `hardware-configuration.nix` files are

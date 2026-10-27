@@ -7,6 +7,11 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nixos-wsl = {
+      url = "github:nix-community/NixOS-WSL";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -31,6 +36,7 @@
         desktop = mkHost { hostname = "desktop"; };
         laptop = mkHost { hostname = "laptop"; };
         server = mkHost { hostname = "server"; };
+        wsl = mkHost { hostname = "wsl"; };
       };
 
       overlays.default = unstable-overlay;

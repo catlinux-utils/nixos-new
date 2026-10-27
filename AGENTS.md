@@ -6,15 +6,18 @@ Guidance for AI agents (and humans) working in this repo. The roadmap lives in
 
 ## What this repo is
 
-A NixOS flake managing multiple machines (`desktop`, `laptop`, `server`) with Home Manager wired in
-as a NixOS module. All custom options live under the `cfg.*` namespace. Rebuilds happen
-through `nh`. Hosts run Lix, pinned to nixpkgs **26.05** + Home Manager **release-26.05**.
+A NixOS flake managing multiple machines (`desktop`, `laptop`, `server`, plus `wsl` — a
+NixOS-WSL dev host, Phase 1.5) with Home Manager wired in as a NixOS module. All custom options
+live under the `cfg.*` namespace. Rebuilds happen through `nh`. Hosts run Lix, pinned to
+nixpkgs **26.05** + Home Manager **release-26.05**.
 
 ## Environment constraints (read first)
 
 - The dev machine is Windows **without nix**. You cannot build, evaluate, format, or lock anything
   there.
 - Never claim a build/eval/fmt ran unless you actually ran it on a Nix machine (or WSL2 with nix).
+- The `wsl` host (PLAN Phase 1.5) exists to dissolve this constraint — once its distro is
+  bootstrapped (`wsl --import`, pending), validation runs locally via `wsl.exe`.
 - All validation happens on a nix-capable environment:
   - `nix flake check`
   - `nix fmt` (formatter output exists once Phase 1 lands)
@@ -32,7 +35,8 @@ through `nh`. Hosts run Lix, pinned to nixpkgs **26.05** + Home Manager **releas
 flake.nix              inputs + outputs; declares the hosts via mkHost
 lib/                   mkHost.nix (host assembler), importNixFiles.nix (auto-importer)
 overlays/unstable.nix  pkgs.unstable.<pkg> for everything
-hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix
+hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix;
+                       wsl has none (NixOS-WSL owns boot/disks)
 hosts/installer/       ISO media module — image, not a host (deferred, PLAN Phase 6)
 modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
