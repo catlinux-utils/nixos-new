@@ -27,7 +27,7 @@ flake.nix
 nh (configured in modules/nixos/nh.nix, flake path = cfg.nh.flakeDir):
   nh os switch    builds & activates nixosConfigurations.<hostname>  (OS + Home Manager)
   nh home switch  user environment only
-  nh clean        weekly garbage collection (--keep 5); nix.gc.automatic stays off
+  nh clean        daily garbage collection (--keep 5 --keep-since 3d); nix.gc.automatic stays off
 ```
 
 ## Folder scheme (annotated)
@@ -52,9 +52,13 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.
 - **Hyprland session flow** — the system side launches the session through uwsm
-  (`programs.hyprland.withUWSM`), which activates `graphical-session.target`. User units (waybar,
-  hypridle, mako, hyprpaper, the polkit agent) bind to it from the home side
-  (`modules/home/hyprland/`), so nothing is autostarted via `exec-once`. Hyprlock (spawned by
+  (`programs.hyprland.withUWSM`), which activates `graphical-session.target`. User units (the
+  quickshell bar, hypridle, mako, hyprpaper, the polkit agent) bind to it from the home side
+  (`modules/home/hyprland/`), so nothing is autostarted via `exec-once`. The session config
+  itself is a plain vendored file (`modules/home/hyprland/hyprland.lua`, Hyprland's Lua config
+  format) copied verbatim to `~/.config/hypr/` — kept interpolation-free so it doubles as a
+  portable config for non-NixOS machines; the rofi launcher and its rasi follow the same pattern.
+  Hyprlock (spawned by
   hypridle's `lock_cmd`) authenticates through the `security.pam.services.hyprlock` service the
   system side creates. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
@@ -74,7 +78,7 @@ system as the host and receive `osConfig` (the host's final config). Home module
 are declared in `modules/nixos/home-options.nix`), read via `osConfig`:
 
 ```nix
-# modules/home/hyprland/settings.nix
+# modules/home/hyprland/session.nix
 config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... };
 ```
 

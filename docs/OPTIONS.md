@@ -16,7 +16,7 @@ These modules apply on every host — only their value options are configurable:
 |---|---|---|
 | `logging.nix` | — | journald: persistent storage + size cap |
 | `nix.nix` | — | Lix, flakes, allowUnfree, store optimisation, pinned registry, no channels, GC-survivor settings for direnv |
-| `nh.nix` | `cfg.nh.flakeDir` (path, `/etc/nixos`) | `nh` CLI + weekly GC; flake path via `NH_FLAKE` |
+| `nh.nix` | `cfg.nh.flakeDir` (path, `/etc/nixos`) | `nh` CLI + daily GC (`--keep 5 --keep-since 3d`); flake path via `NH_FLAKE` |
 | `locale.nix` | `cfg.locale.timeZone` (str, `Europe/Warsaw`) · `cfg.locale.defaultLocale` (str, `en_US.UTF-8`) · `cfg.locale.keyboard` (str, `pl`) | timezone, locale set, console + X/Wayland keymap |
 | `users.nix` | `cfg.user.name` (str, `polishcat`) · `cfg.user.fullName` (str, `ThePolishcat`) · `cfg.user.initialHashedPassword` (nullOr str, `null`) | creates the main user (wheel, zsh login shell); password only for first deploy |
 
@@ -27,14 +27,20 @@ Default off unless noted. "On" = hosts currently setting it.
 | Option | Turns on | desktop | laptop | server | wsl |
 |---|---|:---:|:---:|:---:|:---:|
 | `cfg.boot.enable` | systemd-boot, EFI vars, silent boot, zram | ✓ | ✓ | ✓ | – (WSL owns boot) |
+| `cfg.boot.zenKernel.enable` | zen kernel (`linuxPackages_zen`) | ✓ | – | – | – |
+| `cfg.boot.plymouth.enable` | Plymouth boot splash (theme: `cfg.boot.plymouth.theme`) | ✓ | ✓ | – | – |
 | `cfg.networking.networkManager.enable` | NetworkManager | ✓ | ✓ | – | – |
 | `cfg.networking.firewall.enable` (default **on**) | nftables firewall; ports via sub-options below | ✓ | ✓ | ✓ | ✗ (set false — Windows filters) |
+| `cfg.networking.resolved.enable` | systemd-resolved with DNS-over-TLS (Cloudflare upstreams) | ✓ | ✓ | ✓ | – |
 | `cfg.audio.enable` | PipeWire + rtkit | ✓ | ✓ | – | – (WSLg) |
 | `cfg.graphics.enable` | OpenGL/VA-API base stack | ✓ | ✓ | – | – |
 | `cfg.ssh.enable` | OpenSSH, keys only | ✓ | ✓ | ✓ | – |
 | `cfg.virtualisation.docker.enable` | Docker + weekly auto-prune, docker group | – | – | ✓ | – |
+| `cfg.virtualisation.podman.enable` | rootless Podman + docker-compatible socket, distrobox; assertion: not together with docker | – | – | – | – |
 | `cfg.virtualisation.libvirt.enable` | libvirtd + virt-manager, libvirtd group | – | – | – | – |
 | `cfg.gaming.enable` | Steam + gamescope, GameMode, MangoHud, xpadneo; mkDefaults `graphics.enable32Bit` | ✓ | – | – | – |
+| `cfg.ollama.enable` | Ollama local-LLM server (ROCm build when `rocmGfx` is set) | ✓ | – | – | – |
+| `cfg.kdeconnect.enable` | KDE Connect package + firewall 1714–1764; the HM daemon rides the same switch | ✓ | ✓ | – | – |
 | `cfg.sandbox.flatpak.enable` | Flatpak + Flathub bootstrap + Flatseal | – | – | – | – |
 | `cfg.sandbox.firejail.enable` | Firejail | – | – | – | – |
 | `cfg.compat.nix-ld.enable` | nix-ld loader shim | ✓ | ✓ | ✓ | ✓ |
@@ -42,7 +48,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.compat.appimage.enable` | AppImage via binfmt | ✓ | ✓ | – | – |
 | `cfg.firmware.enable` | fwupd | ✓ | ✓ | ✓ | – |
 | `cfg.storage.enable` | weekly fstrim + smartd | ✓ | ✓ | ✓ | – |
-| `cfg.bluetooth.enable` | bluez + blueman applet | ✓ | ✓ | – | – |
+| `cfg.bluetooth.enable` | bluez (battery reporting, auto-enable) + blueman applet | ✓ | ✓ | – | – |
 | `cfg.printing.enable` | CUPS + Avahi mDNS + SANE (scanner/lp groups) | ✓ | ✓ | – | – |
 | `cfg.geolocation.enable` | geoclue2 (night light, auto timezone) | ✓ | ✓ | – | – |
 | `cfg.tailscale.enable` | tailscaled (mesh client; `tailscale up` once per host) | ✓ | ✓ | ✓ | – |
@@ -57,6 +63,8 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.ssh.port` | port, `22` | SSH listen port |
 | `cfg.ssh.authorizedKeys` | listOf str, `[]` | keys for the main user — **required on a fresh keys-only host** |
 | `cfg.graphics.enable32Bit` | bool (mkEnableOption → off; `gaming` mkDefaults it on) | 32-bit GL for Steam |
+| `cfg.ollama.rocmGfx` | nullOr str, `null` | AMD GFX override (e.g. `"10.3.0"`); null = stock ollama |
+| `cfg.boot.plymouth.theme` | str, `tribar` | Plymouth theme name |
 | `cfg.compat.nix-ld.libraries` | listOf package, `[]` | libs for non-Nix binaries |
 | `cfg.user.initialHashedPassword` | nullOr str, `null` | first-deploy password — locked account without it (see PLAN Phase 2) |
 
@@ -68,20 +76,22 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 | Option | Turns on | desktop | laptop | server | wsl |
 |---|---|:---:|:---:|:---:|:---:|
 | `cfg.desktop.gnome.enable` | GNOME (GDM) | – | ✓ | – | – |
-| `cfg.desktop.hyprland.enable` | Hyprland via uwsm (+ PAM hyprlock) | ✓ | – | – | – |
+| `cfg.desktop.hyprland.enable` | Hyprland via uwsm (+ PAM hyprlock); config = vendored `hyprland.lua` + rofi, not generated | ✓ | – | – | – |
 | `cfg.desktop.plasma.enable` | KDE Plasma 6 (SDDM) | – | – | – | – |
 
 ## Home options (`cfg.home.*`)
 
 Declared in `modules/nixos/home-options.nix`; the option-less modules in `modules/home/` gate on
 them via `osConfig`. All default **true** except where noted. Modules with **no option** ride
-system switches instead: `browser.nix`, `vscode.nix`, `mpv.nix` and `easyeffects.nix` also
-require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`), `gnome.nix` gates on
-`cfg.desktop.gnome.enable`, and the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
+system switches instead: `browser.nix`, `vscode.nix`, `desktop-apps.nix`, `mpv.nix` and
+`easyeffects.nix` require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`; vscode
+configures settings/extensions declaratively), `gaming.nix` on `cfg.gaming.enable`,
+`kdeconnect.nix` on `cfg.kdeconnect.enable`, `gnome.nix` on `cfg.desktop.gnome.enable`, and the
+`hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|
-| `cfg.home.shell.enable` | bool, on | zsh + starship + fzf/eza/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer |
+| `cfg.home.shell.enable` | bool, on | zsh + starship + fzf/eza/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer + yt-dlp/ffmpeg/ncdu/duf/zip utilities |
 | `cfg.home.git.enable` | bool, on | git + delta + lfs, `init.defaultBranch = main` |
 | `cfg.home.git.name` / `.email` | nullOr str, `null` | git identity (null = unset) |
 | `cfg.home.terminal.enable` | bool, on | kitty |
@@ -104,5 +114,7 @@ require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`), `gnome.nix` 
 | `cfg.user.name` | `polishcat` | `polishcat` | `polishcat` | `polishcat` |
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
 | `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/polishcat/nixos-new` |
-| `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | unset | `ThePolishcat` |
-| `cfg.home.git.email` | TODO | TODO | — | TODO |
+| `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
+
+`cfg.home.git.email` is `88453875+PolskiKocurek@users.noreply.github.com` on all four hosts (the
+legacy flake's commit identity).

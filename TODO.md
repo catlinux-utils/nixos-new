@@ -26,7 +26,18 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] First deploy per host: set `cfg.user.initialHashedPassword` first (locked account otherwise
       — see PLAN Phase 2), then `nh os switch --dry` → `nh os test` → `nh os switch`
 
+## Legacy-flake ports (PLAN §2.2)
+
+Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items first, medium after:
+
+- [ ] `nix flake check` + `nix fmt` on a nix machine (WSL once bootstrapped) — §2.2's **verify**
+      option names were checked against the pinned branch sources (raw nixpkgs/HM files) and
+      mynixos.com package pages; what remains is the real eval/format run
+
 ## Backlog
+
+- [ ] `hyprland.lua` binds `brave-browser.desktop` (SUPER+W) — install Brave (chromium wrapper,
+      like the legacy flake) or edit the bind to Firefox
 
 - [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
       `nixos-rebuild build-image --flake .#<host> --image-variant iso`

@@ -596,7 +596,9 @@ ports via `openFirewall` and `useRoutingFeatures = "client"` relaxes reverse-pat
 `services.syncthing` defaults to `overrideDevices`/`overrideFolders = true` — set both `false`
 so the Web UI owns devices/folders until they are declared.
 
-Candidate toggles (one service = one module; add on demand, not scheduled):
+Candidate toggles (one service = one module; add on demand, not scheduled) — `services.ollama`,
+`programs.kdeconnect`, rootless podman and the zen-kernel/plymouth boot items are promoted to
+concrete ports in [§2.2](#22-ports-from-the-legacy-nixos-flake):
 
 - **desktop**: `hardware.nvidia` stack (open-kernel-module choice — pending `lspci`),
   `services.ratbag` + piper, `hardware.openrazer` / `hardware.opentabletdriver` (peripheral
@@ -627,6 +629,136 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
   Caddy ACME without a static IP), shared backing stores (`services.postgresql`,
   `services.redis`) for the self-hosted apps, initrd network unlock
   (`boot.initrd.network`) if the disk decision picks an encrypted root
+
+### 2.2 Ports from the legacy `nixos` flake `[ ]`
+
+The superseded legacy flake (`../nixos`, relative to this checkout — hosts pc-main, laptop-main,
+server1, vm, vm-desktop) is this repo's direct predecessor; its working configs are the source for
+the reviewed-and-approved ports below. Grouped **small** (edits to existing modules, low risk) and
+**medium** (new modules/options). Items marked **verify** get their option names checked against
+the pinned nixpkgs 26.05 on a nix machine at implementation (the dev machine has no nix —
+AGENTS.md). OPTIONS.md / ARCHITECTURE.md updates land in the same change as the implementation.
+
+Small — edits to existing modules:
+
+- [x] **DoT DNS (systemd-resolved)** — new `modules/nixos/resolved.nix`, option
+      `cfg.networking.resolved.enable`. Port of legacy `system/modules/services/resolved.nix` +
+      `network/networking.nix`: `services.resolved.enable`, `DNSOverTLS = true`, `LLMNR`/`MulticastDNS`
+      off, `DNSSEC = false`, fallback DNS `1.1.1.1`/`8.8.8.8`, Cloudflare DoT upstreams
+      (`1.1.1.1#one.one.one.one`, `1.0.0.1#one.one.one.one`, + IPv6). **verify** how upstreams reach
+      resolved on 26.05 (`services.resolved.settings.Resolve.DNS` vs `services.resolved.fallbackDns`
+      vs `networking.nameservers`). Coexists with avahi's `nssmdns4` (mDNS resolution goes through
+      avahi-daemon via NSS, not resolved). Enable: desktop, laptop, server — never wsl (Windows owns
+      DNS there).
+- [x] **Bluetooth QoL** — `modules/nixos/bluetooth.nix`: `settings.General.Experimental = true`
+      (shows battery % of connected devices on supported adapters) and
+      `settings.Policy.AutoEnable = true` (legacy `network/bluetooth.nix`).
+- [x] **Hyprland cursor theme** — new `modules/home/hyprland/cursor.nix` (gated on
+      `osConfig.cfg.desktop.hyprland.enable`): `home.pointerCursor` (adwaita-icon-theme,
+      `gtk.enable = true`, size 24) plus the uwsm env file `~/.config/uwsm/env-hyprland` setting
+      `HYPRCURSOR_THEME`/`HYPRCURSOR_SIZE` (legacy `hypr/theming.nix` + `hypr/uwsm.nix`). Must not
+      touch `hyprland.settings.env` — settings.nix owned that key (moot since the lua port below:
+      settings are no longer generated, and the uwsm env file keeps the split).
+- [x] **Hyprland tray apps** — new `modules/home/hyprland/tray.nix`: HM
+      `services.network-manager-applet.enable` + `pkgs.pavucontrol` (legacy `apps/nm-aplet.nix` +
+      `apps/pavucontrol.nix`). The bar tray currently holds only blueman (system-side); nm-applet
+      adds the network icon.
+- [x] **hypridle hardening** — `modules/home/hyprland/idle.nix` adopts the legacy listener set
+      (legacy `hypr/hypridle.nix`): `lock_cmd = "pidof hyprlock || hyprlock"` (no duplicate
+      lockers), `before_sleep_cmd = "loginctl lock-session"` (lock on suspend), screen + keyboard
+      backlight dim at 150 s via `brightnessctl` (package added to the same module), lock at 300 s,
+      dpms off at 330 s, suspend at 900 s.
+- [x] **shell.nix utilities** — `modules/home/shell.nix`: `home.packages` yt-dlp, ffmpeg, ncdu,
+      duf, unzip, p7zip (legacy `shell-apps/other.nix`); zsh polish from legacy
+      `shell-apps/zsh.nix`: case-insensitive completion via `completionInit`
+      (`zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'`) and a `cat = bat` alias.
+- [x] **nh clean tuning** — `modules/nixos/nh.nix`: `dates = "daily"` and
+      `extraArgs = "--keep 5 --keep-since 3d"` (legacy cadence).
+- [x] **git email** — `hosts/*/default.nix` (all four):
+      `home.git.email = "88453875+PolskiKocurek@users.noreply.github.com"` — the identity the
+      legacy flake committed with; confirm it is the wanted one. Note: legacy git name was
+      `ThePolishCat`, this repo standardized on `ThePolishcat` — keep the repo spelling unless
+      changed deliberately.
+
+Medium — new modules/options:
+
+- [x] **VS Code declarative config** — `modules/home/vscode.nix` ports legacy `apps/vscode.nix`:
+      argv.json (`locale = "pl"`, crash reporter off, `password-store = "gnome-libsecret"`), user
+      settings (format-on-save, telemetry off, nix-ide/prettier defaults, git conveniences — swap
+      the legacy MesloLGS font references for JetBrainsMono, this repo's font stack) and the
+      extension set (prettier, gitlens, githistory, git-graph, GitHub PR, nix-ide, language pack
+      pl, copilot + copilot-chat). Extensions come from `pkgs.vscode-extensions` (nixpkgs' openvsx
+      set — no new flake input); if any listed extension is missing there, decide whether to add
+      the `nix-vscode-extensions` input (input exception needing user sign-off) — outcome:
+      `pkgs.vscode-extensions` carried the whole set, no extra input added. The
+      `password-store` argv wants gnome-keyring (below).
+- [x] **Ollama** — new `modules/nixos/ollama.nix`: `cfg.ollama.enable` + `cfg.ollama.rocmGfx`
+      (`nullOr str`, default null). When rocmGfx is set: package `pkgs.ollama-rocm`,
+      `services.ollama.rocmOverrideGfx`, env `HIP_VISIBLE_DEVICES = "0"` and
+      `OLLAMA_FLASH_ATTENTION = "0"` (legacy `services/ollama.nix`, ran on pc-main). Enable on
+      desktop with `rocmGfx = "10.3.0"`. **verify** `rocmOverrideGfx` / `environmentVariables`
+      names on 26.05. `boot.initrd.kernelModules = [ "amdgpu" ]` stays with Phase 2 GPU wiring,
+      not this module.
+- [x] **Podman option** — `modules/nixos/virtualisation.nix`: `cfg.virtualisation.podman.enable` →
+      `virtualisation.containers.enable`, podman with `dockerCompat` + `dockerSocket`,
+      `pkgs.docker-compose` + `pkgs.distrobox` packages, `PODMAN_COMPOSE_WARNING_LOGS = "false"`
+      (legacy `virtualisation.nix`). Mutually exclusive with `virtualisation.docker.enable` (both
+      own the docker socket) — add an `assertions` guard. Decision at implementation: switch
+      server to podman (the legacy fleet ran podman, not docker) or keep docker there — outcome:
+      the option landed, server stays on docker until the flip is wanted.
+- [x] **gnome-keyring** — `modules/nixos/desktop/hyprland.nix`:
+      `services.gnome.gnome-keyring.enable` + `security.pam.services.login.enableGnomeKeyring`
+      (legacy `programs/hyprland.nix`); backs the VS Code `gnome-libsecret` password store above.
+      GNOME sessions ship their own keyring — nothing needed on the laptop.
+- [x] **Desktop apps** — new `modules/home/desktop-apps.nix` (gated on
+      `osConfig.cfg.desktop.enable`): `nemo-with-extensions`, `gparted`, `pinta` (legacy
+      `hypr/theming.nix` + `apps/*.nix`).
+- [x] **Gaming apps** — new `modules/home/gaming.nix` (gated on `osConfig.cfg.gaming.enable`):
+      `prismlauncher`, `protonup-qt` (legacy `games/*.nix`; gamemode itself is already system-side
+      in `modules/nixos/gaming.nix`).
+- [x] **KDE Connect** — new `modules/nixos/kdeconnect.nix`: `cfg.kdeconnect.enable` →
+      `programs.kdeconnect.enable` + firewall ports 1714–1764 TCP+UDP (**verify** whether the
+      26.05 module exposes `openFirewall`); HM-side `services.kdeconnect.enable` gated on the same
+      switch (legacy `services/kdeconnect.nix` ran home-side only, without system wiring). Enable:
+      desktop, laptop.
+- [x] **Boot extras** — `modules/nixos/boot.nix`: `cfg.boot.zenKernel.enable` →
+      `boot.kernelPackages = pkgs.linuxPackages_zen`; `cfg.boot.plymouth.enable` +
+      `cfg.boot.plymouth.theme` (default `"tribar"`, the legacy theme) → `boot.plymouth` (legacy
+      `boot.nix` ran zen + plymouth on every host). Enable on desktop (both); laptop gets
+      plymouth, zen stays off until decided. The legacy Limine entries don't port 1:1: memtest86+
+      has a native systemd-boot option (**verify** `boot.loader.systemd-boot.memtest86.enable`),
+      Windows chainload depends on the ESP layout — decide when real hardware configs land
+      (Phase 2).
+- [x] **Quickshell bar (replaces waybar)** — new `modules/home/hyprland/quickshell.nix` with the
+      QML assets vendored unchanged from legacy `config/quickshell/` into
+      `modules/home/hyprland/quickshell/` (`shell.qml` ~620 lines + `Theme.qml` palette singleton;
+      no `.nix` inside, so the auto-importer is unaffected); delete
+      `modules/home/hyprland/waybar.nix` in the same change. Wiring from legacy
+      `hypr/quickshell.nix`: HM `programs.quickshell` with `systemd.enable = true` (user unit
+      bound to `graphical-session.target`, which uwsm activates — the pattern waybar used) and the
+      vendored config registered as the active one. The bar renders workspaces (click + scroll),
+      media title via `playerctl` (package added to the module — the only new runtime dep; kitty,
+      btop and Noto Sans are already in the font/terminal/tool stack), PipeWire volume with
+      mute/wheel control, auto-detected battery, CPU/RAM/temperature (click opens btop in kitty),
+      the StatusNotifier tray (blueman + nm-applet icons from the tray item above) and a clock.
+      **verify** the HM quickshell option names on release-26.05 (`programs.quickshell.configs` /
+      `.activeConfig` / `.systemd` — legacy ran home-manager on unstable); fallback if `configs`
+      doesn't exist: `xdg.configFile."quickshell/…"`. QML references `BAT1` and 9 workspaces
+      hardcoded — good enough as-is, revisit when the laptop's hardware config lands (Phase 2).
+- [x] **Raw Hyprland config (hyprland.lua)** — `settings.nix` reworked into `session.nix`: it only
+      enables the HM module (uwsm owns activation) and no longer generates
+      `wayland.windowManager.hyprland.settings`. The session config is the legacy
+      `config/hyprland/hyprland.lua` vendored verbatim as `modules/home/hyprland/hyprland.lua`,
+      copied to `~/.config/hypr/hyprland.lua` — a plain file with zero Nix interpolation so it can
+      be copied to non-NixOS machines as-is (repo convention, see AGENTS.md feature-module
+      checklist). The Electron Wayland env vars moved to the uwsm env file `~/.config/uwsm/env`
+      (written in session.nix; legacy set none). Launcher switched from wofi to rofi to match the
+      lua's SUPER+R bind: new `modules/home/hyprland/rofi.nix` with the legacy rofi theme
+      vendored as `rofi.rasi` (extracted byte-exact from the legacy `writeText` string).
+      `hyprshutdown` installed for the SUPER+M bind (the bind falls back to `uwsm stop` without
+      it). Caveats kept verbatim in the lua: SUPER+W opens `brave-browser.desktop` (this flake
+      ships Firefox — install Brave or edit the bind), monitor workspace mapping targets
+      DP-3/HDMI-A-1, and Hyprland needs Lua config support (>= 0.53, satisfied by 26.05).
 
 ## Phase 3 — Secrets (sops-nix) `[ ]`
 
@@ -756,7 +888,7 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [ ] impermanence (stateless root) — decide per host as part of the Phase 2 state-management
       decision (with disk layout, snapshots, and `backup.nix`), never alone
 - [ ] Secure boot via lanzaboote
-- [ ] plymouth boot splash
+- [x] plymouth boot splash — ported early as `cfg.boot.plymouth.enable` by §2.2 boot extras
 - [ ] colmena / deploy-rs for remote server deploys
 - [ ] own binary cache (attic)
 - [ ] disko + nixos-anywhere — declarative disk partitioning and hands-off installs from any

@@ -19,8 +19,8 @@
       flake = toString config.cfg.nh.flakeDir;
       clean = {
         enable = true;
-        dates = "weekly";
-        extraArgs = "--keep 5";
+        dates = "daily";
+        extraArgs = "--keep 5 --keep-since 3d";
       };
     };
 

@@ -21,12 +21,14 @@
     # git identity
     home.git = {
       name = "ThePolishcat";
-      # email = "you@example.com"; # TODO
+      email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
     # features — host matrix: PLAN.md §1.7
     boot.enable = true;
+    boot.plymouth.enable = true; # zen kernel undecided — stays off for now
     networking.networkManager.enable = true;
+    networking.resolved.enable = true;
     audio.enable = true;
     graphics.enable = true;
     ssh.enable = true;
@@ -34,6 +36,7 @@
     compat.nix-ld.enable = true;
     compat.envfs.enable = true;
     compat.appimage.enable = true;
+    kdeconnect.enable = true;
 
     # standard defaults — PLAN.md §2.1
     firmware.enable = true;

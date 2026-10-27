@@ -23,8 +23,19 @@ nixpkgs **26.05** + Home Manager **release-26.05**.
   - `nix fmt` (formatter output exists once Phase 1 lands)
   - `nh os switch --dry` / `nh os test` on a target host
 - Because local proof is impossible, be extra careful with option names and import paths. Verify
-  option names against the **pinned** nixpkgs (grep the flake's nixpkgs store path on a Nix
-  machine, or search.nixos.org filtered to the pinned release) — not against latest docs.
+  option names against the **pinned** nixpkgs — not against latest docs. Helper pages, weakest to
+  strongest evidence:
+  - [search.nixos.org](https://search.nixos.org) — options for NixOS + home-manager (separate
+    tabs), filter to the pinned release
+  - [mynixos.com](https://mynixos.com) — rendered package/option pages, e.g.
+    `mynixos.com/nixpkgs/package/<attr>` or `mynixos.com/nixos/options/<name>`; tracks *current*
+    nixpkgs, not the branch snapshot — good for "does this package attr exist", not for
+    branch-specific option shapes
+  - raw pinned-branch sources (strongest remote evidence): `raw.githubusercontent.com` for
+    `NixOS/nixpkgs` at `nixos-26.05` and `nix-community/home-manager` at `release-26.05`;
+    `nixos/modules/module-list.nix` locates a module whose path moved; large files truncate in
+    fetch tools — prefer small single files or targeted paths
+  - or grep the flake's nixpkgs store path on a Nix machine
 - Hosts run **Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`, set in
   `modules/nixos/nix.nix`) — CLI-compatible with `nix`, so the commands above work unchanged;
   check Lix-specific settings against docs.lix.systems.
@@ -92,6 +103,10 @@ AGENTS.md README.md    this file / project overview
 8. A feature folder (`modules/home/hyprland/`) works the same as a single file: every `.nix` in it
    is auto-imported, so the folder must not contain a `default.nix`. Keep one writer per shared
    settings key across the folder's files (no double-owned config).
+9. Raw config assets (`hyprland.lua`, `rofi.rasi`, the quickshell QML) are vendored verbatim next
+   to their module — never generate them from Nix values or interpolate into them; they must stay
+   copyable to non-NixOS machines. The auto-importer only picks up `.nix`, so non-Nix asset files
+   inside feature folders are safe.
 
 ## Repo helper skills
 

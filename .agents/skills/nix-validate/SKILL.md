@@ -18,12 +18,22 @@ Run this after writing or editing any `.nix` file, before handing off:
    `modules/nixos/default.nix` and `modules/home/default.nix` reach
    `../../lib/importNixFiles.nix`; `lib/mkHost.nix` reaches `../modules/nixos` and
    `../hosts/<hostname>`.
-2. **Option names vs pinned 26.05**: verify each nontrivial option against the pinned release —
-   search.nixos.org with the release filter set to 26.05 (it has a home-manager options tab
-   too), or grep the pinned nixpkgs/home-manager sources on a Nix machine. Latest-docs memory
-   lies; 26.05 already renamed things (`services.journald.storage`, `hardware.xpadneo.enable`,
-   no `programs.mangohud` module, no `services.flatpak.remotes`). Lix-specific settings:
-   docs.lix.systems.
+2. **Option names vs pinned 26.05**: verify each nontrivial option against the pinned release.
+   Strongest evidence first:
+   - raw pinned-branch sources — `raw.githubusercontent.com` for `NixOS/nixpkgs` at
+     `nixos-26.05` and `nix-community/home-manager` at `release-26.05`;
+     `nixos/modules/module-list.nix` locates a module whose path moved; large files truncate in
+     fetch tools, so target small single files
+   - [mynixos.com](https://mynixos.com) — rendered package/option pages, e.g.
+     `mynixos.com/nixpkgs/package/<attr>`; tracks *current* nixpkgs, so good for "does this
+     package attr exist", not for branch-specific option shapes
+   - [search.nixos.org](https://search.nixos.org) — NixOS + home-manager option tabs, release
+     filter 26.05
+   - grep the pinned nixpkgs/home-manager sources on a Nix machine
+
+   Latest-docs memory lies; 26.05 already renamed things (`services.journald.storage`,
+   `hardware.xpadneo.enable`, no `programs.mangohud` module, no `services.flatpak.remotes`).
+   Lix-specific settings: docs.lix.systems.
 3. **Namespace consistency**: all custom options under `cfg.*`; home modules are option-less
    and gate on `osConfig.cfg.*`; home-feature options are declared in
    `modules/nixos/home-options.nix`.

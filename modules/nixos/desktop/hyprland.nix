@@ -12,7 +12,8 @@
     cfg.audio.enable = lib.mkDefault true;
 
     # session runs through uwsm: it activates graphical-session.target, which
-    # is where the home-side user units (waybar, hyprpaper, polkit agent) bind
+    # is where the home-side user units (the bar, hypridle, hyprpaper, the
+    # polkit agent) bind
     programs.hyprland = {
       enable = true;
       withUWSM = true;
@@ -24,5 +25,10 @@
     # (modules/home/hyprland/lock.nix) — without it its password prompt
     # cannot authenticate
     security.pam.services.hyprlock = { };
+
+    # libsecret backend for app secrets (VS Code runs with
+    # password-store=gnome-libsecret); PAM unlocks the keyring at login
+    services.gnome.gnome-keyring.enable = true;
+    security.pam.services.login.enableGnomeKeyring = true;
   };
 }

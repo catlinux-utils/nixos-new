@@ -39,7 +39,7 @@
     # git identity
     home.git = {
       name = "ThePolishcat";
-      # email = "you@example.com"; # TODO
+      email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
     # features — dev host: boot/networking/audio/graphics stay off (WSL and
