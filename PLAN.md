@@ -780,8 +780,8 @@ Medium — new modules/options:
 ## Phase 4 — Per-DE home configs `[ ]`
 
 - [x] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable` — minimal sane
-      defaults (dark color scheme, weekday in clock, tap-to-click) plus `gtk.enable`; extend with
-      more `dconf.settings` entries as preferences emerge
+      defaults (weekday in clock, tap-to-click); extend with more `dconf.settings` entries as
+      preferences emerge (the dark color scheme and `gtk.enable` moved to `theming.nix`, Phase 4)
 - [ ] Plasma: HM config gated on `osConfig.cfg.desktop.plasma.enable` — **evaluated**: use
       [plasma-manager](https://github.com/nix-community/plasma-manager)
       (`homeManagerModules.default`, `inputs.home-manager.follows`; supports Plasma 6 via its
@@ -821,13 +821,25 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       set in `desktop/base.nix`)
 - [x] `nix-index.nix` — `programs.nix-index` + comma (channel-less command-not-found)
 - [x] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
-- [ ] Theming: gtk/qt + cursor module; evaluate **Stylix** (single base16 palette across DE,
-      terminal, apps) as the heavier alternative
+- [x] Theming: gtk/qt + cursor module; evaluate **Stylix** (single base16 palette across DE,
+      terminal, apps) as the heavier alternative — outcome: `modules/home/theming.nix` (rides
+      `cfg.desktop.enable`): sets HM `dconf.enable` (without it every `dconf.settings` is silently
+      dropped — this also fixed gnome.nix's settings, which never reached dconf),
+      `gtk.colorScheme = "dark"` (writes the dconf `color-scheme` plus the gtk3/gtk4 dark
+      settings.ini entries) and Qt adwaita-dark via `qt.platformTheme.name`/`qt.style.name`
+      (packages auto-detected: adwaita-qt, adwaita-qt6, qadwaitadecorations). The cursor half
+      landed earlier as `modules/home/hyprland/cursor.nix` (§2.2); gnome.nix's `gtk.enable` +
+      `color-scheme` moved into theming.nix (one writer per key). **Stylix: deferred** — it wants
+      its own flake input (user sign-off) and would fight the vendored-asset convention
+      (Theme.qml / rofi.rasi carry the hand-tuned palette); revisit only if per-app theming needs
+      multiply
 - [x] `tmux.nix` — opt-in (default false); hosts that serve ssh sessions flip it (server does)
 - [x] `mpv.nix` — desktop video player (rides `cfg.desktop.enable`)
 - [x] `password-store.nix` — `programs.password-store` (pairs with gpg.nix)
 - [ ] OBS (desktop) — opt-in screen recording, when wanted
-- [ ] HM-side syncthing tray — blocked on Phase 2.1 (`cfg.syncthing.enable`)
+- [x] HM-side syncthing tray — unblocked by Phase 2.1; `modules/home/syncthing-tray.nix` gates
+      `services.syncthing.tray` on `cfg.syncthing.enable` + `cfg.desktop.enable` (the quickshell
+      bar hosts the StatusNotifier icon on hyprland; GNOME has its own tray)
 
 ## Phase 5 — CI `[ ]`
 

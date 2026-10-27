@@ -83,11 +83,13 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 
 Declared in `modules/nixos/home-options.nix`; the option-less modules in `modules/home/` gate on
 them via `osConfig`. All default **true** except where noted. Modules with **no option** ride
-system switches instead: `browser.nix`, `vscode.nix`, `desktop-apps.nix`, `mpv.nix` and
-`easyeffects.nix` require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`; vscode
-configures settings/extensions declaratively), `gaming.nix` on `cfg.gaming.enable`,
-`kdeconnect.nix` on `cfg.kdeconnect.enable`, `gnome.nix` on `cfg.desktop.gnome.enable`, and the
-`hyprland/` folder on `cfg.desktop.hyprland.enable`.
+system switches instead: `browser.nix`, `vscode.nix`, `desktop-apps.nix`, `theming.nix`,
+`mpv.nix` and `easyeffects.nix` require `cfg.desktop.enable` (easyeffects also
+`cfg.audio.enable`; vscode configures settings/extensions declaratively; theming enables HM
+`dconf` and sets dark gtk + qt adwaita for every desktop), `gaming.nix` on `cfg.gaming.enable`,
+`kdeconnect.nix` on `cfg.kdeconnect.enable`, `gnome.nix` on `cfg.desktop.gnome.enable`,
+`syncthing-tray.nix` on `cfg.syncthing.enable` + `cfg.desktop.enable`, and the `hyprland/`
+folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|

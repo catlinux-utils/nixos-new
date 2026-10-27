@@ -42,5 +42,6 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 - [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
       `nixos-rebuild build-image --flake .#<host> --image-variant iso`
 - [ ] Phase 3 — sops-nix secrets
-- [ ] Phase 4 — GNOME / Plasma home-manager configs
+- [ ] Phase 4 leftovers — Plasma HM config (when a host enables Plasma), OBS (opt-in), Stylix
+      (deferred — verdict in PLAN Phase 4)
 - [ ] Phase 5 — CI (fmt + flake check + per-host toplevel builds)

@@ -4,17 +4,13 @@
   ...
 }:
 {
-  # rides the system GNOME switch; system-side dconf comes from
-  # desktop/base.nix (programs.dconf.enable)
+  # rides the system GNOME switch; gtk theming + the dark color scheme live
+  # in theming.nix (shared across desktops, which also enables HM dconf)
   config = lib.mkIf osConfig.cfg.desktop.gnome.enable {
-    # settings.ini fallback for toolkit apps running outside the GNOME session
-    gtk.enable = true;
-
     # minimal sane defaults — anything set here is still adjustable in GNOME
     # Settings; add dconf entries as preferences emerge
     dconf.settings = {
       "org/gnome/desktop/interface" = {
-        color-scheme = "prefer-dark";
         clock-show-weekday = true;
       };
 
