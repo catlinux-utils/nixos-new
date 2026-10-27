@@ -76,8 +76,8 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 Declared in `modules/nixos/home-options.nix`; the option-less modules in `modules/home/` gate on
 them via `osConfig`. All default **true** except where noted. Modules with **no option** ride
 system switches instead: `browser.nix`, `vscode.nix`, `mpv.nix` and `easyeffects.nix` also
-require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`), and the `hyprland/` folder
-gates on `cfg.desktop.hyprland.enable`.
+require `cfg.desktop.enable` (easyeffects also `cfg.audio.enable`), `gnome.nix` gates on
+`cfg.desktop.gnome.enable`, and the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|

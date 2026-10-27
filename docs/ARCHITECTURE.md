@@ -81,8 +81,9 @@ config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... };
 Rule of thumb: the *system* decides whether a feature exists and what its options are; the *home*
 layer adds user-facing configuration for it. Hosts set both sides through the same flat `cfg.*`
 namespace. Some home modules ride a system switch with no option of their own — e.g.
-`browser.nix`, `vscode.nix` and `mpv.nix` gate on `cfg.desktop.enable`, so headless hosts don't
-carry GUI software.
+`browser.nix`, `vscode.nix` and `mpv.nix` gate on `cfg.desktop.enable`, `gnome.nix` on
+`cfg.desktop.gnome.enable` (like the `hyprland/` folder), so headless hosts don't carry GUI
+software.
 
 ## Unstable overlay
 

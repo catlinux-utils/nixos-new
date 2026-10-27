@@ -150,6 +150,7 @@ outputs =
 │       ├── gpg.nix                 # gpg + gpg-agent w/ ssh-agent (Phase 4)
 │       ├── ssh.nix                 # ssh client defaults (Phase 4)
 │       ├── browser.nix             # firefox (rides cfg.desktop.enable)
+│       ├── gnome.nix               # GNOME dconf/gtk (rides cfg.desktop.gnome)
 │       ├── vscode.nix              # editor (rides cfg.desktop.enable)
 │       ├── mpv.nix                 # video player (rides cfg.desktop.enable)
 │       ├── easyeffects.nix         # PipeWire EQ (audio + desktop)
@@ -646,9 +647,15 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 
 ## Phase 4 — Per-DE home configs `[ ]`
 
-- [ ] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable`
-- [ ] Plasma: HM config (evaluate the `plasma-manager` input) gated on
-      `osConfig.cfg.desktop.plasma.enable`
+- [x] GNOME: dconf-based HM config gated on `osConfig.cfg.desktop.gnome.enable` — minimal sane
+      defaults (dark color scheme, weekday in clock, tap-to-click) plus `gtk.enable`; extend with
+      more `dconf.settings` entries as preferences emerge
+- [ ] Plasma: HM config gated on `osConfig.cfg.desktop.plasma.enable` — **evaluated**: use
+      [plasma-manager](https://github.com/nix-community/plasma-manager)
+      (`homeManagerModules.default`, `inputs.home-manager.follows`; supports Plasma 6 via its
+      `trunk` branch, actively maintained; `rc2nix` converts an existing KDE config to Nix).
+      No host enables Plasma yet — wire the input and module when one does; mind that
+      `overrideConfig` deletes existing KDE config on activation
 - [x] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
       notification daemon — mako or swaync, screenshots — grim + slurp); also set the
       Electron/Chromium Wayland env vars (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `NIXOS_OZONE_WL=1`)
