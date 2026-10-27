@@ -38,7 +38,7 @@ modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
                        sandbox.nix
 modules/home/          home-manager feature modules (auto-imported); includes
-                       xdg.nix, home-tools.nix
+                       xdg.nix, home-tools.nix, hyprland/ (session config)
 docs/ARCHITECTURE.md   how it all fits together
 PLAN.md TODO.md        roadmap / actionable next steps
 AGENTS.md README.md    this file / project overview
@@ -61,7 +61,8 @@ AGENTS.md README.md    this file / project overview
 - Format with `nix fmt` (RFC 101 style via `nixfmt-rfc-style`): 2-space indent, arguments stay on
   one line when they fit, final newline. Don't hand-format against nixfmt's choices.
 - Prefer `lib.mkEnableOption` / `lib.mkIf` / `lib.mkOption` over raw attrsets.
-- One feature per file; the file is named after the feature (`ssh.nix`, `gaming.nix`).
+- One feature per file; the file is named after the feature (`ssh.nix`, `gaming.nix`). A feature
+  that outgrows one file becomes a folder of sibling `.nix` files (`modules/home/hyprland/`).
 - Bleeding-edge packages come only via `pkgs.unstable.<pkg>` (the one overlay) — never add extra
   nixpkgs inputs for single packages.
 
@@ -71,19 +72,26 @@ AGENTS.md README.md    this file / project overview
    list edits, no default.nix changes.
 2. Declare `options.cfg.<feature>.enable = lib.mkEnableOption "<description>";`
 3. Wrap all config in `config = lib.mkIf config.cfg.<feature>.enable { ... };`
-4. Home-side modules that must follow a system switch read it via `osConfig.cfg.*`.
+4. Home-side modules are option-less: they gate on `osConfig.cfg.*` (including
+   `osConfig.cfg.home.*`), whose options are declared in the NixOS tree —
+   `modules/nixos/home-options.nix` for home features — so hosts set them under the same
+   `cfg.*` namespace.
 5. Enable nothing by default — hosts flip the switches in `hosts/<name>/default.nix`.
 6. A feature that implies another uses `mkDefault`/direct set of the other's switch (see
    `desktop/hyprland.nix` setting `cfg.desktop.enable` in PLAN.md §1.5).
 7. The auto-importer skips files named `default.nix` and `hardware-configuration.nix` — never
    give a feature module either name.
+8. A feature folder (`modules/home/hyprland/`) works the same as a single file: every `.nix` in it
+   is auto-imported, so the folder must not contain a `default.nix`. Keep one writer per shared
+   settings key across the folder's files (no double-owned config).
 
 ## Recipes
 
 ### Add a host
 
-1. Create `hosts/<name>/default.nix` — flip feature switches, set `cfg.user.name`,
-   `cfg.locale.*`, `cfg.nh.flakeDir` as needed.
+1. Create `hosts/<name>/default.nix` — the self-contained host entry: one `cfg = { ... }` tree,
+   sectioned identity (`user`), locale, `nh.flakeDir`, git identity (`home.git`), then feature
+   switches.
 2. Create `hosts/<name>/hardware-configuration.nix` — real one from `nixos-generate-config` on the
    machine (never hand-write disk config).
 3. Register in `flake.nix`: `nixosConfigurations.<name> = mkHost { hostname = "<name>"; };`
@@ -99,8 +107,10 @@ AGENTS.md README.md    this file / project overview
 
 ### Add a home module
 
-1. Create `modules/home/<feature>.nix` following the pattern checklist (auto-imported).
-2. Use `osConfig.cfg.*` when user config must follow a system switch.
+1. Create `modules/home/<feature>.nix` following the pattern checklist (auto-imported); gate it on
+   `osConfig.cfg.home.<feature>.*`.
+2. Declare the feature's options in `modules/nixos/home-options.nix` (not in the module) — hosts
+   set them under the same flat `cfg.*` tree.
 3. Never force-overwrite existing user files — `mkHost` sets
    `home-manager.backupFileExtension = "backup"` as the safety net.
 

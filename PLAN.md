@@ -1,9 +1,10 @@
 # PLAN — nixos-new
 
-> **Status:** Phase 1 (scaffold) is fully specified but **not yet implemented**. Every phase below
-> is written so an agent or human can execute it without further context. Agents: also read
-> [AGENTS.md](AGENTS.md) for conventions and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how
-> the pieces fit together. Immediate tasks live in [TODO.md](TODO.md).
+> **Status:** Phase 1 (scaffold) is implemented but **not yet machine-validated** — `nix flake
+> check`, `nix fmt` and `build-vm` still need a Nix machine (Phase 1.5 makes that local). Every
+> phase below is written so an agent or human can execute it without further context. Agents: also
+> read [AGENTS.md](AGENTS.md) for conventions and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
+> how the pieces fit together. Immediate tasks live in [TODO.md](TODO.md).
 
 ## Goal
 
@@ -145,7 +146,7 @@ outputs =
 │       ├── neovim.nix              # defaultEditor, aliases
 │       ├── xdg.nix                 # xdg.enable, user dirs, mime defaults
 │       ├── home-tools.nix          # programs.home-manager.enable
-│       └── hyprland.nix            # osConfig-gated example (1.6)
+│       └── hyprland/               # osConfig-gated Hyprland session (1.6)
 └── secrets/
     └── README.md                   # placeholder until Phase 3 (sops-nix)
 ```
@@ -189,13 +190,16 @@ lib.nixosSystem {
           home-manager.extraSpecialArgs = { inherit inputs; };
           # unmanaged files HM takes over get a .backup copy instead of failing activation
           home-manager.backupFileExtension = "backup";
-          # user name comes from users.nix's option (lazy evaluation makes this work)
-          home-manager.users.${config.cfg.user.name} = import ../modules/home;
+          # user name comes from users.nix's option (lazy evaluation makes this work);
+          # username/homeDirectory are pinned to the NixOS user so the HM modules
+          # never depend on HM's own defaults
+          home-manager.users.${config.cfg.user.name} = {
+            imports = [ ../modules/home ];
+            home.username = config.cfg.user.name;
+            home.homeDirectory = "/home/${config.cfg.user.name}";
+          };
           # HM has no home.stateVersion default — set it here, once, per host
           # (first-install marker: do NOT bump it together with the nixpkgs pin)
-          # TODO(verify): confirm the pinned HM release auto-defaults
-          # home.username / home.homeDirectory from the NixOS user; if not, set
-          # both here from config.cfg.user.name
           home-manager.sharedModules = [ { home.stateVersion = "26.05"; } ];
         }
       )
@@ -268,7 +272,7 @@ Every feature module follows one shape:
 | File | Option | Enables |
 |---|---|---|
 | `boot.nix` | `cfg.boot.enable` | systemd-boot (`configurationLimit` ~10 — belt-and-suspenders alongside `nh clean`), `efi.canTouchEfiVariables`, `boot.initrd.systemd.enable`, `boot.tmp.cleanOnBoot`, quiet boot, `zramSwap` |
-| `logging.nix` | always on | journald: persistent storage across reboots + size cap (`SystemMaxUse`) — unbounded journal is a silent disk-filler |
+| `logging.nix` | always on | journald: `storage = "persistent"` (26.05 renamed the old `persistentStorage`; also the default) + size cap (`SystemMaxUse` via `extraConfig`) — unbounded journal is a silent disk-filler |
 | `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs`, `nix.channel.enable = false` + `nix.nixPath = [ "nixpkgs=flake:nixpkgs" ]` (pure-flake hosts carry no channel state; Phase 4's nix-index/comma replaces command-not-found) |
 | `nh.nix` | always on (+ `cfg.nh.flakeDir` option) | see [1.8](#18-nh) |
 | `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"` — sets both `console.keyMap` and `services.xserver.xkb.layout`; GDM reads the latter) |
@@ -281,16 +285,28 @@ Every feature module follows one shape:
 | `graphics.nix` | `cfg.graphics.enable` (+ `.enable32Bit`) | `hardware.graphics` OpenGL/VA-API base stack; 32-bit off unless something turns it on (e.g. gaming) |
 | `ssh.nix` | `cfg.ssh.enable` (+ `cfg.ssh.port`, default 22; `cfg.ssh.authorizedKeys`, list of strings) | OpenSSH server, password authentication **off**, `authorizedKeys` applied to the main user (without it, keys-only SSH on a fresh host is a lockout), firewall opened on `cfg.ssh.port` |
 | `virtualisation.nix` | `cfg.virtualisation.docker.enable`, `cfg.virtualisation.libvirt.enable` | docker (+ `autoPrune` weekly) / libvirtd; an enabled daemon adds `cfg.user.name` to its group; libvirt also pulls `programs.virt-manager` (GUI management) |
-| `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud, `services.hardware.xpadneo` (Xbox BT controllers), `mkDefault`s `cfg.graphics.enable32Bit` on |
+| `gaming.nix` | `cfg.gaming.enable` | Steam (`programs.steam` + `gamescopeSession`), `programs.gamemode`, MangoHud (`pkgs.mangohud` — 26.05 dropped the NixOS module), `hardware.xpadneo.enable` (Xbox BT controllers; renamed from `services.hardware.xpadneo`), `mkDefault`s `cfg.graphics.enable32Bit` on |
 | `sandbox.nix` | `cfg.sandbox.flatpak.enable`, `cfg.sandbox.firejail.enable` | Flatpak service + Flathub remote bootstrap + Flatseal preinstalled / `programs.firejail` |
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
 | `desktop/base.nix` | `cfg.desktop.enable` | fonts (`pkgs.nerd-fonts.<font>` + noto — the old monolithic `nerdfonts` package throws at eval), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
-| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland; also `security.polkit` + a polkit agent (`hyprpolkitagent` — wlroots sessions ship none), and `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
+| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland launched via uwsm (`programs.hyprland.withUWSM` — activates `graphical-session.target`); `security.polkit`; user-side pieces (polkit agent, waybar, wallpaper) live in `modules/home/hyprland/`; `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
 
-Option names are quoted for **nixpkgs 26.05**. When implementing, verify against the pinned
-nixpkgs (grep the store path on a Nix machine, or search.nixos.org for the pinned release).
+Option names are quoted for **nixpkgs 26.05** and were verified against the `nixos-26.05` module
+sources while implementing (see the implementation notes below the table).
+
+26.05 implementation notes (found while verifying the Phase 1 modules against `nixos-26.05`):
+
+- `services.journald.persistentStorage` is gone — `services.journald.storage = "persistent"`
+  (also the default) replaces it
+- xpadneo's option moved to `hardware.xpadneo.enable` (was `services.hardware.xpadneo.enable`)
+- the NixOS `programs.mangohud` module no longer exists — gaming installs `pkgs.mangohud`
+  directly; HM still has `programs.mangohud` if config is wanted later
+- `services.flatpak` has no `remotes`/`packages` options on 26.05 — Flathub is bootstrapped by a
+  oneshot systemd service and Flatseal lands in `environment.systemPackages`
+- `programs.nh.flake` sets `NH_FLAKE`; the bare `FLAKE` variable is deprecated by nh (will hard
+  error in future nh releases) — never set both
 
 Example of the DE wiring pattern (`desktop/hyprland.nix`):
 
@@ -308,7 +324,10 @@ Example of the DE wiring pattern (`desktop/hyprland.nix`):
     cfg.graphics.enable = lib.mkDefault true;
     cfg.audio.enable = lib.mkDefault true;
 
-    programs.hyprland.enable = true;
+    programs.hyprland = {
+      enable = true;
+      withUWSM = true; # uwsm activates graphical-session.target
+    };
     security.polkit.enable = true;
   };
 }
@@ -316,8 +335,10 @@ Example of the DE wiring pattern (`desktop/hyprland.nix`):
 
 ### 1.6 `modules/home/` — Home Manager modules
 
-Same option-gated shape as system modules (`cfg.home.<feature>.enable`, all defaulting to
-`true` so hosts get a sane user environment for free):
+Options for home features live in the NixOS tree (`modules/nixos/home-options.nix`), so hosts set
+them under the same flat `cfg.*` namespace; the modules themselves are option-less and gate on
+`osConfig.cfg.home.*` (all enable flags default to `true` so hosts get a sane user environment for
+free):
 
 - `shell.nix` — zsh (autosuggestions, syntaxHighlighting, history opts) + starship + aliases +
   fzf, eza, btop
@@ -327,7 +348,8 @@ Same option-gated shape as system modules (`cfg.home.<feature>.enable`, all defa
 - `neovim.nix` — `programs.neovim` (`defaultEditor`, `viAlias`, `vimAlias`)
 - `xdg.nix` — `xdg.enable`, user dirs, sane mime defaults
 - `home-tools.nix` — `programs.home-manager.enable` (HM CLI in the user env)
-- `hyprland.nix` — **no own switch**; gated on the *system* switch via `osConfig`. This is the
+- `hyprland/` — feature folder (settings, waybar, wallpaper, polkit agent), **no own switch**;
+  gated on the *system* switch via `osConfig`. This is the
   worked example of the NixOS ↔ HM bridge:
 
 ```nix
@@ -350,8 +372,10 @@ never force-overwrite user files.
 
 ### 1.7 `hosts/`
 
-`hosts/<name>/default.nix` — per-host entry: flips feature switches, overrides user/locale options,
-sets `cfg.nh.flakeDir` to the real repo path on that machine. Hostname is set by `mkHost`.
+`hosts/<name>/default.nix` — self-contained per-host entry: one `cfg = { ... }` tree, sectioned
+identity (`user`), locale, git identity (`home.git`), feature
+switches, and `nh.flakeDir` pointing at the real repo path on that machine. Hostname is set by
+`mkHost`.
 
 `hosts/<name>/hardware-configuration.nix` — **placeholder skeleton**, minimal but valid so
 `nix flake check` builds before Phase 2:
@@ -402,7 +426,8 @@ aarch64 on desktop) are set per host directly — not a toggle.
   config = {
     programs.nh = {
       enable = true;
-      flake = config.cfg.nh.flakeDir;
+      # sets NH_FLAKE (the bare FLAKE variable is deprecated by nh)
+      flake = toString config.cfg.nh.flakeDir;
       clean = {
         enable = true;
         dates = "weekly";
@@ -410,7 +435,6 @@ aarch64 on desktop) are set per host directly — not a toggle.
       };
     };
 
-    environment.variables.FLAKE = toString config.cfg.nh.flakeDir;
     # nix.gc.automatic stays off — nh.clean owns garbage collection.
   };
 }
@@ -445,12 +469,12 @@ The implementer cannot build locally (no nix on the dev machine). Therefore:
 
 ### 1.11 Phase 1 acceptance criteria
 
-- [ ] `flake.nix` + `lib/` + `overlays/` present; three `nixosConfigurations` declared
-- [ ] All module files exist and follow the feature-module pattern; no manual import lists outside
+- [x] `flake.nix` + `lib/` + `overlays/` present; three `nixosConfigurations` declared
+- [x] All module files exist and follow the feature-module pattern; no manual import lists outside
       the two `default.nix` importers
 - [ ] `nix flake check` passes on a Nix machine (placeholder hardware configs included)
 - [ ] `nix fmt` clean
-- [ ] README host table, PLAN checkboxes, TODO updated
+- [x] README host table, PLAN checkboxes, TODO updated
 
 ---
 
@@ -596,7 +620,13 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 - [ ] Hyprland: expand the Phase 1 example (settings, keybinds, waybar, launcher, idle/lock,
       notification daemon — mako or swaync, screenshots — grim + slurp); also set the
       Electron/Chromium Wayland env vars (`ELECTRON_OZONE_PLATFORM_HINT=auto`, `NIXOS_OZONE_WL=1`)
-      so Slack/Discord/VS Code run native — needed on any Wayland session, not just Hyprland
+      so Slack/Discord/VS Code run native — needed on any Wayland session, not just Hyprland.
+      *Partly done ahead of Phase 4:* the session runs via uwsm (`programs.hyprland.withUWSM`;
+      HM's hyprland systemd integration stays off so user units bind to
+      `graphical-session.target`), and `modules/home/hyprland/` ships settings/binds, wofi
+      launcher, waybar, hyprpaper wallpaper (`cfg.home.hyprland.wallpaper`), the polkit agent
+      (HM `services.hyprpolkitagent`) and the Electron env vars — still open: idle/lock,
+      notification daemon, screenshots
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 

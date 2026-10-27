@@ -4,10 +4,11 @@ ThePolishcat's NixOS configuration flake — multiple hosts, Home Manager wired 
 module, `nh` for rebuilds, Lix as the Nix implementation, stable nixpkgs (26.05) with unstable
 available as `pkgs.unstable.<pkg>`.
 
-> **Status:** scaffold specified, not yet built. [PLAN.md](PLAN.md) contains the full executable
-> spec (Phase 1). Agents working in this repo: start with [AGENTS.md](AGENTS.md).
+> **Status:** scaffold implemented — not yet machine-validated (`nix flake check` / `nix fmt` need
+> a Nix machine; see [TODO.md](TODO.md)). [PLAN.md](PLAN.md) contains the full spec and roadmap.
+> Agents working in this repo: start with [AGENTS.md](AGENTS.md).
 
-## Planned hosts
+## Hosts
 
 | Host | Role | Session |
 |---|---|---|
@@ -16,7 +17,8 @@ available as `pkgs.unstable.<pkg>`.
 | `server` | headless | none (ssh + docker) |
 
 All features are toggleable modules under the `cfg.*` option namespace — hosts flip
-switches, modules stay machine-agnostic.
+switches, modules stay machine-agnostic. The per-host `hardware-configuration.nix` files are
+placeholders until `nixos-generate-config` runs on each machine (PLAN Phase 2).
 
 ## Usage (once scaffolded)
 
