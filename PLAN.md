@@ -140,11 +140,15 @@ outputs =
 │   │       └── plasma.nix
 │   └── home/
 │       ├── default.nix             # auto-imports every sibling .nix
-│       ├── shell.nix               # zsh + starship + fzf/eza/btop + aliases
+│       ├── shell.nix               # zsh + starship + modern CLI tools + aliases
 │       ├── git.nix                 # git + delta/lfs; email via option
 │       ├── terminal.nix            # kitty
 │       ├── neovim.nix              # defaultEditor, aliases
 │       ├── xdg.nix                 # xdg.enable, user dirs, mime defaults
+│       ├── direnv.nix              # direnv + nix-direnv (Phase 4)
+│       ├── nix-index.nix           # nix-index + comma (Phase 4)
+│       ├── gpg.nix                 # gpg + gpg-agent w/ ssh-agent (Phase 4)
+│       ├── ssh.nix                 # ssh client defaults (Phase 4)
 │       ├── home-tools.nix          # programs.home-manager.enable
 │       └── hyprland/               # osConfig-gated Hyprland session (1.6)
 └── secrets/
@@ -645,19 +649,20 @@ Candidate toggles (one service = one module; add on demand, not scheduled):
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 
-- [ ] `direnv.nix` — `programs.direnv` + `nix-direnv`; pair with `nix.settings.keep-outputs` /
+- [x] `direnv.nix` — `programs.direnv` + `nix-direnv`; pair with `nix.settings.keep-outputs` /
       `keep-derivations` in `nix.nix` so dev-shell deps survive GC
-- [ ] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration; pairs with
-      keys-only ssh)
+- [x] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration; pairs with
+      keys-only ssh). 26.05 HM: pinentry is `services.gpg-agent.pinentry.package` — the flat
+      `pinentryPackage` is only a deprecated alias
 - [ ] `browser.nix` — `programs.firefox` (policies, profiles)
-- [ ] `ssh.nix` — `programs.ssh` client: per-host aliases, ControlMaster multiplexing, key
+- [x] `ssh.nix` — `programs.ssh` client: per-host aliases, ControlMaster multiplexing, key
       preferences; pairs with the keys-only server in `modules/nixos/ssh.nix`
 - [ ] `vscode.nix` — `programs.vscode` with declarative profiles/extensions (server-side
       vscode-server is why `server` enables nix-ld)
 - [ ] `easyeffects.nix` — `services.easyeffects` (PipeWire EQ/compressor presets); pairs with
       `cfg.audio.enable`
-- [ ] `nix-index.nix` — `programs.nix-index` + comma (channel-less command-not-found)
-- [ ] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
+- [x] `nix-index.nix` — `programs.nix-index` + comma (channel-less command-not-found)
+- [x] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
 - [ ] Theming: gtk/qt + cursor module; evaluate **Stylix** (single base16 palette across DE,
       terminal, apps) as the heavier alternative
 - [ ] Small: tmux (server; pairs with ssh), mpv / OBS (desktop), HM-side syncthing tray,

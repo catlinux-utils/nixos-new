@@ -78,7 +78,7 @@ PLAN.md — §1.5–1.6 for Phase 1, §2.1/§4 for the planned backlog):
 | `cfg.compat.{nix-ld,envfs,appimage}.enable` | bool (+ libraries) | `compat.nix` | run non-Nix binaries, shebangs, AppImages |
 | `cfg.desktop.enable` | bool | `desktop/base.nix` | shared desktop plumbing |
 | `cfg.desktop.{gnome,hyprland,plasma}.enable` | bool | `desktop/<de>.nix` | session choice |
-| `cfg.home.*` | bool / nullOr str / path | `modules/nixos/home-options.nix` | home features (shell, git, terminal, neovim, xdg, home-manager CLI, Hyprland wallpaper) — declared in the NixOS tree so hosts set them under the same flat `cfg.*` namespace |
+| `cfg.home.*` | bool / nullOr str / path | `modules/nixos/home-options.nix` | home features (shell, git, terminal, neovim, xdg, home-manager CLI, direnv, nix-index, gpg, ssh, Hyprland wallpaper) — declared in the NixOS tree so hosts set them under the same flat `cfg.*` namespace |
 | `cfg.secrets.enable` | bool (Phase 3) | `secrets.nix` | sops-nix |
 
 ## The `osConfig` bridge

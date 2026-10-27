@@ -28,5 +28,11 @@
     programs.fzf.enable = true;
     programs.eza.enable = true;
     programs.btop.enable = true;
+    programs.bat.enable = true;
+    programs.zoxide.enable = true;
+    programs.atuin.enable = true;
+    programs.yazi.enable = true;
+    programs.lazygit.enable = true;
+    programs.tealdeer.enable = true;
   };
 }

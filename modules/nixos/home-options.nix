@@ -55,6 +55,30 @@
       description = "home-manager CLI in the user environment";
     };
 
+    direnv.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "direnv + nix-direnv (per-project dev shells)";
+    };
+
+    nix-index.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "nix-index database + comma (command-not-found, `,pkg` runner)";
+    };
+
+    gpg.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "gpg + gpg-agent with ssh-agent support";
+    };
+
+    ssh.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "ssh client defaults (agent, connection multiplexing)";
+    };
+
     hyprland.wallpaper = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;

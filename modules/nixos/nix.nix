@@ -20,6 +20,9 @@
         "root"
         config.cfg.user.name
       ];
+      # dev-shell dependencies survive GC (pairs with modules/home/direnv.nix)
+      keep-outputs = true;
+      keep-derivations = true;
     };
 
     # `nix build nixpkgs#...` resolves to the exact pinned input
