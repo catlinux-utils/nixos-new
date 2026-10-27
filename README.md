@@ -6,8 +6,9 @@ available as `pkgs.unstable.<pkg>`.
 
 > **Status:** scaffold implemented — not yet machine-validated (`nix flake check` / `nix fmt` need
 > a Nix machine; see [TODO.md](TODO.md)). The `wsl` host (Phase 1.5) is the planned local
-> validation path — its distro bootstrap is pending. [PLAN.md](PLAN.md) contains the full spec and
-> roadmap. Agents working in this repo: start with [AGENTS.md](AGENTS.md).
+> validation path — its distro bootstrap is pending; the manual CI workflow
+> ([.github/workflows/ci.yml](.github/workflows/ci.yml)) is the interim one. [PLAN.md](PLAN.md)
+> contains the full spec and roadmap. Agents working in this repo: start with [AGENTS.md](AGENTS.md).
 
 ## Hosts
 

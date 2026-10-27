@@ -12,6 +12,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold
 - [ ] Pick a `cfg.home.hyprland.wallpaper` per host in `hosts/<name>/default.nix` (hyprpaper is
       wired; it just needs the image)
+- [ ] Push, then run the manual CI workflow (Actions tab) — first `nix flake check` / `nix fmt`
+      verdict plus per-host toplevel builds; then run the flake-update workflow and merge its PR
+      to land the first `flake.lock`
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
 - [ ] Set real values in `hosts/*/default.nix`: git email (commented TODO), confirm the username

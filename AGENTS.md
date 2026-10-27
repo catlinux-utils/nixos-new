@@ -35,6 +35,7 @@ nixpkgs **26.05** + Home Manager **release-26.05**.
 flake.nix              inputs + outputs; declares the hosts via mkHost
 lib/                   mkHost.nix (host assembler), importNixFiles.nix (auto-importer)
 overlays/unstable.nix  pkgs.unstable.<pkg> for everything
+.github/workflows/     manual CI (fmt + flake check + per-host toplevel builds), flake-update PR
 hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix;
                        wsl has none (NixOS-WSL owns boot/disks)
 hosts/installer/       ISO media module — image, not a host (deferred, PLAN Phase 6)

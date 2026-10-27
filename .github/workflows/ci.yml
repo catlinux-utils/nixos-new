@@ -1,0 +1,34 @@
+name: CI
+
+# manual-only: run from the Actions tab when wanted
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - name: Check formatting (RFC 101)
+        run: nix fmt -- --check .
+      - name: Flake check (evaluates every host)
+        run: nix flake check
+
+  build:
+    # real builds surface breakage that evaluation alone cannot; the
+    # toplevels mostly pull from the nixpkgs cache, so runners download and
+    # link rather than compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [desktop, laptop, server, wsl]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - name: Build host toplevel
+        run: nix build --print-build-logs .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel

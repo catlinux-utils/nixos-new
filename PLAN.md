@@ -689,13 +689,14 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 
 ## Phase 5 — CI `[ ]`
 
-- [ ] GitHub Actions on push/PR: install nix (DeterminateSystems/nix-installer-action),
-      `nix fmt --check`, `nix flake check`
-- [ ] CI builds each host's toplevel (`nix build
-      .#nixosConfigurations.<host>.config.system.build.toplevel`) — `nix flake check` evaluates
-      only; real build breakage should surface on PRs, not on the machines
-- [ ] Weekly `nix flake update` cron opening a PR — keeps the 26.05 pin fresh and surfaces nixpkgs
-      breakage early
+- [x] GitHub Actions (manual `workflow_dispatch` only — user decision, no push/PR triggers):
+      install nix (DeterminateSystems/nix-installer-action), `nix fmt -- --check .`,
+      `nix flake check`
+- [x] CI builds each host's toplevel (`nix build
+      .#nixosConfigurations.<host>.config.system.build.toplevel`, matrix includes `wsl`) — `nix
+      flake check` evaluates only; real build breakage should surface in CI, not on the machines
+- [x] `nix flake update` opening a PR (manual `workflow_dispatch`, no cron — user decision) —
+      keeps the 26.05 pin fresh and surfaces nixpkgs breakage early
 - [ ] Cache strategy (Cachix or GH actions cache) if checks get slow
 
 ## Phase 6 — Extras (unscheduled) `[ ]`
