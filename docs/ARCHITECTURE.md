@@ -60,15 +60,19 @@ as the live reference. The load-bearing parts:
   (`modules/home/hyprland/`), so nothing is autostarted via `exec-once`. The session config
   itself is a plain vendored file (`modules/home/hyprland/hyprland.lua`, Hyprland's Lua config
   format) copied verbatim to `~/.config/hypr/` — kept interpolation-free so it doubles as a
-  portable config for non-NixOS machines; the rofi launcher and its rasi follow the same pattern.
+  portable config for non-NixOS machines; the rofi launcher and its rasi follow the same pattern
+  (with the rasi carrying an optional `?import` of the runtime palette overlay, so a machine
+  without theming keeps its hardcoded colors).
   Hyprlock (spawned by
   hypridle's `lock_cmd`) authenticates through the `security.pam.services.hyprlock` service the
-  system side creates. Hyprland's own HM systemd integration is disabled
+  system side creates; its conf is a two-source dispatcher — hardcoded fallback `$lock*` color
+  variables, an optional matugen overlay that redefines them, then the sourced layout file. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
 - **Runtime theming flow** — `modules/home/palette.nix` (rides `cfg.home.theming.enable` + a
   wallpaper): **matugen** (from nixpkgs, no flake input) extracts a Material-You palette from
   the running wallpaper and renders the vendored templates in `modules/home/palette/templates/`
-  (bar palette JSON, kitty colors, mako config, gtk3/gtk4 css) into `~/.cache/theming/` —
+  (bar palette JSON, kitty colors, mako config, rofi color overlay, hyprlock color variables,
+  gtk3/gtk4 css) into `~/.cache/theming/` —
   deliberately outside HM management, since store symlinks can't be overwritten at runtime. The
   running wallpaper is a *copied state file* (`~/.local/state/theming/current`): hyprpaper
   always loads it, the `wallswitch` script (also wired as waypaper's `post_command`) overwrites

@@ -30,7 +30,9 @@ configuration {
     selected:       #79E6F3FF;
     active:         #5ADECDFF;
     urgent:         #F37F97FF;
-    font: "MesloLGS Nerd Font 10";
+    /* font swapped from the legacy MesloLGS to JetBrainsMono (this repo's
+       font stack — see mako.conf in palette/templates) */
+    font: "JetBrainsMono Nerd Font 10";
     
     border-colour:               var(selected);
     handle-colour:               var(selected);
@@ -316,3 +318,12 @@ error-message {
     background-color:            @background-colour;
     text-color:                  @foreground-colour;
 }
+
+/*****----- Runtime palette -----*****/
+
+/* matugen overlay (modules/home/palette.nix writes ~/.cache/theming/rofi.rasi
+   from the running wallpaper). ?import is rofi's optional import: a missing
+   file is skipped, the hardcoded colors above are the fallback, and the
+   imported global block's values win (last parsed entry wins). This file
+   stays copyable to non-NixOS machines either way. */
+?import "~/.cache/theming/rofi.rasi"

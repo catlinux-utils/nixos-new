@@ -18,7 +18,8 @@ in
   # managed paths (store symlinks cannot be overwritten at runtime):
   #   ~/.local/state/theming/current  — the running wallpaper (copied, persists
   #                                     across reboots; the authoritative file)
-  #   ~/.cache/theming/               — generated palette, kitty, mako outputs
+  #   ~/.cache/theming/               — generated palette, kitty, mako, rofi,
+  #                                     hyprlock outputs
   config = lib.mkIf
     (
       osConfig.cfg.desktop.enable
@@ -73,6 +74,14 @@ in
         input_path = "${./templates/mako.conf.tmpl}"
         output_path = "${cacheDir}/mako.conf"
         post_hook = "makoctl reload || true"
+
+        [templates.rofi]
+        input_path = "${./templates/rofi.rasi.tmpl}"
+        output_path = "${cacheDir}/rofi.rasi"
+
+        [templates.hyprlock]
+        input_path = "${./templates/hyprlock-colors.conf.tmpl}"
+        output_path = "${cacheDir}/hyprlock-colors.conf"
 
         [templates.gtk3]
         input_path = "${./templates/gtk.css.tmpl}"

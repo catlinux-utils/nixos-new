@@ -1,0 +1,11 @@
+# matugen palette (modules/home/palette.nix) — redefines the $lock* color
+# variables that hyprlock.conf defines as hardcoded fallbacks. hyprlang
+# expands $var at parse time and keeps the last definition, so these values
+# win over the fallbacks while the layout (sourced after this file) keeps
+# working unchanged. Colors use hyprlock's rgb()/rgba() hex forms (bare
+# #hex does not parse): rgb(RRRRRR) is opaque, rgba(RRRRRRAA) carries alpha.
+$lockFg = rgb({{colors.on_surface.default.hex_stripped}})
+$lockInner = rgba({{colors.surface_variant.default.hex_stripped}}66)
+$lockOuter = rgb({{colors.outline.default.hex_stripped}})
+$lockCheck = rgb({{colors.primary.default.hex_stripped}})
+$lockFail = rgb({{colors.error.default.hex_stripped}})

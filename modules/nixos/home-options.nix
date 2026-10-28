@@ -109,8 +109,9 @@
         default = false;
         description = ''
           Runtime wallpaper theming (matugen): one palette extracted from the
-          running wallpaper feeds the quickshell bar, kitty, mako and gtk.
-          waypaper is the wallpaper picker; needs a wallpaper to be set.
+          running wallpaper feeds the quickshell bar, kitty, mako, gtk, rofi
+          and hyprlock. waypaper is the wallpaper picker; needs a wallpaper
+          to be set.
         '';
       };
       wallpapers = lib.mkOption {

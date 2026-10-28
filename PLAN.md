@@ -591,8 +591,14 @@ against pinned 26.05 at implementation.
 - [x] `tailscale.nix` — `cfg.tailscale.enable`: `services.tailscale` (desktop/laptop/server; server
       remote access without port-forwarding)
 - [x] `syncthing.nix` — `cfg.syncthing.enable`: `services.syncthing` (desktop/laptop/server)
-- [ ] `backup.nix` — restic/borg job options — **blocked on Phase 3** (needs sops-nix for
-      credentials)
+- [x] `backup.nix` — restic/borg job options — landed **dormant** (2026-10-28):
+      `cfg.backup.enable` (default off) with `cfg.backup.restic.jobs` /
+      `cfg.backup.borg.jobs` attrset passthroughs assigned to
+      `services.restic.backups` / `services.borgbackup.jobs` (both verified against
+      nixpkgs 26.05 module sources; upstream owns timers + assertions). Enabling
+      still needs **Phase 3** — the credentials (`passwordFile`/`environmentFile`,
+      `passCommand`) must be sops-decrypted files referenced via
+      `config.sops.secrets.<name>.path`, never interpolated
 
 The `wsl` host enables none of these: no real firmware or disks, and the Windows side owns VPN
 and networking. 26.05 notes (verified against `nixos-26.05` module sources): `services.avahi`
@@ -759,7 +765,9 @@ Medium — new modules/options:
       checklist). The Electron Wayland env vars moved to the uwsm env file `~/.config/uwsm/env`
       (written in session.nix; legacy set none). Launcher switched from wofi to rofi to match the
       lua's SUPER+R bind: new `modules/home/hyprland/rofi.nix` with the legacy rofi theme
-      vendored as `rofi.rasi` (extracted byte-exact from the legacy `writeText` string).
+      vendored as `rofi.rasi` (extracted byte-exact from the legacy `writeText` string; later
+      updated — 2026-10-28 — with the MesloLGS→JetBrainsMono font swap and an optional matugen
+      palette footer, see the Phase 4 runtime-theming entry).
       `hyprshutdown` installed for the SUPER+M bind (the bind falls back to `uwsm stop` without
       it). Caveats kept verbatim in the lua: SUPER+W opens `brave-browser.desktop` (this flake
       ships Firefox — install Brave or edit the bind), monitor workspace mapping targets
@@ -809,7 +817,8 @@ Medium — new modules/options:
       (HM `services.hyprpolkitagent`) and the Electron env vars. *Finished:* hypridle
       (`systemdTarget` pinned to `graphical-session.target` since uwsm owns activation) +
       hyprlock (HM `programs.hyprlock`, backed by `security.pam.services.hyprlock` set
-      system-side in `desktop/hyprland.nix`), mako notifications, hyprshot screenshot binds
+      system-side in `desktop/hyprland.nix`; its conf was later reworked into the
+      runtime-palette dispatcher — see the Phase 4 runtime-theming entry), mako notifications, hyprshot screenshot binds
       (Print full screen, $mod+Print region). Wallpaper: desktop sets
       `cfg.home.hyprland.wallpaper` — originally the placeholder gradient
       `hosts/desktop/wallpaper.png` (since renamed to `wallpapers/dusk.png`; the runtime theming
@@ -868,7 +877,26 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       graphical login (oneshot `matugen-palette.service`, Before=hyprpaper.service). Theme.qml
       consumes the palette JSON via FileView with the hand-tuned colors as fallbacks — the
       vendored-verbatim convention survives (templates are a new verbatim asset class; rofi.rasi
-      still unthemed, v2 candidate)
+      and hyprlock colors were the v2 candidates — landed 2026-10-28, see below)
+- [x] Rofi + hyprlock runtime theming (Phase 4 follow-up, 2026-10-28) — two new matugen
+      templates in `modules/home/palette/templates/`:
+      `rofi.rasi.tmpl` redefines the vendored rasi's six global color
+      properties (imported by `?import "~/.cache/theming/rofi.rasi"` appended to
+      `modules/home/hyprland/rofi.rasi` — rofi's optional import: a missing file is skipped and
+      the hardcoded colors stay the fallback; rasi merges sections in parse order, last value
+      wins, `var()`/`@()` references resolve by name, so the overlay retints the whole theme),
+      and `hyprlock-colors.conf.tmpl` redefines the `$lock*` color variables (below). While at
+      it, the vendored rasi's font was swapped from the legacy MesloLGS to JetBrainsMono (this
+      repo's font stack). `hyprlock` — `modules/home/hyprland/lock.nix` rewritten: HM config
+      generation emptied (it would write a plain conf otherwise) and the entry file becomes a
+      dispatcher — hardcoded fallback `$lock*` variables, then
+      `source = ~/.cache/theming/hyprlock-colors.conf` (optional override), then
+      `source = hyprlock-base.conf` (the layout, which references only the `$lock*`s). Verified
+      in hyprlang/hyprlock sources: `$var` expansion happens at line-parse time, redefinition
+      overwrites silently (last definition wins), a missing source file is only logged and
+      skipped, and special categories are append-only lists — hence colors-as-variables, never a
+      runtime re-declared section. Colors use hyprlock's `rgb(RRRRRR)`/`rgba(RRRRRRAA)` hex
+      forms; bare `#hex` does not parse
 
 ## Phase 5 — CI `[ ]`
 

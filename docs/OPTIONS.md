@@ -53,6 +53,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.geolocation.enable` | geoclue2 (night light, auto timezone) | ✓ | ✓ | – | – |
 | `cfg.tailscale.enable` | tailscaled (mesh client; `tailscale up` once per host) | ✓ | ✓ | ✓ | – |
 | `cfg.syncthing.enable` | syncthing as the main user (Web UI on 127.0.0.1:8384) | ✓ | ✓ | ✓ | – |
+| `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
 
 ### Sub-options (set per host when needed)
@@ -66,6 +67,8 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.ollama.rocmGfx` | nullOr str, `null` | AMD GFX override (e.g. `"10.3.0"`); null = stock ollama |
 | `cfg.boot.plymouth.theme` | str, `tribar` | Plymouth theme name |
 | `cfg.compat.nix-ld.libraries` | listOf package, `[]` | libs for non-Nix binaries |
+| `cfg.backup.restic.jobs` | attrsOf anything, `{}` | assigned to `services.restic.backups` (26.05-verified fields); credentials via `config.sops.secrets.<name>.path` |
+| `cfg.backup.borg.jobs` | attrsOf anything, `{}` | assigned to `services.borgbackup.jobs`; secrets via `passCommand`/`environment` referencing sops files, never values |
 | `cfg.user.initialHashedPassword` | nullOr str, `null` | first-deploy password — locked account without it (see PLAN Phase 2) |
 
 ## Desktop session
@@ -110,7 +113,7 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.password-store.enable` | bool, on | pass (`pass init <gpg-id>` on first use) |
 | `cfg.home.tmux.enable` | bool, **off** | tmux — ssh-serving hosts flip it (server does) |
 | `cfg.home.obs.enable` | bool, **off** | OBS Studio screen recording (needs a desktop session) |
-| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, gtk), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management |
+| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, gtk, rofi, hyprlock), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management |
 | `cfg.home.theming.wallpapers` | listOf path, `[]` | shipped collection installed to `~/Pictures/Wallpapers/` (store symlinks; picking one copies it) |
 | `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off |
 

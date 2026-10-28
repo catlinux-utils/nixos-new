@@ -27,8 +27,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] First deploy per host: set `cfg.user.initialHashedPassword` first (locked account otherwise
       — see PLAN Phase 2), then `nh os switch --dry` → `nh os test` → `nh os switch`
 - [ ] After the desktop's first deploy: verify the theming flow — login seeds
-      `~/.local/state/theming/current` + palette renders (bar/mako/kitty/gtk recolor), waypaper
-      (`SUPER+SHIFT+W`) switches wallpaper + rethemes live, reboot restores the last pick
+      `~/.local/state/theming/current` + palette renders (bar/mako/kitty/gtk/rofi/hyprlock
+      recolor), waypaper (`SUPER+SHIFT+W`) switches wallpaper + rethemes live, reboot restores
+      the last pick
 
 ## Legacy-flake ports (PLAN §2.2)
 
@@ -47,5 +48,6 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 - [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
       `nixos-rebuild build-image --flake .#<host> --image-variant iso`
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
-      them; runtime-theming follow-ups: rofi.rasi + hyprlock colors, laptop wallpaper set
+      them; runtime-theming follow-up: laptop wallpaper set (rofi.rasi and hyprlock colors
+      landed 2026-10-28)
 - [ ] Phase 5 leftover — cache strategy (Cachix or GH actions cache) if the CI checks get slow

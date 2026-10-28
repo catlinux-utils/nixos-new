@@ -1,0 +1,14 @@
+/* matugen palette overlay (modules/home/palette.nix) — redefines the global
+   color properties of the vendored rofi theme; imported with ?import from
+   modules/home/hyprland/rofi.rasi, so a missing or stale file falls back to
+   the hardcoded colors and nothing breaks. Rasi merges sections in parse
+   order and keeps the last value, and var()/@() references resolve to the
+   property by name — the six raw colors below retint the whole theme. */
+* {
+    background:     {{colors.surface.default.hex}}FF;
+    background-alt: {{colors.surface_variant.default.hex}}FF;
+    foreground:     {{colors.on_surface.default.hex}}FF;
+    selected:       {{colors.primary.default.hex}}FF;
+    active:         {{colors.tertiary.default.hex}}FF;
+    urgent:         {{colors.error.default.hex}}FF;
+}
