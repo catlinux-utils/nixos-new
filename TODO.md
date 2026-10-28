@@ -46,7 +46,6 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 
 - [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
       `nixos-rebuild build-image --flake .#<host> --image-variant iso`
-- [ ] Phase 3 — sops-nix secrets
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
       them; runtime-theming follow-ups: rofi.rasi + hyprlock colors, laptop wallpaper set
-- [ ] Phase 5 — CI (fmt + flake check + per-host toplevel builds)
+- [ ] Phase 5 leftover — cache strategy (Cachix or GH actions cache) if the CI checks get slow

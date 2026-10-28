@@ -34,7 +34,8 @@ nh (configured in modules/nixos/nh.nix, flake path = cfg.nh.flakeDir):
 
 ## Folder scheme (annotated)
 
-See PLAN.md §1.2 for the full tree. The load-bearing parts:
+See PLAN.md §1.2 for the tree — a Phase 1 baseline; later phases grew it, so treat the checkout
+as the live reference. The load-bearing parts:
 
 - **`lib/mkHost.nix`** — the only place host assembly happens. One host = one directory under
   `hosts/` + one line in `flake.nix`. It sets `networking.hostName`, applies the unstable overlay,

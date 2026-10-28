@@ -96,6 +96,9 @@ outputs =
 
 ### 1.2 Folder scheme (target tree)
 
+Phase 1 baseline — later phases (§2.1, §2.2, Phase 4) added more modules under `modules/`, the
+`wsl` host and the shipped wallpapers; the checkout is the live tree.
+
 ```
 .
 ├── flake.nix
@@ -301,7 +304,7 @@ Every feature module follows one shape:
 | `compat.nix` | `cfg.compat.nix-ld.enable` (+ `.libraries` option), `cfg.compat.envfs.enable`, `cfg.compat.appimage.enable` | run non-Nix binaries/scripts: nix-ld loader shim, envfs FUSE (`/bin`, `/usr/bin` shebangs), AppImage via `programs.appimage` + `binfmt` |
 | `desktop/base.nix` | `cfg.desktop.enable` | fonts (`pkgs.nerd-fonts.<font>` + noto — the old monolithic `nerdfonts` package throws at eval), `xdg.portal`, `xdg-user-dirs`; `assertions` guard so at most one DE (`gnome`/`hyprland`/`plasma`) is enabled |
 | `desktop/gnome.nix` | `cfg.desktop.gnome.enable` | GNOME (gdm); **sets `cfg.desktop.enable` itself** |
-| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland launched via uwsm (`programs.hyprland.withUWSM` — activates `graphical-session.target`); `security.polkit`; `security.pam.services.hyprlock` (backs the user-side hyprlock locker); user-side pieces (waybar, hypridle, hyprlock, mako, hyprshot, wallpaper, polkit agent) live in `modules/home/hyprland/`; `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
+| `desktop/hyprland.nix` | `cfg.desktop.hyprland.enable` | Hyprland launched via uwsm (`programs.hyprland.withUWSM` — activates `graphical-session.target`); `security.polkit`; `security.pam.services.hyprlock` (backs the user-side hyprlock locker); user-side pieces (quickshell bar, rofi launcher, hypridle, hyprlock, mako, hyprshot, wallpaper, polkit agent) live in `modules/home/hyprland/`; `mkDefault`s `cfg.graphics/audio` on; **sets `cfg.desktop.enable` itself** |
 | `desktop/plasma.nix` | `cfg.desktop.plasma.enable` | KDE Plasma 6 (sddm); **sets `cfg.desktop.enable` itself** |
 
 Option names are quoted for **nixpkgs 26.05** and were verified against the `nixos-26.05` module
@@ -359,8 +362,8 @@ free):
 - `neovim.nix` — `programs.neovim` (`defaultEditor`, `viAlias`, `vimAlias`)
 - `xdg.nix` — `xdg.enable`, user dirs, sane mime defaults
 - `home-tools.nix` — `programs.home-manager.enable` (HM CLI in the user env)
-- `hyprland/` — feature folder (settings/binds, waybar, hypridle, hyprlock, mako, screenshots,
-  wallpaper, polkit agent), **no own switch**;
+- `hyprland/` — feature folder (hyprland.lua config, quickshell bar, rofi, hypridle, hyprlock,
+  mako, screenshots, wallpaper, polkit agent), **no own switch**;
   gated on the *system* switch via `osConfig`. This is the
   worked example of the NixOS ↔ HM bridge:
 
@@ -373,7 +376,7 @@ free):
 {
   config = lib.mkIf osConfig.cfg.desktop.hyprland.enable {
     wayland.windowManager.hyprland.enable = true;
-    # keybinds, settings, waybar, launcher...
+    # keybinds, settings, quickshell bar, rofi launcher...
   };
 }
 ```
@@ -800,16 +803,17 @@ Medium — new modules/options:
       so Slack/Discord/VS Code run native — needed on any Wayland session, not just Hyprland.
       *Partly done ahead of Phase 4:* the session runs via uwsm (`programs.hyprland.withUWSM`;
       HM's hyprland systemd integration stays off so user units bind to
-      `graphical-session.target`), and `modules/home/hyprland/` ships settings/binds, wofi
-      launcher, waybar, hyprpaper wallpaper (`cfg.home.hyprland.wallpaper`), the polkit agent
+      `graphical-session.target`), and `modules/home/hyprland/` ships the session config, a
+      launcher and a bar (wofi + waybar at first; rofi + quickshell replaced them per §2.2),
+      hyprpaper wallpaper (`cfg.home.hyprland.wallpaper`), the polkit agent
       (HM `services.hyprpolkitagent`) and the Electron env vars. *Finished:* hypridle
       (`systemdTarget` pinned to `graphical-session.target` since uwsm owns activation) +
       hyprlock (HM `programs.hyprlock`, backed by `security.pam.services.hyprlock` set
       system-side in `desktop/hyprland.nix`), mako notifications, hyprshot screenshot binds
       (Print full screen, $mod+Print region). Wallpaper: desktop sets
-      `cfg.home.hyprland.wallpaper` to the vendored placeholder gradient
-      `hosts/desktop/wallpaper.png` (palette matches the quickshell bar) — replace the file to
-      change it
+      `cfg.home.hyprland.wallpaper` — originally the placeholder gradient
+      `hosts/desktop/wallpaper.png` (since renamed to `wallpapers/dusk.png`; the runtime theming
+      entry below took over wallpaper changes — the option now only seeds the state file)
 
 DE-independent home modules (each follows the §1.6 shape; land any time after Phase 1):
 
