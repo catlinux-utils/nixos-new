@@ -43,7 +43,7 @@ nixpkgs **26.05** + Home Manager **release-26.05**.
 ## Repo map
 
 ```
-flake.nix              inputs + outputs; declares the hosts via mkHost
+flake.nix              description + inputs + outputs; declares the hosts via mkHost
 lib/                   mkHost.nix (host assembler), importNixFiles.nix (auto-importer)
 overlays/unstable.nix  pkgs.unstable.<pkg> for everything
 .github/workflows/     manual CI (fmt + flake check + per-host toplevel builds), flake-update PR
@@ -85,6 +85,8 @@ AGENTS.md README.md    this file / project overview
   that outgrows one file becomes a folder of sibling `.nix` files (`modules/home/hyprland/`).
 - Bleeding-edge packages come only via `pkgs.unstable.<pkg>` (the one overlay) — never add extra
   nixpkgs inputs for single packages.
+- The flake carries a top-level `description` (what `nix flake show` displays) — update it when
+  a host is added or the flake's scope changes.
 
 ## Feature-module pattern (checklist)
 
@@ -143,7 +145,8 @@ in the same commit.
 3. Register in `flake.nix`: `nixosConfigurations.<name> = mkHost { hostname = "<name>"; };`
 4. Foreign-arch binaries: set `boot.binfmt.emulatedSystems` directly in the host file — per-host
    decision, no toggle.
-5. Update README host table, PLAN.md status, ARCHITECTURE.md if the scheme changed.
+5. Update README host table, flake `description`, PLAN.md status, ARCHITECTURE.md if the scheme
+   changed.
 
 ### Add a NixOS module
 
