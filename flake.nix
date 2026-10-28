@@ -1,4 +1,6 @@
 {
+  description = "Multi-host NixOS flake (desktop, laptop, server, wsl) with Home Manager";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
