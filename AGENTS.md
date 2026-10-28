@@ -54,7 +54,8 @@ modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
                        sandbox.nix
 modules/home/          home-manager feature modules (auto-imported); includes
-                       xdg.nix, home-tools.nix, hyprland/ (session config)
+                       xdg.nix, home-tools.nix, hyprland/ (session config),
+                       palette/ (matugen templates — runtime theming)
 docs/ARCHITECTURE.md   how it all fits together
 docs/OPTIONS.md        every cfg.* option: type, default, effect, per-host matrix
 PLAN.md TODO.md        roadmap / actionable next steps
@@ -103,10 +104,15 @@ AGENTS.md README.md    this file / project overview
 8. A feature folder (`modules/home/hyprland/`) works the same as a single file: every `.nix` in it
    is auto-imported, so the folder must not contain a `default.nix`. Keep one writer per shared
    settings key across the folder's files (no double-owned config).
-9. Raw config assets (`hyprland.lua`, `rofi.rasi`, the quickshell QML) are vendored verbatim next
-   to their module — never generate them from Nix values or interpolate into them; they must stay
-   copyable to non-NixOS machines. The auto-importer only picks up `.nix`, so non-Nix asset files
-   inside feature folders are safe.
+9. Raw config assets (`hyprland.lua`, `rofi.rasi`, the quickshell QML, the matugen templates in
+   `modules/home/palette/templates/`) are vendored verbatim next to their module — never generate
+   them from Nix values or interpolate into them; they must stay copyable to non-NixOS machines.
+   The auto-importer only picks up `.nix`, so non-Nix asset files inside feature folders are
+   safe. Runtime-generated files (the matugen palette + rendered templates) live in
+   `~/.cache/theming/` and the running wallpaper copy in `~/.local/state/theming/` — both
+   deliberately outside HM management (store symlinks can't be overwritten at runtime). Vendored
+   consumers may *read* those generated files at runtime, but must keep hardcoded fallbacks
+   (see `Theme.qml`).
 
 ## Repo helper skills
 

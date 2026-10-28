@@ -1,5 +1,6 @@
 {
   lib,
+  config,
   osConfig,
   ...
 }:
@@ -11,7 +12,10 @@
         name = "JetBrainsMono Nerd Font";
         size = 11;
       };
-      themeFile = "Catppuccin-Mocha";
+      # colors from the matugen palette (modules/home/palette.nix):
+      # globinclude silently skips a missing file — kitty defaults apply
+      # until the first palette render
+      settings.globinclude = "${config.home.homeDirectory}/.cache/theming/kitty-colors.conf";
       settings.confirm_os_window_close = 0;
     };
   };

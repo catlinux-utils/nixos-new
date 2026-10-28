@@ -64,6 +64,18 @@ See PLAN.md §1.2 for the full tree. The load-bearing parts:
   hypridle's `lock_cmd`) authenticates through the `security.pam.services.hyprlock` service the
   system side creates. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
+- **Runtime theming flow** — `modules/home/palette.nix` (rides `cfg.home.theming.enable` + a
+  wallpaper): **matugen** (from nixpkgs, no flake input) extracts a Material-You palette from
+  the running wallpaper and renders the vendored templates in `modules/home/palette/templates/`
+  (bar palette JSON, kitty colors, mako config, gtk3/gtk4 css) into `~/.cache/theming/` —
+  deliberately outside HM management, since store symlinks can't be overwritten at runtime. The
+  running wallpaper is a *copied state file* (`~/.local/state/theming/current`): hyprpaper
+  always loads it, the `wallswitch` script (also wired as waypaper's `post_command`) overwrites
+  it on every pick, and a login oneshot seeds it from the host's install-time default
+  (`cfg.home.hyprland.wallpaper`, a member of the shipped `hosts/<host>/wallpapers/` set
+  installed to `~/Pictures/Wallpapers/` for the waypaper GUI) exactly once. `Theme.qml` reads
+  the palette JSON at runtime with the hand-tuned colors as fallbacks, so the vendored assets
+  stay copyable and generated files never overlap HM-managed paths.
 
 ## The option tree
 
@@ -89,7 +101,8 @@ layer adds user-facing configuration for it. Hosts set both sides through the sa
 namespace. Some home modules ride a system switch with no option of their own — e.g.
 `browser.nix`, `theming.nix`, `vscode.nix` and `mpv.nix` gate on `cfg.desktop.enable`,
 `gnome.nix` on `cfg.desktop.gnome.enable` (like the `hyprland/` folder), so headless hosts don't
-carry GUI software.
+carry GUI software; `palette.nix` additionally requires `cfg.home.theming.enable` and a set
+wallpaper.
 
 ## Unstable overlay
 

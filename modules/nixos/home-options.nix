@@ -103,12 +103,33 @@
       description = "OBS Studio — opt-in screen recording";
     };
 
+    theming = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = ''
+          Runtime wallpaper theming (matugen): one palette extracted from the
+          running wallpaper feeds the quickshell bar, kitty, mako and gtk.
+          waypaper is the wallpaper picker; needs a wallpaper to be set.
+        '';
+      };
+      wallpapers = lib.mkOption {
+        type = lib.types.listOf lib.types.path;
+        default = [ ];
+        description = ''
+          Wallpaper collection installed to ~/Pictures/Wallpapers for the
+          waypaper picker. Only used when theming.enable is set.
+        '';
+      };
+    };
+
     hyprland.wallpaper = lib.mkOption {
       type = lib.types.nullOr lib.types.path;
       default = null;
       description = ''
-        Wallpaper image for hyprpaper — a store path via `./file.png` (reproducible)
-        or an absolute path on the machine. null disables hyprpaper.
+        Install-time default wallpaper — seeds ~/.local/state/theming/current
+        exactly once (the state copy is authoritative afterwards). Also gates
+        hyprpaper; null disables it. Requires theming.enable for the seed.
       '';
     };
   };

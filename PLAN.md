@@ -838,10 +838,9 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       settings.ini entries) and Qt adwaita-dark via `qt.platformTheme.name`/`qt.style.name`
       (packages auto-detected: adwaita-qt, adwaita-qt6, qadwaitadecorations). The cursor half
       landed earlier as `modules/home/hyprland/cursor.nix` (§2.2); gnome.nix's `gtk.enable` +
-      `color-scheme` moved into theming.nix (one writer per key). **Stylix: deferred** — it wants
-      its own flake input (user sign-off) and would fight the vendored-asset convention
-      (Theme.qml / rofi.rasi carry the hand-tuned palette); revisit only if per-app theming needs
-      multiply
+      `color-scheme` moved into theming.nix (one writer per key). **Stylix: deferred, then the
+      deferral was reopened (2026-10-28) and resolved as runtime theming instead** — see the
+      `palette.nix` entry below
 - [x] `tmux.nix` — opt-in (default false); hosts that serve ssh sessions flip it (server does)
 - [x] `mpv.nix` — desktop video player (rides `cfg.desktop.enable`)
 - [x] `password-store.nix` — `programs.password-store` (pairs with gpg.nix)
@@ -850,6 +849,22 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [x] HM-side syncthing tray — unblocked by Phase 2.1; `modules/home/syncthing-tray.nix` gates
       `services.syncthing.tray` on `cfg.syncthing.enable` + `cfg.desktop.enable` (the quickshell
       bar hosts the StatusNotifier icon on hyprland; GNOME has its own tray)
+- [x] Runtime wallpaper theming (Phase 4 follow-up, 2026-10-28) — `modules/home/palette.nix`
+      behind `cfg.home.theming.enable` (+ a wallpaper): **matugen** (from nixpkgs, no new flake
+      input) extracts a Material-You palette from the running wallpaper and renders vendored
+      templates in `modules/home/palette/templates/` (palette.json for the bar, kitty, mako,
+      gtk3/gtk4 css) into `~/.cache/theming/` — writable state, deliberately not HM-managed
+      (store symlinks can't be overwritten at runtime). **waypaper** (`pkgs.waypaper`, GUI picker
+      bound to SUPER+SHIFT+W) calls the `wallswitch` script (`backend = none` + `post_command`
+      with `$wallpaper` substitution): copy → persistent state file
+      `~/.local/state/theming/current` → hyprpaper reload → matugen. The state copy is the
+      source of truth: hyprpaper always loads it, the palette always derives from it, reboots
+      restore the last pick. The default wallpaper (`cfg.home.hyprland.wallpaper`, now the
+      shipped `hosts/desktop/wallpapers/` set) seeds the state file exactly once on first
+      graphical login (oneshot `matugen-palette.service`, Before=hyprpaper.service). Theme.qml
+      consumes the palette JSON via FileView with the hand-tuned colors as fallbacks — the
+      vendored-verbatim convention survives (templates are a new verbatim asset class; rofi.rasi
+      still unthemed, v2 candidate)
 
 ## Phase 5 — CI `[ ]`
 

@@ -1,27 +1,21 @@
 {
   lib,
+  config,
   osConfig,
+  pkgs,
   ...
 }:
 {
   config = lib.mkIf osConfig.cfg.desktop.hyprland.enable {
-    # notification daemon (Wayland); config lands in ~/.config/mako/config
-    services.mako = {
-      enable = true;
-      settings = {
-        anchor = "top-right";
-        font = "JetBrainsMono Nerd Font 11";
-        # match the quickshell bar's Theme.qml (col0 / colFg / col1)
-        background-color = "#18161a";
-        text-color = "#ebeffe";
-        border-color = "#707f9b";
-        border-size = 2;
-        border-radius = 8;
-        default-timeout = 5000;
-        icons = true;
-        markup = true;
-        layer = "top";
-      };
+    # notification daemon (Wayland). Colors come from the runtime-generated
+    # config (modules/home/palette.nix → ~/.cache/theming/mako.conf) so they
+    # follow the wallpaper; without theming mako runs on built-in defaults.
+    services.mako.enable = true;
+
+    systemd.user.services.mako = {
+      Unit.After = lib.mkIf osConfig.cfg.home.theming.enable [ "matugen-palette.service" ];
+      Service.ExecStart = lib.mkIf osConfig.cfg.home.theming.enable (lib.mkForce
+        "${pkgs.mako}/bin/mako -c ${config.home.homeDirectory}/.cache/theming/mako.conf");
     };
   };
 }

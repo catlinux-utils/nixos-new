@@ -349,6 +349,7 @@ hl.bind("SUPER + C", hl.dsp.exec_cmd("uwsm app -- code.desktop"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("uwsm app -- nemo.desktop"))
 hl.bind("SUPER + R", hl.dsp.exec_cmd(
     "killall rofi || uwsm app -- rofi -show drun -location 1 -config ~/.config/rofi/config.rasi -terminal kitty -run-command 'uwsm app -- {cmd}'"))
+hl.bind("SUPER + SHIFT + W", hl.dsp.exec_cmd("uwsm app -- waypaper"))
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd("hyprshot -m region -z"))
 
 hl.bind("SUPER + left", hl.dsp.focus({

@@ -24,9 +24,19 @@
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
-    # hyprland wallpaper (hyprpaper) — vendored placeholder gradient
-    # (palette matches the quickshell bar); replace the file to change it
-    home.hyprland.wallpaper = ./wallpaper.png;
+    # theming: matugen palette from the running wallpaper + waypaper picker
+    # (SUPER+SHIFT+W). The vendored set ships to ~/Pictures/Wallpapers;
+    # `wallpaper` is the install-time default — it seeds
+    # ~/.local/state/theming/current exactly once and is never re-applied
+    # afterwards. Replace the files to change the collection.
+    home.theming.enable = true;
+    home.theming.wallpapers = [
+      ./wallpapers/dusk.png
+      ./wallpapers/dawn.png
+      ./wallpapers/moss.png
+      ./wallpapers/ember.png
+    ];
+    home.hyprland.wallpaper = ./wallpapers/dusk.png;
 
     # features — host matrix: PLAN.md §1.7
     boot.enable = true;
