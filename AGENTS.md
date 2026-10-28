@@ -187,6 +187,9 @@ before it existed.
 
 ## Commit hygiene
 
+- **Never commit without explicit user approval.** Finish the work, present a summary of the
+  changes (files touched, what/why), and wait for the user to review the code and give the
+  go-ahead in the session — only then commit. This includes docs-only and chore commits.
 - Terse conventional commits, subject-only: `<type>(<scope>): <imperative summary>`, ≤50 chars,
   no trailing period (e.g. `docs: add compat module (nix-ld, envfs, appimage)`). Body only when
   the why isn't obvious from the diff.
