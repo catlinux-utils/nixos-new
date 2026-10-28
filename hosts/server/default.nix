@@ -1,5 +1,11 @@
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ./disko.nix
+    # nixos-hardware quirks — replace with actual model, e.g.
+    # inputs.nixos-hardware.nixosModules.hpe-proliant-microserver-gen10
+    # inputs.nixos-hardware.nixosModules.supermicro-x11ssh-f
+  ];
 
   cfg = {
     # identity

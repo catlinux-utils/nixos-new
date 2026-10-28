@@ -50,8 +50,9 @@ overlays/unstable.nix  pkgs.unstable.<pkg> for everything
 .github/workflows/     manual CI (fmt + flake check + per-host toplevel builds), flake-update PR
 hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix;
                        wsl has none (NixOS-WSL owns boot/disks)
+hosts/<host>/disko.nix  disk layout (Btrfs-on-LUKS) per host (Phase 6), consumed by disko
 hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots as an image:
-                       greetd-autologin Hyprland live env; built with
+                       GDM-autologin Hyprland live env; built with
                        nixos-rebuild build-image --image-variant iso
 modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,

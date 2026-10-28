@@ -31,7 +31,9 @@ flake.nix
               └─ modules/home/     user feature modules
                     └─ read system switches via osConfig.cfg.*
 
-  └─ hosts/installer ──► nixosConfigurations.installer — the live ISO: a mkHost
+  ├─ hosts/<host>/disko.nix — declarative disk layout (Btrfs-on-LUKS) per host;
+        consumed by `disko` input, enables nixos-anywhere installs
+  ├─ hosts/installer ──► nixosConfigurations.installer — the live ISO: a mkHost
         host (Home Manager session for the profile's passwordless `nixos` user)
         that builds as an IMAGE: imports modules/nixos/ + upstream installer
         profiles, disables channel.nix/clone-config.nix (flake-aware live
@@ -67,6 +69,11 @@ as the live reference. The load-bearing parts:
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
   `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
   and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
+- **`hosts/<host>/disko.nix`** — declarative disk layout (Btrfs-on-LUKS) per host; consumed
+  by the `disko` flake input; enables `nixos-anywhere` installs and TPM2-LUKS autoCryptenroll.
+  Desktop/laptop: single `cryptroot` partition; server: `cryptroot` + `cryptdata` for
+  `/var/lib` (docker, syncthing, backups). Replace `REPLACE_WITH_DISK_ID` with the real
+  `/dev/disk/by-id/...` path.
 - **`hosts/installer/default.nix`** — the installer ISO: a normal mkHost host (full Home
   Manager session, GDM autologin into the uwsm Hyprland desktop, theming riding the desktop
   host's wallpaper set) that has no hardware-configuration.nix and builds as an IMAGE. It

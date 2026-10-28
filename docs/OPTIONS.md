@@ -62,6 +62,18 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.boot.secureBoot.enable` | Secure Boot via lanzaboote, signed systemd-boot — dormant (officially nixos-unstable-only; eval on a Nix machine before enabling) | – | – | – | – |
 | `cfg.attic.enable` | attic binary-cache server (`services.atticd`) — dormant, needs a sops secret first | – | – | – | – |
 
+### Disk layouts (Disko, per host)
+
+Each host has a `hosts/<host>/disko.nix` defining a Btrfs-on-LUKS layout:
+
+| Host | Layout |
+|---|---|
+| `desktop` | Single `cryptroot` (100% disk) → Btrfs subvolumes `@`, `@home`, `@snapshots`, `@log`, `@nix` |
+| `laptop` | Single `cryptroot` (100% disk) → same subvolumes; swapfile on `@root` for hibernation |
+| `server` | `cryptroot` (100G) → root subvolumes; `cryptdata` (rest) → Btrfs subvolumes `docker`, `containers`, `syncthing`, `backups`, `libvirt` mounted under `/var/lib` |
+
+Replace `REPLACE_WITH_DISK_ID` with the target disk's `/dev/disk/by-id/...` path.
+
 ### Sub-options (set per host when needed)
 
 | Option | Type, default | Purpose |
@@ -79,6 +91,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.updates.auto.dates` / `.operation` / `.allowReboot` | str, `04:40` · enum `switch|boot`, `switch` · bool, off | timer schedule · switch vs stage-for-reboot · reboot consent |
 | `cfg.boot.secureBoot.autoKeys.enable` / `.measuredBoot.enable` | bool, off | auto-generate + auto-enroll the sbctl key bundle into firmware NVRAM · systemd-pcrlock PCR policy (caps boot generations at 4) |
 | `cfg.attic.port` / `.environmentFile` / `.settings` | port, `8080` · nullOr path, `null` (required when enabled) · attrs, `{}` | listen port (firewall-opened) · sops-decrypted env file — `config.sops.secrets.<name>.path`, never a value · settings.toml passthrough |
+| `cfg.home.theming.enable` / `.wallpapers` (laptop) | bool, off · listOf path | runtime theming for GNOME: matugen palette from wallpaper → GTK/Qt/bar/mako/kitty/hyprlock; wallpapers installed to `~/Pictures/Wallpapers/` |
 
 ## Desktop session
 
@@ -122,9 +135,9 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.password-store.enable` | bool, on | pass (`pass init <gpg-id>` on first use) |
 | `cfg.home.tmux.enable` | bool, **off** | tmux — ssh-serving hosts flip it (server does) |
 | `cfg.home.obs.enable` | bool, **off** | OBS Studio screen recording (needs a desktop session) |
-| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, gtk, rofi, hyprlock), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management |
+| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, gtk, rofi, hyprlock), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management. Works on any desktop (GNOME/Hyprland/Plasma) — GNOME manages wallpaper natively, theming recolors GTK/Qt. |
 | `cfg.home.theming.wallpapers` | listOf path, `[]` | shipped collection installed to `~/Pictures/Wallpapers/` (store symlinks; picking one copies it) |
-| `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off |
+| `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off. Hyprland-only. |
 
 ## Per-host values
 

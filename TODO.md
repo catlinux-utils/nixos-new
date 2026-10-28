@@ -21,6 +21,8 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       nixos-hardware, disko and lanzaboote too)
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
+- [ ] Per host (Phase 2): replace `REPLACE_WITH_DISK_ID` in `hosts/*/disko.nix` with the
+      actual disk by-id; replace nixos-hardware placeholders with real model modules
 - [ ] Confirm the identity values in `hosts/*/default.nix` are what you want: username
       (`polishcat`), locale (`Europe/Warsaw`, `en_US.UTF-8`, `pl` keyboard), git email (the
       legacy-flake identity, set in §2.2)
@@ -50,7 +52,11 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 - [ ] Phase 6 dormant modules — enable per host when relevant: `cfg.updates.auto.*` (manual nh
       vs auto trade-off), `cfg.boot.secureBoot.*` (UEFI hardware + real eval first),
       `cfg.attic.*` (server; waits on the sops key + a secret)
+- [ ] Disko layouts — replace `REPLACE_WITH_DISK_ID` in each `hosts/*/disko.nix` with the
+      actual disk by-id (e.g. `/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_...`), then test with
+      `nixos-anywhere` or the installer ISO
+- [ ] nixos-hardware — replace placeholder imports in `hosts/*/default.nix` with real model
+      modules (run `nixos-hardware` detection on each machine)
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
-      them; runtime-theming follow-up: laptop wallpaper set (rofi.rasi and hyprlock colors
-      landed 2026-10-28)
+      them
 - [ ] Phase 5 leftover — cache strategy (Cachix or GH actions cache) if the CI checks get slow

@@ -1,5 +1,11 @@
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ./disko.nix
+    # nixos-hardware quirks — replace with actual model(s), e.g.
+    # inputs.nixos-hardware.nixosModules.lenovo-thinkpad-x1-carbon-gen9
+    # inputs.nixos-hardware.nixosModules.asus-rog-zephyrus-g14-2022
+  ];
 
   cfg = {
     # identity

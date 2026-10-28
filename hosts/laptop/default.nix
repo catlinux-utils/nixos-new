@@ -1,5 +1,11 @@
 {
-  imports = [ ./hardware-configuration.nix ];
+  imports = [
+    ./hardware-configuration.nix
+    ./disko.nix
+    # nixos-hardware quirks — replace with actual model, e.g.
+    # inputs.nixos-hardware.nixosModules.framework-laptop-13-intel-12th-gen
+    # inputs.nixos-hardware.nixosModules.dell-xps-13-9310
+  ];
 
   cfg = {
     # identity
@@ -23,6 +29,18 @@
       name = "ThePolishcat";
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
+
+    # theming: matugen palette from the running wallpaper + waypaper picker
+    # (SUPER+SHIFT+W). The vendored set ships to ~/Pictures/Wallpapers.
+    # GNOME manages its own wallpaper; theming extracts palette from whatever
+    # is set and recolors GTK/Qt/bar/mako/kitty/hyprlock.
+    home.theming.enable = true;
+    home.theming.wallpapers = [
+      ./wallpapers/dusk.png
+      ./wallpapers/dawn.png
+      ./wallpapers/moss.png
+      ./wallpapers/ember.png
+    ];
 
     # features — host matrix: PLAN.md §1.7
     boot.enable = true;

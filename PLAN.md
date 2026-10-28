@@ -989,13 +989,16 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       settings.toml passthrough, DynamicUser; requires ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64
       via environmentFile — point it at a sops-decrypted file per the store-leak rule; our
       module asserts that at eval time). Enabling waits on the Phase 3 sops key
-- [ ] disko + nixos-anywhere — declarative disk partitioning and hands-off installs from any
-      machine (Phase 2 disk decisions then live in the repo, not on the machine) — 2026-10-28:
-      disko input added (follows nixpkgs); per-host layouts + nixos-anywhere usage still open
+- [x] disko + nixos-hardware per host (2026-10-28) — `hosts/<host>/disko.nix` with
+      Btrfs-on-LUKS layouts (desktop: single cryptroot; laptop: cryptroot + swapfile; server:
+      cryptroot + separate cryptdata for /var/lib/docker, syncthing, backups).
+      nixos-hardware placeholder imports added to each host's default.nix.
+      nixos-anywhere usage still open.
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
       Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
-      measuredBoot = systemd-pcrlock PCR policy); the actual autoCryptenroll against a real
-      LUKS device stays per-host
+      measuredBoot = systemd-pcrlock PCR policy); disko layouts include LUKS label `cryptroot`
+      for autoCryptenroll; per-host `keyFile` + `cfg.boot.secureBoot.measuredBoot.autoCryptenroll`
+      stays open
 - [x] Scheduled auto-updates (module dormant, 2026-10-28) — `cfg.updates.auto.{enable, dates,
       operation, allowReboot}` wraps upstream `system.autoUpgrade` flake-aware (flake =
       `cfg.nh.flakeDir`, `upgrade = false`, `--refresh` automatic in flake mode); the per-host
@@ -1038,4 +1041,6 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | Installer ISO | `nixosConfigurations.installer` — a mkHost host that builds as an image | upstream's `build-image --image-variant` needs a nixosConfiguration ref; assembling via mkHost keeps one host-assembly path and gives the live env the full HM Hyprland session (2026-10-28) |
 | Secure Boot input | lanzaboote pinned v1.2.0, deliberately not following nixpkgs | `lzbt` is absent from 26.05; their module mkDefaults `boot.lanzaboote.package` to a build from the nixos-unstable nixpkgs the input carries itself (2026-10-28) |
 | Deploy tooling (colmena / deploy-rs) | deferred (2026-10-28, user decision) | auto-updates covers server freshness; 4 hosts are cheap to `nh` by hand; a deployer needs a nix-capable machine anyway (WSL pending); adding colmena later costs ~nothing |
+| Disk layout | Btrfs-on-LUKS via Disko per host (2026-10-28) | desktop/laptop: single cryptroot; server: cryptroot + cryptdata for /var/lib; enables nixos-anywhere + TPM2-LUKS autoCryptenroll |
+| nixos-hardware | per-host placeholder imports (2026-10-28) | replace with actual device model modules when hardware is known |
 | Stateless root | declined — impermanence (and the preservation alternative) stay out | the stateless-root workflow doesn't fit the user's workflow; hosts keep a conventional persistent root (2026-10-27) |
