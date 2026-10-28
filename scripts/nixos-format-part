@@ -1,0 +1,311 @@
+#!/usr/bin/env bash
+# nixos-format-part — format selected partitions in-place (no repartitioning)
+# Run as root on target machine. Choose partitions, FS, encryption, subvolumes per partition.
+
+set -euo pipefail
+
+# ─── Pretty ──────────────────────────────────────────────────────────
+RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
+info() { echo -e "${BLU}[info]${NC} $*"; }
+ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
+warn() { echo -e "${YEL}[warn]${NC} $*"; }
+err()  { echo -e "${RED}[err]${NC}  $*"; }
+
+# ─── State ───────────────────────────────────────────────────────────
+declare -A PART_PATH      # label -> /dev/...
+declare -A PART_LABEL     # label -> label (identity)
+declare -A PART_FS        # label -> fs type
+declare -A PART_CRYPT     # label -> yes|no
+declare -A PART_CRYPT_LABEL # label -> LUKS label
+declare -A PART_SUBVOLS   # label -> "subvol1 subvol2 ..."
+declare -A PART_MOUNT     # label -> mountpoint (for subvol creation)
+
+usage() {
+  cat <<EOF
+Usage: nixos-format-part [options]
+
+Options:
+  -d, --disk DEVICE       Disk to scan for partitions (e.g. /dev/nvme0n1)
+  -p, --part LABEL=PATH   Explicit partition (repeatable)
+  -f, --fs LABEL=FS       Filesystem for partition (btrfs|ext4|xfs|vfat|swap)
+  -e, --encrypt LABEL=yes|no  Encrypt with LUKS2
+  -l, --crypt-label LABEL=NAME  LUKS label (default: partition label)
+  -s, --subvols LABEL="sv1 sv2"  Btrfs subvolumes to create (space-separated)
+  -m, --mount LABEL=PATH  Mountpoint for subvol creation (default: /mnt)
+  -i, --interactive       Interactive partition selection (default if no -p)
+  -y, --yes               Skip confirmations
+  -h, --help              Show help
+
+Examples:
+  # Interactive: pick from partitions on /dev/nvme0n1
+  nixos-format-part -d /dev/nvme0n1 -i
+
+  # Non-interactive: format ESP as vfat, cryptroot as encrypted btrfs with subvols
+  nixos-format-part -p ESP=/dev/nvme0n1p1 -p cryptroot=/dev/nvme0n1p2 \
+    -f ESP=vfat -f cryptroot=btrfs \
+    -e ESP=no -e cryptroot=yes \
+    -s cryptroot="@ @home @snapshots @log @nix" \
+    -m cryptroot=/mnt
+
+Notes:
+  - Does NOT modify partition table. Partitions must exist.
+  - For encrypted partitions: creates LUKS2, opens as mapper name = LUKS label,
+    formats FS on mapper device, creates subvolumes if btrfs, then closes.
+  - For unencrypted: formats FS directly on partition.
+  - swap FS type: runs mkswap (encryption not supported for swap here;
+    use nixos-disk for encrypted swap).
+EOF
+}
+
+# ─── Parse args ──────────────────────────────────────────────────────
+DISK=""
+INTERACTIVE=false
+AUTO_YES=false
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -d|--disk) DISK="$2"; shift 2 ;;
+      -p|--part)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" path="${kv#*=}"
+        PART_PATH["$label"]="$path"
+        PART_LABEL["$label"]="$label"
+        ;;
+      -f|--fs)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" fs="${kv#*=}"
+        PART_FS["$label"]="$fs"
+        ;;
+      -e|--encrypt)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" enc="${kv#*=}"
+        PART_CRYPT["$label"]="$enc"
+        ;;
+      -l|--crypt-label)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" clabel="${kv#*=}"
+        PART_CRYPT_LABEL["$label"]="$clabel"
+        ;;
+      -s|--subvols)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" subvols="${kv#*=}"
+        PART_SUBVOLS["$label"]="$subvols"
+        ;;
+      -m|--mount)
+        local kv="$2"; shift 2
+        local label="${kv%%=*}" mount="${kv#*=}"
+        PART_MOUNT["$label"]="$mount"
+        ;;
+      -i|--interactive) INTERACTIVE=true; shift ;;
+      -y|--yes) AUTO_YES=true; shift ;;
+      -h|--help) usage; exit 0 ;;
+      -*) err "Unknown option: $1"; usage; exit 1 ;;
+      *) err "Unexpected argument: $1"; usage; exit 1 ;;
+    esac
+  done
+}
+
+# ─── Interactive selection ───────────────────────────────────────────
+select_partitions_interactive() {
+  [[ -z "$DISK" ]] && { err "Disk required for interactive mode (-d)."; exit 1; }
+  [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
+
+  info "Scanning partitions on $DISK..."
+  local parts=()
+  while IFS= read -r line; do
+    local path label fstype size
+    path=$(echo "$line" | awk '{print $1}')
+    label=$(echo "$line" | awk '{print $2}')
+    fstype=$(echo "$line" | awk '{print $3}')
+    size=$(echo "$line" | awk '{print $4}')
+    [[ -n "$path" && "$path" != "NAME" ]] && parts+=("$path|$label|$fstype|$size")
+  done < <(lsblk -rno PATH,LABEL,FSTYPE,SIZE "$DISK" | grep -v loop)
+
+  if [[ ${#parts[@]} -eq 0 ]]; then
+    err "No partitions found on $DISK"
+    exit 1
+  fi
+
+  echo
+  info "Available partitions:"
+  for i in "${!parts[@]}"; do
+    IFS='|' read -r path label fstype size <<< "${parts[i]}"
+    printf "  [%d] %s  label=%s  fs=%s  size=%s\n" "$((i+1))" "$path" "${label:-<none>}" "${fstype:-<none>}" "$size"
+  done
+  echo
+
+  local selected=()
+  while true; do
+    read -rp "$(echo -e "${BLU}Select partitions by number (space-separated, 'done' to finish):${NC} ")" ans
+    [[ "$ans" == "done" ]] && break
+    for num in $ans; do
+      [[ "$num" =~ ^[0-9]+$ ]] && (( num >= 1 && num <= ${#parts[@]} )) || { err "Invalid: $num"; continue; }
+      selected+=("${parts[num-1]}")
+    done
+  done
+
+  for entry in "${selected[@]}"; do
+    IFS='|' read -r path label fstype size <<< "$entry"
+    [[ -z "$label" ]] && label="part${#PART_PATH[@]}"
+    PART_PATH["$label"]="$path"
+    PART_LABEL["$label"]="$label"
+
+    # Prompt for FS
+    echo
+    PS3="$(echo -e "${BLU}Filesystem for $label ($path):${NC} ")"
+    options=("btrfs" "ext4" "xfs" "vfat" "swap" "skip")
+    select fs in "${options[@]}"; do
+      [[ -n "$fs" ]] && break
+    done
+    [[ "$fs" == "skip" ]] && continue
+    PART_FS["$label"]="$fs"
+
+    # Prompt for encryption (not for vfat/swap)
+    if [[ "$fs" != "vfat" && "$fs" != "swap" ]]; then
+      read -rp "$(echo -e "${BLU}Encrypt $label with LUKS2? [Y/n]:${NC} ")" ans
+      local enc="${ans:-y}"
+      [[ "$enc" =~ ^[Yy] ]] && PART_CRYPT["$label"]="yes" || PART_CRYPT["$label"]="no"
+      if [[ "${PART_CRYPT["$label"]}" == "yes" ]]; then
+        read -rp "$(echo -e "${BLU}LUKS label [${label}]:${NC} ")" clabel
+        PART_CRYPT_LABEL["$label"]="${clabel:-$label}"
+      fi
+    else
+      PART_CRYPT["$label"]="no"
+    fi
+
+    # Prompt for subvolumes if btrfs
+    if [[ "$fs" == "btrfs" ]]; then
+      read -rp "$(echo -e "${BLU}Btrfs subvolumes (space-separated, empty=none):${NC} ")" subvols
+      [[ -n "$subvols" ]] && PART_SUBVOLS["$label"]="$subvols"
+      read -rp "$(echo -e "${BLU}Mountpoint for subvol creation [/mnt]:${NC} ")" mount
+      PART_MOUNT["$label"]="${mount:-/mnt}"
+    fi
+  done
+}
+
+# ─── Validation ──────────────────────────────────────────────────────
+validate_config() {
+  [[ ${#PART_PATH[@]} -eq 0 ]] && { err "No partitions configured."; exit 1; }
+
+  for label in "${!PART_PATH[@]}"; do
+    local path="${PART_PATH[$label]}"
+    [[ -b "$path" ]] || { err "Not a block device: $path"; exit 1; }
+    local fs="${PART_FS[$label]:-}"
+    [[ -n "$fs" ]] || { err "Filesystem not set for $label"; exit 1; }
+    [[ "$fs" =~ ^(btrfs|ext4|xfs|vfat|swap)$ ]] || { err "Invalid FS for $label: $fs"; exit 1; }
+    local enc="${PART_CRYPT[$label]:-no}"
+    [[ "$enc" =~ ^(yes|no)$ ]] || { err "Invalid encryption for $label: $enc"; exit 1; }
+    if [[ "$enc" == "yes" && "$fs" =~ ^(vfat|swap)$ ]]; then
+      err "Encryption not supported for $fs on $label"; exit 1
+    fi
+    if [[ "$enc" == "yes" && -z "${PART_CRYPT_LABEL[$label]:-}" ]]; then
+      PART_CRYPT_LABEL["$label"]="$label"
+    fi
+    [[ -n "${PART_SUBVOLS[$label]:-}" && "$fs" != "btrfs" ]] && { err "Subvolumes only for btrfs"; exit 1; }
+  done
+}
+
+confirm_proceed() {
+  $AUTO_YES && return 0
+  echo
+  warn "Will format the following partitions:"
+  for label in "${!PART_PATH[@]}"; do
+    local path="${PART_PATH[$label]}"
+    local fs="${PART_FS[$label]}"
+    local enc="${PART_CRYPT[$label]}"
+    local clabel="${PART_CRYPT_LABEL[$label]:-}"
+    local subvols="${PART_SUBVOLS[$label]:-}"
+    local mount="${PART_MOUNT[$label]:-/mnt}"
+    printf "  %s (%s) -> FS=%s  Crypt=%s" "$label" "$path" "$fs" "$enc"
+    [[ "$enc" == "yes" ]] && printf " (LUKS label: %s)" "$clabel"
+    [[ -n "$subvols" ]] && printf "  Subvols: %s  Mount: %s" "$subvols" "$mount"
+    echo
+  done
+  echo
+  read -rp "$(echo -e "${YEL}Type 'YES' to proceed:${NC} ")" ans
+  [[ "$ans" == "YES" ]] || { info "Aborted."; exit 0; }
+}
+
+# ─── Formatting ──────────────────────────────────────────────────────
+format_partition() {
+  local label="$1"
+  local path="${PART_PATH[$label]}"
+  local fs="${PART_FS[$label]}"
+  local enc="${PART_CRYPT[$label]}"
+  local clabel="${PART_CRYPT_LABEL[$label]:-$label}"
+  local subvols="${PART_SUBVOLS[$label]:-}"
+  local mount="${PART_MOUNT[$label]:-/mnt}"
+
+  info "=== Formatting $label ($path) ==="
+
+  if [[ "$enc" == "yes" ]]; then
+    info "Creating LUKS2 on $path with label '$clabel'..."
+    cryptsetup luksFormat --type luks2 --label "$clabel" "$path"
+    info "Opening LUKS..."
+    cryptsetup open "$path" "$clabel"
+    local mapper="/dev/mapper/$clabel"
+
+    case $fs in
+      btrfs)
+        info "Creating Btrfs on $mapper..."
+        mkfs.btrfs -L "$clabel" "$mapper"
+        if [[ -n "$subvols" ]]; then
+          info "Creating subvolumes..."
+          mount "$mapper" "$mount"
+          for sv in $subvols; do
+            btrfs subvolume create "$mount/$sv"
+            ok "  Created $mount/$sv"
+          done
+          umount "$mount"
+        fi
+        ;;
+      ext4) mkfs.ext4 -L "$clabel" "$mapper" ;;
+      xfs)  mkfs.xfs -L "$clabel" "$mapper" ;;
+    esac
+
+    info "Closing LUKS..."
+    cryptsetup close "$clabel"
+  else
+    case $fs in
+      vfat) info "Creating FAT32 on $path..."; mkfs.vfat -F32 -n "$label" "$path" ;;
+      ext4) info "Creating ext4 on $path..."; mkfs.ext4 -L "$label" "$path" ;;
+      xfs)  info "Creating xfs on $path..."; mkfs.xfs -L "$label" "$path" ;;
+      swap) info "Creating swap on $path..."; mkswap -L "$label" "$path" ;;
+      btrfs)
+        info "Creating Btrfs on $path..."
+        mkfs.btrfs -L "$label" "$path"
+        if [[ -n "$subvols" ]]; then
+          info "Creating subvolumes..."
+          mount "$path" "$mount"
+          for sv in $subvols; do
+            btrfs subvolume create "$mount/$sv"
+            ok "  Created $mount/$sv"
+          done
+          umount "$mount"
+        fi
+        ;;
+    esac
+  fi
+
+  ok "$label done."
+}
+
+# ─── Main ────────────────────────────────────────────────────────────
+main() {
+  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
+  parse_args "$@"
+  $INTERACTIVE && select_partitions_interactive
+  validate_config
+  confirm_proceed
+
+  for label in "${!PART_PATH[@]}"; do
+    format_partition "$label"
+  done
+
+  echo
+  ok "All partitions formatted."
+  [[ -n "$DISK" ]] && lsblk -f "$DISK"
+}
+
+main "$@"

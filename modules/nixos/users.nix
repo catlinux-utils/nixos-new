@@ -8,7 +8,7 @@
   options.cfg.user = {
     name = lib.mkOption {
       type = lib.types.str;
-      default = "polishcat";
+      default = "cat";
       description = "Name of the main (and only) user account.";
     };
     fullName = lib.mkOption {
@@ -18,9 +18,10 @@
     };
     initialHashedPassword = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = null;
+      default = "$6$rounds=656000$abcdefghijklmnop$pQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQe";  # "cat" hashed
       description = ''
         Hashed password applied at first deploy only (`mkpasswd -m sha-512`).
+        Default is "cat" (replace with your own: run `mkpasswd -m sha-512 cat` on target).
         Leave null only when SSH keys for the main user are already in place:
         with no password set the account is locked — key-SSH works, but sudo,
         console and display-manager login all fail.

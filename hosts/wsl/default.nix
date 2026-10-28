@@ -21,7 +21,7 @@
   cfg = {
     # identity
     user = {
-      name = "polishcat";
+      name = "cat";
       fullName = "ThePolishcat";
     };
 
@@ -34,7 +34,7 @@
 
     # where this flake lives on this machine (drives nh) — must stay on the
     # WSL Linux filesystem; /mnt/c is too slow for nix
-    nh.flakeDir = /home/polishcat/nixos-new;
+    nh.flakeDir = /home/cat/nixos;
 
     # git identity
     home.git = {

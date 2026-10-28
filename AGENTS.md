@@ -54,7 +54,7 @@ hosts/<host>/disko.nix  disk layout (Btrfs-on-LUKS) per host (Phase 6), consumed
 hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots as an image:
                        GDM-autologin Hyprland live env; built with
                        nixos-rebuild build-image --image-variant iso
-scripts/               nixos-disk (partition+format), nixos-mount, nixos-umount, nixos-prep-disk
+scripts/               nixos-disk (partition+format), nixos-mount, nixos-umount, nixos-format-part
 modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
                        sandbox.nix
@@ -172,7 +172,7 @@ in the same commit.
 ### The installer ISO (a host that builds as an image)
 
 `hosts/installer` is a normal mkHost host — full Home Manager session for the profile's
-passwordless `nixos` user (`cfg.user.name` points at it; no locked `polishcat` user), booting
+passwordless `nixos` user (`cfg.user.name` points at it; no locked `cat` user), booting
 into the repo's Hyprland desktop via GDM Wayland autologin. It imports the
 upstream installer profiles via absolute `pkgs.path` references and `disabledModules` drops
 upstream's `installer/cd-dvd/channel.nix` + `clone-config.nix` (channel-era mechanisms; the

@@ -21,7 +21,7 @@ These modules apply on every host — only their value options are configurable:
 | `nix.nix` | — | Lix, flakes, allowUnfree, store optimisation, pinned registry, no channels, GC-survivor settings for direnv |
 | `nh.nix` | `cfg.nh.flakeDir` (path, `/etc/nixos`) | `nh` CLI + daily GC (`--keep 5 --keep-since 3d`); flake path via `NH_FLAKE` |
 | `locale.nix` | `cfg.locale.timeZone` (str, `Europe/Warsaw`) · `cfg.locale.defaultLocale` (str, `en_US.UTF-8`) · `cfg.locale.keyboard` (str, `pl`) | timezone, locale set, console + X/Wayland keymap |
-| `users.nix` | `cfg.user.name` (str, `polishcat`) · `cfg.user.fullName` (str, `ThePolishcat`) · `cfg.user.initialHashedPassword` (nullOr str, `null`) | creates the main user (wheel, zsh login shell); password only for first deploy |
+| `users.nix` | `cfg.user.name` (str, `cat`) · `cfg.user.fullName` (str, `ThePolishcat`) · `cfg.user.initialHashedPassword` (nullOr str, `null`) | creates the main user (wheel, zsh login shell); password only for first deploy |
 
 ## System feature switches
 
@@ -143,9 +143,9 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | | desktop | laptop | server | wsl |
 |---|---|---|---|---|
-| `cfg.user.name` | `polishcat` | `polishcat` | `polishcat` | `polishcat` |
+| `cfg.user.name` | `cat` | `cat` | `cat` | `cat` |
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
-| `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/polishcat/nixos-new` |
+| `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/cat/nixos` |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
 | `cfg.home.hyprland.wallpaper` | `./wallpapers/dusk.png` (install-time default) | – | – | – |
 | `cfg.home.theming.enable` | ✓ | – | – | – |

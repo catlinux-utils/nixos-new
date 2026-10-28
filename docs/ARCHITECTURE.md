@@ -81,7 +81,7 @@ as the live reference. The load-bearing parts:
   `pkgs.path` references and `disabledModules` drops upstream's `channel.nix`/`clone-config.nix`
   (channel-era mechanisms at odds with flake installs). `cfg.user.name` points at the
   profile's passwordless `nixos` account so `users.nix` and Home Manager target it instead of
-  creating a locked `polishcat` user. `cfg.boot` stays off — the ISO variant owns the loader.
+  creating a locked `cat` user. `cfg.boot` stays off — the ISO variant owns the loader.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.

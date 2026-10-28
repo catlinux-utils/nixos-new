@@ -35,7 +35,7 @@ in
   cfg = {
     # identity — reuse the profile's passwordless `nixos` account: the
     # always-on users.nix merges zsh + wheel into it, Home Manager targets it,
-    # and no locked `polishcat` user appears in the live environment
+    # and no locked `cat` user appears in the live environment
     user = {
       name = "nixos";
       fullName = "Live installer (nixos)";

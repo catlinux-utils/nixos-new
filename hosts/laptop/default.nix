@@ -10,7 +10,7 @@
   cfg = {
     # identity
     user = {
-      name = "polishcat";
+      name = "cat";
       fullName = "ThePolishcat";
     };
 

@@ -24,9 +24,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 - [ ] Per host (Phase 2): replace `REPLACE_WITH_DISK_ID` in `hosts/*/disko.nix` with the
       actual disk by-id; replace nixos-hardware placeholders with real model modules
 - [x] Disk preparation scripts: `scripts/nixos-disk` (partition+format), `scripts/nixos-mount`,
-      `scripts/nixos-umount` — documented in README with install examples
+      `scripts/nixos-umount`, `scripts/nixos-format-part` — documented in README with install examples
 - [ ] Confirm the identity values in `hosts/*/default.nix` are what you want: username
-      (`polishcat`), locale (`Europe/Warsaw`, `en_US.UTF-8`, `pl` keyboard), git email (the
+      (`cat`), locale (`Europe/Warsaw`, `en_US.UTF-8`, `pl` keyboard), git email (the
       legacy-flake identity, set in §2.2)
 - [ ] Clone the repo onto the other machines at their real path; set `cfg.nh.flakeDir` per host
 - [ ] First deploy per host: set `cfg.user.initialHashedPassword` first (locked account otherwise

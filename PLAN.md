@@ -290,7 +290,7 @@ Every feature module follows one shape:
 | `nix.nix` | always on | **Runs Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`), `experimental-features = "nix-command flakes"`, `allowUnfree`, `auto-optimise-store`, trusted users, `nix.registry.nixpkgs` pinned to `inputs.nixpkgs`, `nix.channel.enable = false` + `nix.nixPath = [ "nixpkgs=flake:nixpkgs" ]` (pure-flake hosts carry no channel state; Phase 4's nix-index/comma replaces command-not-found) |
 | `nh.nix` | always on (+ `cfg.nh.flakeDir` option) | see [1.8](#18-nh) |
 | `locale.nix` | options (always applied) | `cfg.locale.timeZone` (default `"Europe/Warsaw"`), `cfg.locale.defaultLocale` (`"en_US.UTF-8"`), `cfg.locale.keyboard` (`"pl"` — sets both `console.keyMap` and `services.xserver.xkb.layout`; GDM reads the latter) |
-| `users.nix` | options | `cfg.user.name` (default `"polishcat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell) with `programs.zsh.enable = true` system-side so the shell is valid (`/etc/shells`); password via `passwd` on first boot (optional `initialHashedPassword` option applied when
+| `users.nix` | options | `cfg.user.name` (default `"cat"`), `cfg.user.fullName`; creates the normal user with `wheel`, login shell `pkgs.zsh` (matches home-side shell.nix — HM does not set the login shell) with `programs.zsh.enable = true` system-side so the shell is valid (`/etc/shells`); password via `passwd` on first boot (optional `initialHashedPassword` option applied when
   non-null) — **no password = locked account**: key-SSH still works but `sudo`, console and GDM
   login all fail, so a fresh host needs `initialHashedPassword` (or root SSH keys) at first deploy
   (see Phase 2 rollout) |
@@ -916,7 +916,7 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 
 - [x] Installer ISO (implemented 2026-10-28) — a normal mkHost host: full Home Manager session
       for the profile's passwordless `nixos` user (`cfg.user.name` points at it — the
-      always-on users.nix merges zsh + wheel in, no locked `polishcat` user), booting into the
+      always-on users.nix merges zsh + wheel in, no locked `cat` user), booting into the
       repo's Hyprland desktop via GDM Wayland autologin (mirrors the desktop host's uwsm
       session entry); theming riding the desktop host's wallpaper set, zram for low-memory
       comfort. Imports upstream `profiles/base.nix` + `profiles/installation-device.nix` via
@@ -994,7 +994,7 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       cryptroot + separate cryptdata for /var/lib/docker, syncthing, backups).
       nixos-hardware placeholder imports added to each host's default.nix.
       `scripts/nixos-disk` for manual partitioning (flags or interactive: encryption, fs,
-      layout), `scripts/nixos-mount`/`umount` for install-time mounting.
+      layout), `scripts/nixos-mount`/`umount`/`format-part` for install-time mounting.
       nixos-anywhere usage still open.
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
       Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
