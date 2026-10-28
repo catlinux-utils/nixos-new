@@ -152,7 +152,7 @@ Phase 1 baseline — later phases (§2.1, §2.2, Phase 4) added more modules und
 │       ├── nix-index.nix           # nix-index + comma (Phase 4)
 │       ├── gpg.nix                 # gpg + gpg-agent w/ ssh-agent (Phase 4)
 │       ├── ssh.nix                 # ssh client defaults (Phase 4)
-│       ├── browser.nix             # firefox (rides cfg.desktop.enable)
+│       ├── browser.nix             # brave (rides cfg.desktop.enable)
 │       ├── gnome.nix               # GNOME dconf/gtk (rides cfg.desktop.gnome)
 │       ├── vscode.nix              # editor (rides cfg.desktop.enable)
 │       ├── mpv.nix                 # video player (rides cfg.desktop.enable)
@@ -769,8 +769,8 @@ Medium — new modules/options:
       updated — 2026-10-28 — with the MesloLGS→JetBrainsMono font swap and an optional matugen
       palette footer, see the Phase 4 runtime-theming entry).
       `hyprshutdown` installed for the SUPER+M bind (the bind falls back to `uwsm stop` without
-      it). Caveats kept verbatim in the lua: SUPER+W opens `brave-browser.desktop` (this flake
-      ships Firefox — install Brave or edit the bind), monitor workspace mapping targets
+      it). Caveats kept verbatim in the lua: SUPER+W opens `brave-browser.desktop` (resolved
+      2026-10-28: Brave now installed — see `browser.nix`), monitor workspace mapping targets
       DP-3/HDMI-A-1, and Hyprland needs Lua config support (>= 0.53, satisfied by 26.05).
 
 ## Phase 3 — Secrets (sops-nix) `[ ]`
@@ -831,8 +831,10 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 - [x] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration; pairs with
       keys-only ssh). 26.05 HM: pinentry is `services.gpg-agent.pinentry.package` — the flat
       `pinentryPackage` is only a deprecated alias
-- [x] `browser.nix` — `programs.firefox` (rides `cfg.desktop.enable`; policies/profiles when
-      wanted)
+- [x] `browser.nix` — originally `programs.firefox`; swapped 2026-10-28 to `programs.brave`
+      (native HM namespace on release-26.05, commandLineArgs incl. `--password-store=gnome-libsecret`
+      + web mime defaults) so the vendored `hyprland.lua` SUPER+W `brave-browser.desktop` bind
+      resolves; Firefox dropped
 - [x] `ssh.nix` — `programs.ssh` client: per-host aliases, ControlMaster multiplexing, key
       preferences; pairs with the keys-only server in `modules/nixos/ssh.nix`
 - [x] `vscode.nix` — `programs.vscode` (rides `cfg.desktop.enable`; extensions stay mutable until

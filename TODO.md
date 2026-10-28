@@ -42,9 +42,6 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 
 ## Backlog
 
-- [ ] `hyprland.lua` binds `brave-browser.desktop` (SUPER+W) — install Brave (chromium wrapper,
-      like the legacy flake) or edit the bind to Firefox
-
 - [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
       `nixos-rebuild build-image --flake .#<host> --image-variant iso`
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
