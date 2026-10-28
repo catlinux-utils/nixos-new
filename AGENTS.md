@@ -7,9 +7,10 @@ Guidance for AI agents (and humans) working in this repo. The roadmap lives in
 ## What this repo is
 
 A NixOS flake managing multiple machines (`desktop`, `laptop`, `server`, plus `wsl` — a
-NixOS-WSL dev host, Phase 1.5) with Home Manager wired in as a NixOS module. All custom options
-live under the `cfg.*` namespace. Rebuilds happen through `nh`. Hosts run Lix, pinned to
-nixpkgs **26.05** + Home Manager **release-26.05**.
+NixOS-WSL dev host, Phase 1.5) with Home Manager wired in as a NixOS module, and building a
+live installer ISO (`hosts/installer` — a host that builds as an image, Phase 6). All custom
+options live under the `cfg.*` namespace. Rebuilds happen through `nh`. Hosts run Lix, pinned
+to nixpkgs **26.05** + Home Manager **release-26.05**.
 
 ## Environment constraints (read first)
 
@@ -49,7 +50,9 @@ overlays/unstable.nix  pkgs.unstable.<pkg> for everything
 .github/workflows/     manual CI (fmt + flake check + per-host toplevel builds), flake-update PR
 hosts/<name>/          default.nix (feature switches) + hardware-configuration.nix;
                        wsl has none (NixOS-WSL owns boot/disks)
-hosts/installer/       ISO media module — image, not a host (deferred, PLAN Phase 6)
+hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots as an image:
+                       greetd-autologin Hyprland live env; built with
+                       nixos-rebuild build-image --image-variant iso
 modules/nixos/         system feature modules (auto-imported, cfg.* options);
                        includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
                        sandbox.nix
@@ -84,7 +87,8 @@ AGENTS.md README.md    this file / project overview
 - One feature per file; the file is named after the feature (`ssh.nix`, `gaming.nix`). A feature
   that outgrows one file becomes a folder of sibling `.nix` files (`modules/home/hyprland/`).
 - Bleeding-edge packages come only via `pkgs.unstable.<pkg>` (the one overlay) — never add extra
-  nixpkgs inputs for single packages.
+  nixpkgs inputs for single packages (sole exception: lanzaboote's input carries its own
+  nixpkgs to build `lzbt`, which 26.05 lacks).
 - The flake carries a top-level `description` (what `nix flake show` displays) — update it when
   a host is added or the flake's scope changes.
 
@@ -162,6 +166,18 @@ in the same commit.
    set them under the same flat `cfg.*` tree.
 3. Never force-overwrite existing user files — `mkHost` sets
    `home-manager.backupFileExtension = "backup"` as the safety net.
+
+### The installer ISO (a host that builds as an image)
+
+`hosts/installer` is a normal mkHost host — full Home Manager session for the profile's
+passwordless `nixos` user (`cfg.user.name` points at it; no locked `polishcat` user), booting
+into the repo's Hyprland desktop via GDM Wayland autologin. It imports the
+upstream installer profiles via absolute `pkgs.path` references and `disabledModules` drops
+upstream's `installer/cd-dvd/channel.nix` + `clone-config.nix` (channel-era mechanisms; the
+live env is flake-aware via the repo's own nix.nix). It has no `hardware-configuration.nix`
+and `cfg.boot` stays off — the `iso` image variant owns its own bootloader. Build on a Nix
+machine: `nixos-rebuild build-image --flake .#installer --image-variant iso` — CI only
+evaluates the ISO derivation (`config.system.build.images.iso`), never builds it.
 
 ### Wire a secret
 

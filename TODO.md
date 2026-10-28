@@ -16,8 +16,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       → `nh os test` → `nh os switch` on the `wsl` host
 - [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold
 - [ ] Push, then run the manual CI workflow (Actions tab) — first `nix flake check` / `nix fmt`
-      verdict plus per-host toplevel builds; then run the flake-update workflow and merge its PR
-      to land the first `flake.lock`
+      verdict plus per-host toplevel builds and the installer-ISO eval step; then run the
+      flake-update workflow and merge its PR to land the first `flake.lock` (pinning
+      nixos-hardware, disko and lanzaboote too)
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
 - [ ] Confirm the identity values in `hosts/*/default.nix` are what you want: username
@@ -42,8 +43,13 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
 
 ## Backlog
 
-- [ ] Installer ISO — deferred; expand `image.modules.iso` (see PLAN Phase 6), build with
-      `nixos-rebuild build-image --flake .#<host> --image-variant iso`
+- [ ] Installer ISO — implemented (`hosts/installer/default.nix`: GDM-autologin Hyprland
+      live env); build it on a Nix machine (`nixos-rebuild build-image --flake .#installer
+      --image-variant iso`), boot it once to verify the live session, write the .iso to USB
+      and do one real install from it
+- [ ] Phase 6 dormant modules — enable per host when relevant: `cfg.updates.auto.*` (manual nh
+      vs auto trade-off), `cfg.boot.secureBoot.*` (UEFI hardware + real eval first),
+      `cfg.attic.*` (server; waits on the sops key + a secret)
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
       them; runtime-theming follow-up: laptop wallpaper set (rofi.rasi and hyprlock colors
       landed 2026-10-28)

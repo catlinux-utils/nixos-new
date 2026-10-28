@@ -6,7 +6,10 @@ them in `hosts/<name>/default.nix` under the flat `cfg.*` tree.
 
 Conventions: feature switches are `lib.mkEnableOption` → **default off**; hosts flip them.
 Home-feature options default **on** unless noted (a sane user environment for free). To
-re-derive this list: `grep -rn "options.cfg" modules/nixos/`.
+re-derive this list: `grep -rn "options.cfg" modules/nixos/`. The installer ISO
+(`hosts/installer/default.nix`) consumes options too — Hyprland desktop + theming +
+NetworkManager/resolved, `cfg.boot` deliberately off (the ISO variant owns the loader) — but
+it's an image, so it isn't in the host matrices.
 
 ## Always on (no switch)
 
@@ -55,6 +58,9 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.syncthing.enable` | syncthing as the main user (Web UI on 127.0.0.1:8384) | ✓ | ✓ | ✓ | – |
 | `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
+| `cfg.updates.auto.enable` | scheduled flake-aware auto-updates (`system.autoUpgrade` pulls the flake at `cfg.nh.flakeDir`) — dormant | – | – | – | – |
+| `cfg.boot.secureBoot.enable` | Secure Boot via lanzaboote, signed systemd-boot — dormant (officially nixos-unstable-only; eval on a Nix machine before enabling) | – | – | – | – |
+| `cfg.attic.enable` | attic binary-cache server (`services.atticd`) — dormant, needs a sops secret first | – | – | – | – |
 
 ### Sub-options (set per host when needed)
 
@@ -70,6 +76,9 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.backup.restic.jobs` | attrsOf anything, `{}` | assigned to `services.restic.backups` (26.05-verified fields); credentials via `config.sops.secrets.<name>.path` |
 | `cfg.backup.borg.jobs` | attrsOf anything, `{}` | assigned to `services.borgbackup.jobs`; secrets via `passCommand`/`environment` referencing sops files, never values |
 | `cfg.user.initialHashedPassword` | nullOr str, `null` | first-deploy password — locked account without it (see PLAN Phase 2) |
+| `cfg.updates.auto.dates` / `.operation` / `.allowReboot` | str, `04:40` · enum `switch|boot`, `switch` · bool, off | timer schedule · switch vs stage-for-reboot · reboot consent |
+| `cfg.boot.secureBoot.autoKeys.enable` / `.measuredBoot.enable` | bool, off | auto-generate + auto-enroll the sbctl key bundle into firmware NVRAM · systemd-pcrlock PCR policy (caps boot generations at 4) |
+| `cfg.attic.port` / `.environmentFile` / `.settings` | port, `8080` · nullOr path, `null` (required when enabled) · attrs, `{}` | listen port (firewall-opened) · sops-decrypted env file — `config.sops.secrets.<name>.path`, never a value · settings.toml passthrough |
 
 ## Desktop session
 
@@ -79,7 +88,7 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 | Option | Turns on | desktop | laptop | server | wsl |
 |---|---|:---:|:---:|:---:|:---:|
 | `cfg.desktop.gnome.enable` | GNOME (GDM) | – | ✓ | – | – |
-| `cfg.desktop.hyprland.enable` | Hyprland via uwsm (+ PAM hyprlock); config = vendored `hyprland.lua` + rofi, not generated | ✓ | – | – | – |
+| `cfg.desktop.hyprland.enable` | Hyprland via uwsm (+ PAM hyprlock + the UWSM wayland-session entry for display managers); config = vendored `hyprland.lua` + rofi, not generated | ✓ | – | – | – |
 | `cfg.desktop.plasma.enable` | KDE Plasma 6 (SDDM) | – | – | – | – |
 
 ## Home options (`cfg.home.*`)

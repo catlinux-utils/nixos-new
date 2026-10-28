@@ -23,6 +23,10 @@ All features are toggleable modules under the `cfg.*` option namespace — hosts
 switches, modules stay machine-agnostic. The per-host `hardware-configuration.nix` files are
 placeholders until `nixos-generate-config` runs on each machine (PLAN Phase 2).
 
+Plus the live installer ISO — `hosts/installer`, a host that builds as an image (no
+hardware-configuration; boots into the Hyprland desktop with GDM Wayland autologin): on a Nix
+machine, `nixos-rebuild build-image --flake .#installer --image-variant iso`.
+
 ## Usage (once scaffolded)
 
 The flake is expected wherever each host's `cfg.nh.flakeDir` points (default `/etc/nixos`):

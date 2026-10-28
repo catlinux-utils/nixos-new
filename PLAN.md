@@ -914,8 +914,17 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
 
 ## Phase 6 — Extras (unscheduled) `[ ]`
 
-- [ ] Installer ISO — deferred; expand the `iso` variant (defaults to
-      `installer/cd-dvd/iso-image.nix`, merged via `extendModules`):
+- [x] Installer ISO (implemented 2026-10-28) — a normal mkHost host: full Home Manager session
+      for the profile's passwordless `nixos` user (`cfg.user.name` points at it — the
+      always-on users.nix merges zsh + wheel in, no locked `polishcat` user), booting into the
+      repo's Hyprland desktop via GDM Wayland autologin (mirrors the desktop host's uwsm
+      session entry); theming riding the desktop host's wallpaper set, zram for low-memory
+      comfort. Imports upstream `profiles/base.nix` + `profiles/installation-device.nix` via
+      absolute `pkgs.path` references; `disabledModules` drops `installer/cd-dvd/channel.nix`
+      + `clone-config.nix` (flake-aware live env — Lix, flakes and the pinned registry come
+      from the repo's own nix.nix). No hardware-configuration.nix; `cfg.boot` stays off (the
+      ISO variant owns the loader). Build (pending a Nix machine): `nixos-rebuild build-image
+      --flake .#installer --image-variant iso`. The original variant sketch:
 
   ```nix
   image.modules.iso = { lib, config, pkgs, ... }: {
@@ -960,16 +969,37 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
   workflow doesn't fit how these machines are used; hosts keep a conventional persistent root.
   Preservation was evaluated as the modern alternative — moot with this decision. The Phase 2
   state-management decision per host reduces to disk layout + snapshots + `backup.nix`
-- [ ] Secure boot via lanzaboote
+- [x] Secure boot via lanzaboote (dormant module, 2026-10-28) —
+      `cfg.boot.secureBoot.{enable, autoKeys.enable, measuredBoot.enable}` wraps their module;
+      input pinned to v1.2.0 and deliberately NOT following nixpkgs (26.05 has no `lzbt`; their
+      module mkDefaults `boot.lanzaboote.package` to their own nixos-unstable build). Verified
+      against the v1.2.0 module source: `configurationLimit` (nullOr int, defaults to
+      systemd-boot's) must be ≤ 4 with pcrlock (set automatically), `measuredBoot.pcrs` enum
+      0–4/7 (mkDefault 0 2 4 7), `includeMicrosoftKeys` defaults true so plain
+      `autoEnrollKeys.enable` passes their brick-risk assertion. Enable-time caveats:
+      officially nixos-unstable-only — eval on a Nix machine first, UEFI hardware required;
+      TPM2-LUKS autoCryptenroll left per-host
 - [x] plymouth boot splash — ported early as `cfg.boot.plymouth.enable` by §2.2 boot extras
-- [ ] colmena / deploy-rs for remote server deploys
-- [ ] own binary cache (attic)
+- [ ] colmena / deploy-rs for remote server deploys — deferred (2026-10-28, user decision):
+      auto-updates covers server freshness, 4 hosts are cheap to `nh` by hand, and a deployer
+      needs a nix-capable machine anyway (WSL pending); colmena costs ~nothing later (deploys
+      existing `nixosConfigurations` directly), deploy-rs is one `deploy` output block
+- [x] own binary cache (attic) — dormant module (2026-10-28): `cfg.attic.{enable, port,
+      environmentFile, settings}` wrapping upstream `services.atticd` (upstream in 26.05:
+      settings.toml passthrough, DynamicUser; requires ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64
+      via environmentFile — point it at a sops-decrypted file per the store-leak rule; our
+      module asserts that at eval time). Enabling waits on the Phase 3 sops key
 - [ ] disko + nixos-anywhere — declarative disk partitioning and hands-off installs from any
-      machine (Phase 2 disk decisions then live in the repo, not on the machine)
+      machine (Phase 2 disk decisions then live in the repo, not on the machine) — 2026-10-28:
+      disko input added (follows nixpkgs); per-host layouts + nixos-anywhere usage still open
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
-      Secure Boot via lanzaboote)
-- [ ] Scheduled auto-updates — systemd timer running `nh os switch` (or `system.autoUpgrade`);
-      a deliberate trade-off against the manual nh workflow, decide per host
+      Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
+      measuredBoot = systemd-pcrlock PCR policy); the actual autoCryptenroll against a real
+      LUKS device stays per-host
+- [x] Scheduled auto-updates (module dormant, 2026-10-28) — `cfg.updates.auto.{enable, dates,
+      operation, allowReboot}` wraps upstream `system.autoUpgrade` flake-aware (flake =
+      `cfg.nh.flakeDir`, `upgrade = false`, `--refresh` automatic in flake mode); the per-host
+      enablement trade-off against the manual nh workflow stays open
 - [ ] NixOS-WSL host variant — promoted to Phase 1.5
 
 ---
@@ -1005,4 +1035,7 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |
 | nixos-hardware | flake input, imported per host via `specialArgs` `inputs` (all hosts, Phase 2) | module collection for per-model/per-GPU wiring — not a package, doesn't violate the unstable-overlay-only rule; tracks `master` (no release branches), refreshed by the weekly flake-update cron |
 | Dev-machine validation | NixOS-WSL host (Phase 1.5), bootstrapped from the prebuilt tarball | dissolves the no-nix-on-Windows constraint; repo lives on the WSL Linux filesystem, agent sessions validate via `wsl.exe` |
+| Installer ISO | `nixosConfigurations.installer` — a mkHost host that builds as an image | upstream's `build-image --image-variant` needs a nixosConfiguration ref; assembling via mkHost keeps one host-assembly path and gives the live env the full HM Hyprland session (2026-10-28) |
+| Secure Boot input | lanzaboote pinned v1.2.0, deliberately not following nixpkgs | `lzbt` is absent from 26.05; their module mkDefaults `boot.lanzaboote.package` to a build from the nixos-unstable nixpkgs the input carries itself (2026-10-28) |
+| Deploy tooling (colmena / deploy-rs) | deferred (2026-10-28, user decision) | auto-updates covers server freshness; 4 hosts are cheap to `nh` by hand; a deployer needs a nix-capable machine anyway (WSL pending); adding colmena later costs ~nothing |
 | Stateless root | declined — impermanence (and the preservation alternative) stay out | the stateless-root workflow doesn't fit the user's workflow; hosts keep a conventional persistent root (2026-10-27) |

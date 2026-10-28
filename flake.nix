@@ -1,5 +1,6 @@
 {
-  description = "Multi-host NixOS flake (desktop, laptop, server, wsl) with Home Manager";
+  description =
+    "Multi-host NixOS flake (desktop, laptop, server, wsl, installer ISO) with Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -25,11 +26,30 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+
+    # per-device/per-GPU hardware quirks, imported per host via specialArgs
+    # `inputs` (Phase 2 disk/hardware decisions) — tracks master, no release
+    # branches; refreshed by the manual flake-update workflow
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+
+    # declarative disk partitioning — wired in per host when disk layouts land
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Secure Boot (dormant, cfg.boot.secureBoot). Deliberately does NOT follow
+    # nixpkgs: `pkgs.lzbt` does not exist in 26.05, and lanzaboote's module
+    # defaults its package to `self.packages.<system>.lzbt`, built from the
+    # nixos-unstable nixpkgs this input carries itself. Officially an
+    # nixos-unstable-only module — enable per host only after a real eval on a
+    # Nix machine, and only on UEFI hardware.
+    lanzaboote.url = "github:nix-community/lanzaboote/v1.2.0";
   };
 
   outputs =
     # inputs@ binds the whole attrset — modules reach later-added inputs
-    # (nixos-wsl, sops-nix; nixos-hardware joins in Phase 2) through
+    # (nixos-wsl, sops-nix, nixos-hardware, disko, lanzaboote) through
     # specialArgs.inputs
     inputs@{
       self,
@@ -51,6 +71,13 @@
         laptop = mkHost { hostname = "laptop"; };
         server = mkHost { hostname = "server"; };
         wsl = mkHost { hostname = "wsl"; };
+
+        # The installer ISO is assembled like a host (mkHost — full Home
+        # Manager session for the profile's passwordless `nixos` user) but is
+        # an IMAGE, not a switch target: hosts/installer/default.nix adds the
+        # `iso` image variant. Built on a Nix machine:
+        #   nixos-rebuild build-image --flake .#installer --image-variant iso
+        installer = mkHost { hostname = "installer"; };
       };
 
       overlays.default = unstable-overlay;

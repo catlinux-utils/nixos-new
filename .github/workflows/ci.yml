@@ -17,6 +17,8 @@ jobs:
         run: nix fmt -- --check .
       - name: Flake check (evaluates every host)
         run: nix flake check
+      - name: Evaluate the installer ISO (iso image variant)
+        run: nix eval --raw .#nixosConfigurations.installer.config.system.build.images.iso.drvPath
 
   build:
     # real builds surface breakage that evaluation alone cannot; the

@@ -19,6 +19,16 @@
       withUWSM = true;
     };
 
+    # the uwsm module's waylandCompositors wiring — without it no "Hyprland
+    # (UWSM)" session entry is generated for display managers, and name-based
+    # `uwsm start hyprland` resolves to nothing; the binPath is the security
+    # wrapper (cap_sys_nice) that Hyprland launches through on NixOS
+    programs.uwsm.waylandCompositors.hyprland = {
+      prettyName = "Hyprland";
+      comment = "Hyprland compositor managed by UWSM";
+      binPath = "/run/wrappers/bin/Hyprland";
+    };
+
     security.polkit.enable = true;
 
     # PAM service for the user-side hyprlock screen locker

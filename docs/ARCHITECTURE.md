@@ -16,15 +16,31 @@ flake.nix
   │          sops-nix (follows nixpkgs) — secrets module (cfg.secrets.enable)
   │          plasma-manager (follows nixpkgs + home-manager) — HM module for the
   │            dormant plasma home config (no host enables cfg.desktop.plasma.enable yet)
+  │          nixos-hardware (master) — per-device quirk modules, imported per host (Phase 2)
+  │          disko (follows nixpkgs) — declarative disk layouts, wired per host (Phase 2)
+  │          lanzaboote (v1.2.0 — does NOT follow nixpkgs: brings its own nixos-unstable to
+  │            build `lzbt`, absent from 26.05) — dormant Secure Boot module
+  │            (cfg.boot.secureBoot.enable)
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
   │
-  └─ lib/mkHost.nix ──► nixosConfigurations.<host>
+  ├─ lib/mkHost.nix ──► nixosConfigurations.<host>
         ├─ modules/nixos/          system feature modules (cfg.* options)
         ├─ hosts/<host>/           hardware-configuration.nix + per-host switches
         └─ home-manager.nixosModules.home-manager
               └─ modules/home/     user feature modules
                     └─ read system switches via osConfig.cfg.*
+
+  └─ hosts/installer ──► nixosConfigurations.installer — the live ISO: a mkHost
+        host (Home Manager session for the profile's passwordless `nixos` user)
+        that builds as an IMAGE: imports modules/nixos/ + upstream installer
+        profiles, disables channel.nix/clone-config.nix (flake-aware live
+        env), and adds the `iso` image variant (image.modules.iso →
+        config.system.build.images.iso). greetd autologs into the repo's
+        Hyprland desktop at boot. Build on a Nix machine:
+        `nixos-rebuild build-image --flake .#installer --image-variant iso` —
+        CI evaluates the ISO derivation only, never builds it
+        (hardware.enableAllHardware makes the closure huge)
 
 nh (configured in modules/nixos/nh.nix, flake path = cfg.nh.flakeDir):
   nh os switch    builds & activates nixosConfigurations.<hostname>  (OS + Home Manager)
@@ -51,11 +67,20 @@ as the live reference. The load-bearing parts:
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
   `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
   and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
+- **`hosts/installer/default.nix`** — the installer ISO: a normal mkHost host (full Home
+  Manager session, GDM autologin into the uwsm Hyprland desktop, theming riding the desktop
+  host's wallpaper set) that has no hardware-configuration.nix and builds as an IMAGE. It
+  imports upstream `profiles/base.nix` + `profiles/installation-device.nix` via absolute
+  `pkgs.path` references and `disabledModules` drops upstream's `channel.nix`/`clone-config.nix`
+  (channel-era mechanisms at odds with flake installs). `cfg.user.name` points at the
+  profile's passwordless `nixos` account so `users.nix` and Home Manager target it instead of
+  creating a locked `polishcat` user. `cfg.boot` stays off — the ISO variant owns the loader.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.
 - **Hyprland session flow** — the system side launches the session through uwsm
-  (`programs.hyprland.withUWSM`), which activates `graphical-session.target`. User units (the
+  (`programs.hyprland.withUWSM`, with `programs.uwsm.waylandCompositors` configured so the
+  "Hyprland (UWSM)" session entry exists for display managers), which activates `graphical-session.target`. User units (the
   quickshell bar, hypridle, mako, hyprpaper, the polkit agent) bind to it from the home side
   (`modules/home/hyprland/`), so nothing is autostarted via `exec-once`. The session config
   itself is a plain vendored file (`modules/home/hyprland/hyprland.lua`, Hyprland's Lua config
@@ -126,3 +151,5 @@ mechanism; don't add alternate import paths.
    `mkDefault`s graphics/audio on.
 4. nh finds the flake via `programs.nh.flake` (`cfg.nh.flakeDir`, which sets `NH_FLAKE`)
    and applies the config for the current hostname.
+5. `installer` rides the same path (mkHost) but builds as an image, not a switch
+   target: `build-image --image-variant iso` (see the folder-scheme bullet).
