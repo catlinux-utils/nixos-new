@@ -993,6 +993,8 @@ DE-independent home modules (each follows the §1.6 shape; land any time after P
       Btrfs-on-LUKS layouts (desktop: single cryptroot; laptop: cryptroot + swapfile; server:
       cryptroot + separate cryptdata for /var/lib/docker, syncthing, backups).
       nixos-hardware placeholder imports added to each host's default.nix.
+      `scripts/nixos-disk` for manual partitioning (flags or interactive: encryption, fs,
+      layout), `scripts/nixos-mount`/`umount` for install-time mounting.
       nixos-anywhere usage still open.
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
       Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
