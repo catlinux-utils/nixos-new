@@ -1,0 +1,277 @@
+#!/usr/bin/env bash
+# nixos-disk — flexible disk preparation for NixOS
+# Options-driven: choose encryption, filesystem, layout per partition.
+# Run as root on target machine.
+
+set -euo pipefail
+
+# ─── Config (set via flags or prompts) ──────────────────────────────
+DISK=""
+ENCRYPT_ROOT="yes"
+ENCRYPT_HOME="no"
+ENCRYPT_SWAP="yes"
+FS_ROOT="btrfs"
+FS_HOME="btrfs"
+FS_BOOT="vfat"
+LAYOUT="auto"          # auto | manual | server
+HOSTNAME="nixos"
+SWAP_SIZE="8G"
+BOOT_SIZE="1G"
+ROOT_SIZE=""           # empty = rest of disk
+HOME_SIZE=""           # empty = separate partition if ENCRYPT_HOME=yes
+
+# ─── Pretty ─────────────────────────────────────────────────────────
+RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
+info() { echo -e "${BLU}[info]${NC} $*"; }
+ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
+warn() { echo -e "${YEL}[warn]${NC} $*"; }
+err()  { echo -e "${RED}[err]${NC}  $*"; }
+
+usage() {
+  cat <<EOF
+Usage: nixos-disk [options] <disk>
+
+Options:
+  --encrypt-root yes|no     Encrypt root partition (default: yes)
+  --encrypt-home yes|no     Separate encrypted /home (default: no)
+  --encrypt-swap yes|no     Encrypt swap (default: yes)
+  --fs-root btrfs|ext4|xfs  Root filesystem (default: btrfs)
+  --fs-home btrfs|ext4|xfs  Home filesystem (default: btrfs)
+  --fs-boot vfat|ext4       Boot filesystem (default: vfat)
+  --layout auto|manual|srv  Layout profile (default: auto)
+  --swap-size SIZE          Swap size (default: 8G)
+  --boot-size SIZE          Boot partition size (default: 1G)
+  --root-size SIZE          Root partition size (default: rest)
+  --home-size SIZE          Home partition size (default: rest)
+  --hostname NAME           Hostname for generated config (default: nixos)
+  -h, --help                Show this help
+
+Examples:
+  nixos-disk --encrypt-home yes --fs-root btrfs /dev/nvme0n1
+  nixos-disk --layout server /dev/nvme0n1
+  nixos-disk /dev/sda  # interactive
+EOF
+}
+
+# ─── Parse args ─────────────────────────────────────────────────────
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --encrypt-root) ENCRYPT_ROOT="$2"; shift 2 ;;
+      --encrypt-home) ENCRYPT_HOME="$2"; shift 2 ;;
+      --encrypt-swap) ENCRYPT_SWAP="$2"; shift 2 ;;
+      --fs-root) FS_ROOT="$2"; shift 2 ;;
+      --fs-home) FS_HOME="$2"; shift 2 ;;
+      --fs-boot) FS_BOOT="$2"; shift 2 ;;
+      --layout) LAYOUT="$2"; shift 2 ;;
+      --swap-size) SWAP_SIZE="$2"; shift 2 ;;
+      --boot-size) BOOT_SIZE="$2"; shift 2 ;;
+      --root-size) ROOT_SIZE="$2"; shift 2 ;;
+      --home-size) HOME_SIZE="$2"; shift 2 ;;
+      --hostname) HOSTNAME="$2"; shift 2 ;;
+      -h|--help) usage; exit 0 ;;
+      -*) err "Unknown option: $1"; usage; exit 1 ;;
+      *) DISK="$1"; shift ;;
+    esac
+  done
+}
+
+# ─── Interactive prompts ────────────────────────────────────────────
+prompt_config() {
+  echo -e "${BLU}=== NixOS Disk Configuration ===${NC}"
+  echo
+
+  # Disk
+  info "Available disks:"
+  lsblk -d -o NAME,SIZE,MODEL,TRAN,TYPE | grep -v loop
+  echo
+  read -rp "$(echo -e "${BLU}Target disk (e.g. /dev/nvme0n1):${NC} ")" DISK
+  [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
+
+  # Layout preset
+  echo
+  PS3="$(echo -e "${BLU}Layout preset:${NC} ")"
+  options=("auto (root+home on single encrypt)" "manual (choose each)" "server (root + data)" "Quit")
+  select LAYOUT in "${options[@]}"; do
+    case $REPLY in
+      1) LAYOUT="auto"; break ;;
+      2) LAYOUT="manual"; break ;;
+      3) LAYOUT="server"; break ;;
+      4) exit 0 ;;
+      *) err "Invalid option." ;;
+    esac
+  done
+
+  # Encryption
+  echo
+  read -rp "$(echo -e "${BLU}Encrypt root? [Y/n]:${NC} ")" ans
+  ENCRYPT_ROOT="${ans:-y}"
+  [[ "$LAYOUT" != "server" ]] && {
+    read -rp "$(echo -e "${BLU}Separate encrypted /home? [y/N]:${NC} ")" ans
+    ENCRYPT_HOME="${ans:-n}"
+  }
+
+  read -rp "$(echo -e "${BLU}Encrypt swap? [Y/n]:${NC} ")" ans
+  ENCRYPT_SWAP="${ans:-y}"
+
+  # Filesystems
+  echo
+  PS3="$(echo -e "${BLU}Root filesystem:${NC} ")"
+  options=("btrfs" "ext4" "xfs")
+  select FS_ROOT in "${options[@]}"; do [[ -n "$FS_ROOT" ]] && break; done
+
+  [[ "$ENCRYPT_HOME" =~ ^[Yy] ]] && {
+    PS3="$(echo -e "${BLU}Home filesystem:${NC} ")"
+    options=("btrfs" "ext4" "xfs")
+    select FS_HOME in "${options[@]}"; do [[ -n "$FS_HOME" ]] && break; done
+  }
+
+  PS3="$(echo -e "${BLU}Boot filesystem:${NC} ")"
+  options=("vfat" "ext4")
+  select FS_BOOT in "${options[@]}"; do [[ -n "$FS_BOOT" ]] && break; done
+
+  # Sizes
+  echo
+  read -rp "$(echo -e "${BLU}Boot size [${BOOT_SIZE}]:${NC} ")" ans; BOOT_SIZE="${ans:-$BOOT_SIZE}"
+  read -rp "$(echo -e "${BLU}Swap size [${SWAP_SIZE}]:${NC} ")" ans; SWAP_SIZE="${ans:-$SWAP_SIZE}"
+  [[ -z "$ROOT_SIZE" ]] && read -rp "$(echo -e "${BLU}Root size (empty=rest) [${ROOT_SIZE}]:${NC} ")" ans && ROOT_SIZE="${ans}"
+  [[ "$ENCRYPT_HOME" =~ ^[Yy] && -z "$HOME_SIZE" ]] && read -rp "$(echo -e "${BLU}Home size (empty=rest) [${HOME_SIZE}]:${NC} ")" ans && HOME_SIZE="${ans}"
+
+  read -rp "$(echo -e "${BLU}Hostname [${HOSTNAME}]:${NC} ")" ans; HOSTNAME="${ans:-$HOSTNAME}"
+}
+
+# ─── Partition helpers ──────────────────────────────────────────────
+part_num() { echo "${1}$( [[ "$1" =~ nvme ]] && echo "p" || echo "" )${2}"; }
+
+create_partitions() {
+  info "Wiping and creating GPT on $DISK..."
+  sgdisk --zap-all "$DISK"
+  sgdisk -n 1:0:+$BOOT_SIZE -t 1:EF00 -c 1:"ESP" "$DISK"
+  local part=2
+
+  if [[ "$LAYOUT" == "server" ]]; then
+    sgdisk -n $part:0:+${ROOT_SIZE:-100G} -t $part:8309 -c $part:"cryptroot" "$DISK"
+    ((part++))
+    sgdisk -n $part:0:0 -t $part:8309 -c $part:"cryptdata" "$DISK"
+  elif [[ "$ENCRYPT_HOME" =~ ^[Yy] ]]; then
+    sgdisk -n $part:0:+${ROOT_SIZE:-50G} -t $part:8309 -c $part:"cryptroot" "$DISK"
+    ((part++))
+    sgdisk -n $part:0:+${HOME_SIZE:-0} -t $part:8309 -c $part:"crypthome" "$DISK"
+  else
+    sgdisk -n $part:0:0 -t $part:8309 -c $part:"cryptroot" "$DISK"
+  fi
+
+  # Swap partition if not using swapfile
+  if [[ "$ENCRYPT_SWAP" =~ ^[Yy] && "$LAYOUT" != "server" ]]; then
+    ((part++))
+    sgdisk -n $part:0:+$SWAP_SIZE -t $part:8309 -c $part:"cryptswap" "$DISK"
+  fi
+}
+
+format_partition() {
+  local part="$1" label="$2" fs="$3" crypt="$4"
+  [[ -b "$part" ]] || { err "Partition not found: $part"; return 1; }
+
+  if [[ "$crypt" == "yes" ]]; then
+    info "Formatting $label (LUKS2 + $fs)..."
+    cryptsetup luksFormat --type luks2 --label "$label" "$part"
+    cryptsetup open "$part" "$label"
+    local mapper="/dev/mapper/$label"
+    case $fs in
+      btrfs) mkfs.btrfs -L "$label" "$mapper" ;;
+      ext4) mkfs.ext4 -L "$label" "$mapper" ;;
+      xfs) mkfs.xfs -L "$label" "$mapper" ;;
+    esac
+  else
+    info "Formatting $label ($fs)..."
+    case $fs in
+      vfat) mkfs.vfat -F32 -n "$label" "$part" ;;
+      ext4) mkfs.ext4 -L "$label" "$part" ;;
+      xfs) mkfs.xfs -L "$label" "$part" ;;
+    esac
+  fi
+}
+
+create_subvolumes() {
+  local mountpoint="$1" label="$2" fs="$3"
+  if [[ "$fs" == "btrfs" ]]; then
+    mount /dev/mapper/"$label" "$mountpoint"
+    case $label in
+      cryptroot) for sv in @ @home @snapshots @log @nix; do btrfs subvolume create "$mountpoint/$sv"; done ;;
+      crypthome) btrfs subvolume create "$mountpoint/@home" ;;
+      cryptdata) for sv in docker containers syncthing backups libvirt; do btrfs subvolume create "$mountpoint/$sv"; done ;;
+    esac
+    umount "$mountpoint"
+  fi
+}
+
+# ─── Main ───────────────────────────────────────────────────────────
+main() {
+  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
+  parse_args "$@"
+  [[ -z "$DISK" ]] && prompt_config
+
+  # Show plan
+  echo
+  warn "Plan for $DISK:"
+  echo "  Layout:      $LAYOUT"
+  echo "  Encrypt root: $ENCRYPT_ROOT"
+  echo "  Encrypt home: $ENCRYPT_HOME"
+  echo "  Encrypt swap: $ENCRYPT_SWAP"
+  echo "  FS root:      $FS_ROOT"
+  echo "  FS home:      $FS_HOME"
+  echo "  FS boot:      $FS_BOOT"
+  echo "  Boot size:    $BOOT_SIZE"
+  echo "  Swap size:    $SWAP_SIZE"
+  echo "  Root size:    ${ROOT_SIZE:-rest}"
+  echo "  Home size:    ${HOME_SIZE:-rest}"
+  echo "  Hostname:     $HOSTNAME"
+  echo
+  read -rp "$(echo -e "${YEL}Proceed? Type 'YES':${NC} ")" ans
+  [[ "$ans" == "YES" ]] || { info "Aborted."; exit 0; }
+
+  # Execute
+  create_partitions
+  sleep 1
+  partprobe "$DISK"
+  sleep 1
+
+  # Find partitions by label
+  ESP=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="ESP" {print $1}')
+  CRYPTROOT=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptroot" {print $1}')
+  CRYPTHOME=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="crypthome" {print $1}')
+  CRYPTDATA=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptdata" {print $1}')
+  CRYPTSWAP=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptswap" {print $1}')
+
+  format_partition "$ESP" "ESP" "$FS_BOOT" "no"
+  format_partition "$CRYPTROOT" "cryptroot" "$FS_ROOT" "$ENCRYPT_ROOT"
+  create_subvolumes "/mnt" "cryptroot" "$FS_ROOT"
+
+  [[ "$ENCRYPT_HOME" =~ ^[Yy] && -n "$CRYPTHOME" ]] && {
+    format_partition "$CRYPTHOME" "crypthome" "$FS_HOME" "yes"
+    create_subvolumes "/mnt/home" "crypthome" "$FS_HOME"
+  }
+
+  [[ "$LAYOUT" == "server" && -n "$CRYPTDATA" ]] && {
+    format_partition "$CRYPTDATA" "cryptdata" "btrfs" "yes"
+    create_subvolumes "/mnt/var/lib" "cryptdata" "btrfs"
+  }
+
+  [[ "$ENCRYPT_SWAP" =~ ^[Yy] && -n "$CRYPTSWAP" ]] && {
+    format_partition "$CRYPTSWAP" "cryptswap" "swap" "yes"
+    mkswap /dev/mapper/cryptswap
+  }
+
+  # Close all
+  cryptsetup close cryptroot 2>/dev/null || true
+  [[ -n "$CRYPTHOME" ]] && cryptsetup close crypthome 2>/dev/null || true
+  [[ -n "$CRYPTDATA" ]] && cryptsetup close cryptdata 2>/dev/null || true
+  [[ -n "$CRYPTSWAP" ]] && cryptsetup close cryptswap 2>/dev/null || true
+
+  ok "Disk prepared. Layout:"
+  lsblk -f "$DISK"
+  echo
+  info "Next: run 'nixos-mount' to mount everything, then nixos-install"
+}
+
+main "$@"

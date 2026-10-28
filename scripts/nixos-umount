@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# nixos-umount — safely unmount and close LUKS
+
+set -euo pipefail
+
+MNT="${1:-/mnt}"
+
+[[ $EUID -ne 0 ]] && { echo "Run as root."; exit 1; }
+
+info() { echo -e "\033[0;34m[info]\033[0m $*"; }
+ok()   { echo -e "\033[0;32m[ok]\033[0m  $*"; }
+
+info "Unmounting $MNT..."
+umount -R "$MNT" 2>/dev/null && ok "Unmounted." || info "Already unmounted or busy."
+
+info "Closing swap..."
+swapoff /dev/mapper/cryptswap 2>/dev/null || true
+
+info "Closing LUKS..."
+for name in cryptroot crypthome cryptdata cryptswap; do
+  cryptsetup close "$name" 2>/dev/null && ok "Closed $name" || true
+done
+
+ok "Done."

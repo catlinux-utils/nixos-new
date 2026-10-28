@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# nixos-mount — mount prepared disk for nixos-install or maintenance
+# Auto-detects layout from partition labels, mounts subvolumes correctly.
+
+set -euo pipefail
+
+# ─── Config ─────────────────────────────────────────────────────────
+MNT="/mnt"
+OPEN_LUKS="yes"    # yes | no (assume already open)
+CLOSE_ON_EXIT="no"
+
+# ─── Pretty ─────────────────────────────────────────────────────────
+RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
+info() { echo -e "${BLU}[info]${NC} $*"; }
+ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
+warn() { echo -e "${YEL}[warn]${NC} $*"; }
+err()  { echo -e "${RED}[err]${NC}  $*"; }
+
+usage() {
+  cat <<EOF
+Usage: nixos-mount [options] <disk>
+
+Options:
+  --mnt PATH        Mount point (default: /mnt)
+  --no-open         Don't open LUKS (assume already open)
+  --close-on-exit   Close LUKS on unmount
+  -h, --help        Show help
+
+Mounts:
+  - ESP -> /mnt/boot
+  - cryptroot -> /mnt (with subvolumes @, @home, @snapshots, @log, @nix)
+  - crypthome -> /mnt/home (if exists, subvolume @home)
+  - cryptdata -> /mnt/var/lib (if exists, subvolumes docker, containers, etc.)
+  - cryptswap -> swapon (if exists)
+
+EOF
+}
+
+# ─── Parse ──────────────────────────────────────────────────────────
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --mnt) MNT="$2"; shift 2 ;;
+      --no-open) OPEN_LUKS="no"; shift ;;
+      --close-on-exit) CLOSE_ON_EXIT="yes"; shift ;;
+      -h|--help) usage; exit 0 ;;
+      -*) err "Unknown: $1"; usage; exit 1 ;;
+      *) DISK="$1"; shift ;;
+    esac
+  done
+}
+
+# ─── Find partitions by label ───────────────────────────────────────
+find_parts() {
+  ESP=$(lsblk -rno PATH,LABEL "$DISK" 2>/dev/null | awk '$2=="ESP" {print $1}')
+  CRYPTROOT=$(lsblk -rno PATH,LABEL "$DISK" 2>/dev/null | awk '$2=="cryptroot" {print $1}')
+  CRYPTHOME=$(lsblk -rno PATH,LABEL "$DISK" 2>/dev/null | awk '$2=="crypthome" {print $1}')
+  CRYPTDATA=$(lsblk -rno PATH,LABEL "$DISK" 2>/dev/null | awk '$2=="cryptdata" {print $1}')
+  CRYPTSWAP=$(lsblk -rno PATH,LABEL "$DISK" 2>/dev/null | awk '$2=="cryptswap" {print $1}')
+}
+
+open_luks() {
+  local part="$1" name="$2"
+  if ! [[ -b "/dev/mapper/$name" ]]; then
+    info "Opening $name..."
+    cryptsetup open "$part" "$name"
+  else
+    info "$name already open."
+  fi
+}
+
+mount_subvol() {
+  local label="$1" subvol="$2" target="$3" opts="${4:-defaults,noatime,compress=zstd}"
+  mkdir -p "$target"
+  mount -o "$opts,subvol=$subvol" "/dev/mapper/$label" "$target"
+  ok "Mounted $label/$subvol -> $target"
+}
+
+# ─── Main ───────────────────────────────────────────────────────────
+main() {
+  parse_args "$@"
+  [[ -z "$DISK" ]] && { err "Disk required."; usage; exit 1; }
+  [[ $EUID -ne 0 ]] && { err "Run as root."; exit 1; }
+
+  find_parts
+  [[ -z "$ESP" || -z "$CRYPTROOT" ]] && { err "Required partitions not found on $DISK"; exit 1; }
+
+  # Open LUKS
+  if [[ "$OPEN_LUKS" == "yes" ]]; then
+    open_luks "$CRYPTROOT" "cryptroot"
+    [[ -n "$CRYPTHOME" ]] && open_luks "$CRYPTHOME" "crypthome"
+    [[ -n "$CRYPTDATA" ]] && open_luks "$CRYPTDATA" "cryptdata"
+    [[ -n "$CRYPTSWAP" ]] && open_luks "$CRYPTSWAP" "cryptswap"
+  fi
+
+  # Mount root subvolumes
+  mkdir -p "$MNT"
+  info "Mounting root subvolumes..."
+  mount_subvol cryptroot @ "$MNT"
+  mount_subvol cryptroot @home "$MNT/home"
+  mount_subvol cryptroot @snapshots "$MNT/.snapshots"
+  mount_subvol cryptroot @log "$MNT/var/log"
+  mount_subvol cryptroot @nix "$MNT/nix"
+
+  # Boot
+  mkdir -p "$MNT/boot"
+  mount "$ESP" "$MNT/boot"
+  ok "Mounted ESP -> $MNT/boot"
+
+  # Separate /home
+  if [[ -n "$CRYPTHOME" ]]; then
+    mount_subvol crypthome @home "$MNT/home"
+  fi
+
+  # Server data
+  if [[ -n "$CRYPTDATA" ]]; then
+    mount_subvol cryptdata docker "$MNT/var/lib/docker"
+    mount_subvol cryptdata containers "$MNT/var/lib/containers"
+    mount_subvol cryptdata syncthing "$MNT/var/syncthing"
+    mount_subvol cryptdata backups "$MNT/var/backups"
+    mount_subvol cryptdata libvirt "$MNT/var/lib/libvirt"
+  fi
+
+  # Swap
+  if [[ -n "$CRYPTSWAP" ]]; then
+    swapon /dev/mapper/cryptswap
+    ok "Swap on /dev/mapper/cryptswap"
+  fi
+
+  ok "All mounted at $MNT"
+  echo
+  lsblk -f "$DISK"
+  echo
+  findmnt -R "$MNT"
+}
+
+# ─── Cleanup on exit ────────────────────────────────────────────────
+cleanup() {
+  if [[ "$CLOSE_ON_EXIT" == "yes" ]]; then
+    info "Unmounting..."
+    umount -R "$MNT" 2>/dev/null || true
+    swapoff /dev/mapper/cryptswap 2>/dev/null || true
+    cryptsetup close cryptroot 2>/dev/null || true
+    cryptsetup close crypthome 2>/dev/null || true
+    cryptsetup close cryptdata 2>/dev/null || true
+    cryptsetup close cryptswap 2>/dev/null || true
+    ok "Closed."
+  fi
+}
+trap cleanup EXIT
+
+main "$@"
