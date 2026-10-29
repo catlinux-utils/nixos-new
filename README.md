@@ -1,25 +1,33 @@
 # nixos-new
 
-ThePolishcat's NixOS configuration flake — multiple hosts, Home Manager wired in as a NixOS module, `nh` for rebuilds, Lix as the Nix implementation, stable nixpkgs (26.05) with unstable available as `pkgs.unstable.<pkg>`.
+ThePolishcat's NixOS configuration flake. A single flake manages several machines
+(`desktop`, `laptop`, `server`, `wsl`) plus a live installer ISO. Home Manager is
+wired in as a NixOS module, rebuilds go through `nh`, and the Nix implementation is
+Lix on nixpkgs **26.05**, with unstable available as `pkgs.unstable.<pkg>`.
 
-> **Status:** scaffold implemented — not yet machine-validated (`nix flake check` / `nix fmt` need a Nix machine; see [TODO.md](TODO.md)). The `wsl` host (Phase 1.5) is the planned local validation path — its distro bootstrap is pending; the manual CI workflow ([.github/workflows/ci.yml](.github/workflows/ci.yml)) is the interim one. [PLAN.md](PLAN.md) contains the full spec and roadmap. Agents working in this repo: start with [AGENTS.md](AGENTS.md).
+All features are toggleable modules under the `cfg.*` option namespace: hosts flip
+switches in `hosts/<name>/default.nix`, modules stay machine-agnostic.
 
 ## Hosts
 
 | Host | Role | Session |
-|---|---|---|
+|------|------|---------|
 | `desktop` | workstation | Hyprland |
 | `laptop` | portable | GNOME |
-| `server` | headless | none (ssh + docker) |
-| `wsl` | NixOS-WSL dev host (local validation from Windows, Phase 1.5) | none |
+| `server` | headless | none (SSH + Docker) |
+| `wsl` | NixOS-WSL dev host | none |
+| `installer` | live ISO — boots into the repo's Hyprland desktop via GDM autologin | Hyprland |
 
-Plus the live installer ISO — `hosts/installer`, a host that builds as an image (no hardware-configuration; boots into the Hyprland desktop with GDM Wayland autologin): on a Nix machine, `nixos-rebuild build-image --flake .#installer --image-variant iso`.
+The installer is a regular host that builds as an image (it has no
+`hardware-configuration.nix`; the `iso` image variant owns the bootloader):
 
-All features are toggleable modules under the `cfg.*` option namespace — hosts flip switches, modules stay machine-agnostic.
+```bash
+nixos-rebuild build-image --flake .#installer --image-variant iso
+```
 
 ## Usage
 
-The flake is expected wherever each host's `cfg.nh.flakeDir` points (default `/etc/nixos`):
+The flake lives wherever the host's `cfg.nh.flakeDir` points (default `/etc/nixos`):
 
 ```bash
 nh os switch    # build & activate OS + Home Manager for this host
@@ -29,23 +37,20 @@ nh clean        # garbage-collect old generations (also runs weekly)
 nix fmt         # format the repo (RFC 101 style)
 ```
 
-## Docs
+## Installation
 
-- [PLAN.md](PLAN.md) — roadmap; Phase 1 is the complete scaffold spec
-- [AGENTS.md](AGENTS.md) — conventions, environment constraints, recipes for agents
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the flake fits together (data flow, option tree, host assembly)
-- [docs/OPTIONS.md](docs/OPTIONS.md) — every `cfg.*` option: type, default, effect, per-host matrix
-- [docs/INSTALL.md](docs/INSTALL.md) — complete disk preparation, installation, and post-install guide
-- [TODO.md](TODO.md) — actionable next steps
+The full guide — disk preparation, hardware-config generation, non-interactive
+variants — is [docs/INSTALL.md](docs/INSTALL.md). Abridged, from a live environment:
 
-## Installation (Quick Reference)
-
-See **[docs/INSTALL.md](docs/INSTALL.md)** for the full guide. The short version:
-
-### New disk (partition + format)
 ```bash
-# 1. Partition & format (interactive or flags)
+# 0. Clone this repo
+git clone https://github.com/ThePolishcat/nixos-new.git
+cd nixos-new
+
+# 1. Partition & format the target drive (interactive)
 sudo ./scripts/nixos-disk /dev/nvme0n1
+#    Reusing existing partitions instead? Format in place:
+#    sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
 
 # 2. Mount
 sudo ./scripts/nixos-mount /dev/nvme0n1
@@ -53,47 +58,32 @@ sudo ./scripts/nixos-mount /dev/nvme0n1
 # 3. Ensure /efi/EFI exists (case-sensitive ESP mount fix)
 mkdir -p /mnt/efi/EFI
 
-# 4. Generate hardware config into repo (commit manually later)
+# 4. Generate the hardware config into the repo
 nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
 
 # 5. Install
 nixos-install --flake .#desktop --root /mnt
 
-# 6. Copy flake from installer to installed system (before reboot)
+# 6. Copy the cloned repo onto the new system (before reboot)
 mkdir -p /mnt/home/cat/github
-cp -r /etc/nixos /mnt/home/cat/github/nixos
-chown -R 1000:100 /mnt/home/cat/github/nixos
+cp -r . /mnt/home/cat/github/nixos
+chown -R 1000:100 /mnt/home/cat/github/nixos   # numeric IDs: target isn't booted yet
 
-# 7. Reboot
+# 7. Reboot, then run `nh os switch` from ~/github/nixos
 reboot
 ```
 
-### Existing partitions (format in place)
-```bash
-# 1. Format partitions (interactive or flags)
-sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
+Notes:
 
-# 2. Mount
-sudo ./scripts/nixos-mount /dev/nvme0n1
+- The installer ISO ships this repo pre-cloned at `/etc/nixos` — `cd /etc/nixos`
+  and skip step 0.
+- The `cat` user ships with initial password `cat` (`cfg.user.initialHashedPassword`
+  in the host config) — change it on first login.
+- Helper scripts: `nixos-disk`, `nixos-mount`, `nixos-umount`, `nixos-format-part` —
+  documented in [docs/INSTALL.md](docs/INSTALL.md).
 
-# 3. Ensure /efi/EFI exists (case-sensitive ESP mount fix)
-mkdir -p /mnt/efi/EFI
+## Documentation
 
-# 4. Generate hardware config into repo (commit manually later)
-nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
-
-# 5. Install
-nixos-install --flake .#desktop --root /mnt
-
-# 6. Copy flake from installer to installed system (before reboot)
-mkdir -p /mnt/home/cat/github
-cp -r /etc/nixos /mnt/home/cat/github/nixos
-chown -R 1000:100 /mnt/home/cat/github/nixos
-
-# 7. Reboot
-reboot
-```
-
-> **Note:** The installer ISO has the flake at `/etc/nixos` (from the build). Copy it to the user's home on the target system. After reboot, run `nh os switch` from `~/github/nixos`. The user `cat` has password `cat` (set via `cfg.user.initialHashedPassword = "cat"` in host config — replace with hashed for production).
-
-Scripts available: `nixos-disk`, `nixos-mount`, `nixos-umount`, `nixos-format-part` — see [docs/INSTALL.md](docs/INSTALL.md) for details.
+- [docs/INSTALL.md](docs/INSTALL.md) — complete installation guide
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the flake fits together
+- [docs/OPTIONS.md](docs/OPTIONS.md) — the `cfg.*` option reference
