@@ -56,6 +56,11 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.geolocation.enable` | geoclue2 (night light, auto timezone) | ✓ | ✓ | – | – |
 | `cfg.tailscale.enable` | tailscaled (mesh client; `tailscale up` once per host) | ✓ | ✓ | ✓ | – |
 | `cfg.syncthing.enable` | syncthing as the main user (Web UI on 127.0.0.1:8384) | ✓ | ✓ | ✓ | – |
+| `cfg.hardening.enable` | kernel/sysctl baseline (kptr/dmesg/bpf/ptrace/redirects/protected_*) + `security.sudo.execWheelOnly` — server-oriented, not for dev hosts | – | – | ✓ | – |
+| `cfg.fail2ban.enable` | fail2ban — upstream attaches its sshd jail when `cfg.ssh.enable`, reads the journal, nftables banaction; escalating bantime | – | – | ✓ | – |
+| `cfg.monitoring.nodeExporter.enable` | Prometheus node exporter (port 9100, firewall stays closed — scrape over Tailscale) — dormant | – | – | – | – |
+| `cfg.monitoring.netdata.enable` | Netdata real-time dashboard (port 19999, firewall stays closed) — dormant | – | – | – | – |
+| `cfg.monitoring.uptimeKuma.enable` | Uptime Kuma (localhost:3001; built-in notifiers cover ntfy/healthchecks-style push) — dormant | – | – | – | – |
 | `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
 | `cfg.updates.auto.enable` | scheduled flake-aware auto-updates (`system.autoUpgrade` pulls the flake at `cfg.nh.flakeDir`) — dormant | – | – | – | – |
@@ -81,6 +86,7 @@ Replace `REPLACE_WITH_DISK_ID` with the target disk's `/dev/disk/by-id/...` path
 | `cfg.networking.firewall.allowedTCPPorts` / `.allowedUDPPorts` | listOf port, `[]` | per-host firewall openings |
 | `cfg.ssh.port` | port, `22` | SSH listen port |
 | `cfg.ssh.authorizedKeys` | listOf str, `[]` | keys for the main user — **required on a fresh keys-only host** |
+| `cfg.fail2ban.ignoreIP` | listOf str, `[]` | IPs/CIDRs fail2ban never bans (upstream whitelists loopback already) |
 | `cfg.graphics.enable32Bit` | bool (mkEnableOption → off; `gaming` mkDefaults it on) | 32-bit GL for Steam |
 | `cfg.ollama.rocmGfx` | nullOr str, `null` | AMD GFX override (e.g. `"10.3.0"`); null = stock ollama |
 | `cfg.boot.plymouth.theme` | str, `tribar` | Plymouth theme name |

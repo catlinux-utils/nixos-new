@@ -45,5 +45,11 @@
     storage.enable = true;
     tailscale.enable = true;
     syncthing.enable = true;
+
+    # server hardening — PLAN.md §2.1
+    hardening.enable = true;
+    fail2ban.enable = true;
+    # monitoring is opt-in per service (Tailscale/localhost reach by default):
+    # cfg.monitoring.nodeExporter.enable / .netdata.enable / .uptimeKuma.enable
   };
 }

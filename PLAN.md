@@ -548,8 +548,9 @@ Implementation notes (verified against the NixOS-WSL `main` module sources, 2026
 - [ ] `laptop`: import the model's **nixos-hardware** module (quirks, firmware, sensors); power
       management (`power-profiles-daemon` or `tlp`), touchpad, firmware updates (`fwupd`)
 - [ ] `server`: networking approach (static IP or DHCP reservation; also NetworkManager vs
-      `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit),
-      fail2ban consideration, monitoring placeholder
+      `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit);
+      hardening + fail2ban landed via §2.1 (server enables them) — monitoring is wired but
+      dormant (`cfg.monitoring.*`): pick a service + push-alert channel at first deploy
 - [ ] Disk layout decisions per host (encryption? btrfs/zfs?) — record in ARCHITECTURE.md;
       disko (Phase 6) can make the chosen layout declarative. Disk layout, snapshots, and
       `backup.nix` are one **state-management decision per host** — pick the combination together,
@@ -640,6 +641,15 @@ concrete ports in [§2.2](#22-ports-from-the-legacy-nixos-flake):
   Caddy ACME without a static IP), shared backing stores (`services.postgresql`,
   `services.redis`) for the self-hosted apps, initrd network unlock
   (`boot.initrd.network`) if the disk decision picks an encrypted root
+
+Landed from the lists above (2026-10-29): the server trio — `hardening.nix`
+(`cfg.hardening.enable`: kernel/sysctl baseline + `security.sudo.execWheelOnly`;
+`fs.protected_fifos/regular` and the ptrace/perf values are why desktop hosts shouldn't flip it),
+`fail2ban.nix` (`cfg.fail2ban.enable` + `cfg.fail2ban.ignoreIP`; upstream's sshd jail
+auto-attaches when `cfg.ssh.enable` is on, the DEFAULT jail reads the journal, and the banaction
+auto-follows nftables) and `monitoring.nix` (`cfg.monitoring.{nodeExporter,netdata,uptimeKuma}.enable`,
+all dormant; none open the firewall — reach them over Tailscale or open the port per host). The
+server host enables hardening + fail2ban; the rest of both lists stays on-demand.
 
 ### 2.2 Ports from the legacy `nixos` flake `[ ]`
 
