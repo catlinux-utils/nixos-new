@@ -64,5 +64,10 @@
     geolocation.enable = true;
     tailscale.enable = true;
     syncthing.enable = true;
+
+    # laptop candidates — flip when the hardware is known (Phase 2): the GNOME
+    # session already defaults power-profiles-daemon on (cfg.power.* offers the
+    # alternatives, cfg.power.thermald.enable for Intel CPUs), cfg.fprintd.enable
+    # if a fingerprint reader exists, cfg.networking.wifi.* if wanted
   };
 }

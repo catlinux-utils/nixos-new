@@ -651,6 +651,15 @@ auto-follows nftables) and `monitoring.nix` (`cfg.monitoring.{nodeExporter,netda
 all dormant; none open the firewall — reach them over Tailscale or open the port per host). The
 server host enables hardening + fail2ban; the rest of both lists stays on-demand.
 
+Landed from the laptop list (2026-10-29): `power.nix` — `cfg.power.{powerProfiles,tlp,autoCpufreq}.enable`
+(mutually exclusive via an assertion, covering the tlp-vs-auto-cpufreq pair upstream leaves
+unguarded; GNOME hosts `mkDefault` power-profiles-daemon on) plus `cfg.power.thermald.enable`;
+`fprintd.nix` (`cfg.fprintd.enable` — PAM needs no wiring: `fprintAuth` defaults to the daemon
+switch, so GDM/sudo get the reader after `fprintd-enroll`); and Wi-Fi toggles in `networking.nix`
+(`cfg.networking.wifi.powersave.enable`, `.macRandomization.enable` → stable per-network random
+MAC, riding `cfg.networking.networkManager.enable`). Hibernation wiring, undervolt/throttled and
+`hardware.sensor.iio` stay on-demand (machine-specific); the laptop host flips nothing yet.
+
 ### 2.2 Ports from the legacy `nixos` flake `[ ]`
 
 The superseded legacy flake (`../nixos`, relative to this checkout — hosts pc-main, laptop-main,

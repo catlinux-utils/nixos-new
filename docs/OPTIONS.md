@@ -61,6 +61,9 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.monitoring.nodeExporter.enable` | Prometheus node exporter (port 9100, firewall stays closed — scrape over Tailscale) — dormant | – | – | – | – |
 | `cfg.monitoring.netdata.enable` | Netdata real-time dashboard (port 19999, firewall stays closed) — dormant | – | – | – | – |
 | `cfg.monitoring.uptimeKuma.enable` | Uptime Kuma (localhost:3001; built-in notifiers cover ntfy/healthchecks-style push) — dormant | – | – | – | – |
+| `cfg.power.powerProfiles.enable` / `.tlp.enable` / `.autoCpufreq.enable` | the three power governors — mutually exclusive (assertion; upstream also asserts ppd vs the others; GNOME hosts mkDefault ppd on) — dormant | – | – | – | – |
+| `cfg.power.thermald.enable` | Intel thermal management daemon — dormant | – | – | – | – |
+| `cfg.fprintd.enable` | fprintd fingerprint login — PAM picks it up automatically (`fprintAuth` defaults to the daemon switch; enroll with `fprintd-enroll`) — dormant | – | – | – | – |
 | `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
 | `cfg.updates.auto.enable` | scheduled flake-aware auto-updates (`system.autoUpgrade` pulls the flake at `cfg.nh.flakeDir`) — dormant | – | – | – | – |
@@ -87,6 +90,7 @@ Replace `REPLACE_WITH_DISK_ID` with the target disk's `/dev/disk/by-id/...` path
 | `cfg.ssh.port` | port, `22` | SSH listen port |
 | `cfg.ssh.authorizedKeys` | listOf str, `[]` | keys for the main user — **required on a fresh keys-only host** |
 | `cfg.fail2ban.ignoreIP` | listOf str, `[]` | IPs/CIDRs fail2ban never bans (upstream whitelists loopback already) |
+| `cfg.networking.wifi.powersave.enable` / `.macRandomization.enable` | bool, off (ride `cfg.networking.networkManager.enable`) | Wi-Fi power saving · stable per-network random MAC (scanning randomized upstream already) |
 | `cfg.graphics.enable32Bit` | bool (mkEnableOption → off; `gaming` mkDefaults it on) | 32-bit GL for Steam |
 | `cfg.ollama.rocmGfx` | nullOr str, `null` | AMD GFX override (e.g. `"10.3.0"`); null = stock ollama |
 | `cfg.boot.plymouth.theme` | str, `tribar` | Plymouth theme name |
