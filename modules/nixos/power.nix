@@ -18,6 +18,27 @@
     autoCpufreq.enable = lib.mkEnableOption "auto-cpufreq (automatic governor)";
 
     thermald.enable = lib.mkEnableOption "thermald, the (Intel) temperature management daemon";
+
+    # logind.conf(5) actions; 26.05 renamed the flat lidSwitch option to
+    # services.logind.settings.Login.HandleLidSwitch (extraConfig is gone)
+    lidSwitch = lib.mkOption {
+      type = lib.types.nullOr (
+        lib.types.enum [
+          "ignore"
+          "poweroff"
+          "reboot"
+          "halt"
+          "kexec"
+          "suspend"
+          "hibernate"
+          "hybrid-sleep"
+          "suspend-then-hibernate"
+          "lock"
+        ]
+      );
+      default = null;
+      description = "What logind does when the lid closes (HandleLidSwitch); null leaves upstream's default (suspend).";
+    };
   };
 
   config = lib.mkMerge [
@@ -51,6 +72,10 @@
 
     (lib.mkIf config.cfg.power.thermald.enable {
       services.thermald.enable = true;
+    })
+
+    (lib.mkIf (config.cfg.power.lidSwitch != null) {
+      services.logind.settings.Login.HandleLidSwitch = config.cfg.power.lidSwitch;
     })
   ];
 }

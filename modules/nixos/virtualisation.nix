@@ -9,6 +9,7 @@
     docker.enable = lib.mkEnableOption "Docker with weekly auto-prune";
     podman.enable = lib.mkEnableOption "rootless Podman with a Docker-compatible socket";
     libvirt.enable = lib.mkEnableOption "libvirtd and virt-manager";
+    waydroid.enable = lib.mkEnableOption "Waydroid, Android apps in a container";
   };
 
   # both container stacks own the docker socket — enabling two is a mistake
@@ -58,6 +59,12 @@
       programs.virt-manager.enable = true;
 
       users.users.${config.cfg.user.name}.extraGroups = [ "libvirtd" ];
+    })
+
+    # upstream picks the nftables flavor of waydroid automatically when
+    # networking.nftables.enable is set (our firewall default)
+    (lib.mkIf config.cfg.virtualisation.waydroid.enable {
+      virtualisation.waydroid.enable = true;
     })
   ];
 }

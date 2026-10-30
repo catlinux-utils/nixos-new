@@ -41,6 +41,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.virtualisation.docker.enable` | Docker + weekly auto-prune, docker group | – | – | ✓ | – |
 | `cfg.virtualisation.podman.enable` | rootless Podman + docker-compatible socket, distrobox; assertion: not together with docker | – | – | – | – |
 | `cfg.virtualisation.libvirt.enable` | libvirtd + virt-manager, libvirtd group | – | – | – | – |
+| `cfg.virtualisation.waydroid.enable` | Waydroid Android container (upstream auto-picks the nftables flavor under our nftables firewall) — dormant | – | – | – | – |
 | `cfg.gaming.enable` | Steam + gamescope, GameMode, MangoHud, xpadneo; mkDefaults `graphics.enable32Bit` | ✓ | – | – | – |
 | `cfg.ollama.enable` | Ollama local-LLM server (ROCm build when `rocmGfx` is set) | ✓ | – | – | – |
 | `cfg.kdeconnect.enable` | KDE Connect package + firewall 1714–1764; the HM daemon rides the same switch | ✓ | ✓ | – | – |
@@ -64,6 +65,13 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.power.powerProfiles.enable` / `.tlp.enable` / `.autoCpufreq.enable` | the three power governors — mutually exclusive (assertion; upstream also asserts ppd vs the others; GNOME hosts mkDefault ppd on) — dormant | – | – | – | – |
 | `cfg.power.thermald.enable` | Intel thermal management daemon — dormant | – | – | – | – |
 | `cfg.fprintd.enable` | fprintd fingerprint login — PAM picks it up automatically (`fprintAuth` defaults to the daemon switch; enroll with `fprintd-enroll`) — dormant | – | – | – | – |
+| `cfg.ratbagd.enable` | ratbagd (gaming-mouse daemon) + piper GUI — upstream renamed `services.ratbag` → `services.ratbagd` — dormant | – | – | – | – |
+| `cfg.openrazer.enable` | OpenRazer daemon (user service; main user wired into its device group) — dormant | – | – | – | – |
+| `cfg.opentabletdriver.enable` | OpenTabletDriver (udev rules + user service; upstream blacklists the conflicting wacom/hid-uclogic kernel modules) — dormant | – | – | – | – |
+| `cfg.inputRemapper.enable` | input-remapper daemon + GTK GUI (upstream keeps udev hotplug rules off by default) — dormant | – | – | – | – |
+| `cfg.keyboard.qmk.enable` / `.zsa.enable` | keyboard flashing udev rules (QMK: Keychron via `.keychronSupport`; ZSA: ErgoDox EZ/Planck EZ/Moonlander) — dormant | – | – | – | – |
+| `cfg.usbmuxd.enable` | usbmuxd + libimobiledevice CLI (iPhone/iPad USB pairing, tethering) — dormant | – | – | – | – |
+| `cfg.sunshine.enable` | Sunshine game-stream host (user service on graphical-session.target, avahi discovery, uinput; LAN ports opened via mkDefault — override per host) — dormant | – | – | – | – |
 | `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
 | `cfg.updates.auto.enable` | scheduled flake-aware auto-updates (`system.autoUpgrade` pulls the flake at `cfg.nh.flakeDir`) — dormant | – | – | – | – |
@@ -94,6 +102,7 @@ Replace `REPLACE_WITH_DISK_ID` with the target disk's `/dev/disk/by-id/...` path
 | `cfg.graphics.enable32Bit` | bool (mkEnableOption → off; `gaming` mkDefaults it on) | 32-bit GL for Steam |
 | `cfg.ollama.rocmGfx` | nullOr str, `null` | AMD GFX override (e.g. `"10.3.0"`); null = stock ollama |
 | `cfg.boot.plymouth.theme` | str, `tribar` | Plymouth theme name |
+| `cfg.power.lidSwitch` | nullOr enum (logind.conf(5) actions: ignore/poweroff/reboot/halt/kexec/suspend/hibernate/hybrid-sleep/suspend-then-hibernate/lock), `null` | `HandleLidSwitch` override — null = upstream default (suspend). 26.05 name: `services.logind.settings.Login.HandleLidSwitch` (`extraConfig` removed) |
 | `cfg.compat.nix-ld.libraries` | listOf package, `[]` | libs for non-Nix binaries |
 | `cfg.backup.restic.jobs` | attrsOf anything, `{}` | assigned to `services.restic.backups` (26.05-verified fields); credentials via `config.sops.secrets.<name>.path` |
 | `cfg.backup.borg.jobs` | attrsOf anything, `{}` | assigned to `services.borgbackup.jobs`; secrets via `passCommand`/`environment` referencing sops files, never values |
