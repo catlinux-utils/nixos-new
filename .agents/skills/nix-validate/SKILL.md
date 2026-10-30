@@ -39,7 +39,7 @@ Run this after writing or editing any `.nix` file, before handing off:
    `modules/nixos/home-options.nix`.
 4. **Single-writer check**: grep the settings attrpath across modules. The auto-importer
    activates every file, so an unnoticed second writer of the same key is an eval conflict or a
-   silent override — especially inside feature folders like `modules/home/hyprland/`.
+   silent override — especially inside feature folders like `modules/home/desktop/hyprland/`.
 5. **Auto-importer hazards**: no feature file named `default.nix` or
    `hardware-configuration.nix`; no `default.nix` inside feature folders.
 6. **Style**: 2-space indent, function arguments on one line when they fit, final newline
@@ -55,7 +55,8 @@ Run this after writing or editing any `.nix` file, before handing off:
 | smoke-test the full stack in QEMU | `nixos-rebuild build-vm --flake .#desktop` |
 | per-host rollout | `nh os switch --dry` → `nh os test` → `nh os switch` |
 
-Hosts run **Lix** (`nix.package = pkgs.lixPackageSets.latest.lix` in `modules/nixos/nix.nix`)
+Hosts run **Lix** (`nix.package = pkgs.lixPackageSets.latest.lix` in
+`modules/nixos/core/nix.nix`)
 — CLI-compatible with `nix`, so the commands above work unchanged.
 
 ## Reporting

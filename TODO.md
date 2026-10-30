@@ -14,7 +14,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       already registered (`cfg.nh.flakeDir` points at `~/nixos-new` on the WSL Linux side)
 - [ ] After the bootstrap: clone this repo to `~/nixos-new` inside WSL, then `nh os switch --dry`
       → `nh os test` → `nh os switch` on the `wsl` host
-- [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold
+- [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold (this run
+      also proves the 2026-10-30 module-tree category reorganization — pure file moves, no content
+      edits)
 - [ ] Push, then run the manual CI workflow (Actions tab) — first `nix flake check` / `nix fmt`
       verdict plus per-host toplevel builds and the installer-ISO eval step; then run the
       flake-update workflow and merge its PR to land the first `flake.lock` (pinning

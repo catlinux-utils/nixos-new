@@ -5,7 +5,8 @@ description: Create or edit a Home Manager feature module in modules/home/ of th
 
 # Add a Home Manager feature module
 
-User features are drop-in files in `modules/home/`, auto-imported. They are **option-less**:
+User features are drop-in files in `modules/home/` (grouped into category folders — apps/, cli/,
+desktop/, keys/, theming/), auto-imported recursively. They are **option-less**:
 Home Manager runs as a NixOS module here, so home modules read the host's switches via
 `osConfig` instead of declaring their own options.
 
@@ -24,7 +25,9 @@ Home Manager runs as a NixOS module here, so home modules read the host's switch
    };
    ```
 
-2. **Create `modules/home/<feature>.nix`** — a `config` block gated on `osConfig`, no
+2. **Create `modules/home/<category>/<feature>.nix`** (pick the category folder matching the
+   feature's domain; standalone features stay at the tree root, like `xdg.nix`) — a `config`
+   block gated on `osConfig`, no
    `options` block:
 
    ```nix
@@ -42,10 +45,11 @@ Home Manager runs as a NixOS module here, so home modules read the host's switch
 
    If the feature rides an existing *system* feature instead of owning a switch (like the
    Hyprland session config), gate on that system option — e.g.
-   `osConfig.cfg.desktop.gnome.enable`, as `modules/home/hyprland/` does for Hyprland.
+   `osConfig.cfg.desktop.gnome.enable`, as `modules/home/desktop/hyprland/` does for Hyprland.
 
-3. **Real examples:** `modules/home/git.nix` (identity via `cfg.home.git.*`),
-   `modules/home/shell.nix` (plain enable), `modules/home/hyprland/` (system-gated feature
+3. **Real examples:** `modules/home/cli/git.nix` (identity via `cfg.home.git.*`),
+   `modules/home/cli/shell.nix` (plain enable), `modules/home/desktop/hyprland/` (system-gated
+   feature
    folder — no `default.nix` inside, one writer per settings key across its files).
 
 4. **Verify option names against the pins**: home-manager options against **release-26.05**

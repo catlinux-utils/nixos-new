@@ -5,15 +5,17 @@ description: Create or edit a system-level NixOS feature module in modules/nixos
 
 # Add a NixOS feature module
 
-System features are drop-in files in `modules/nixos/`, auto-imported by
-`lib/importNixFiles.nix` — creating the file activates it; no import list or `default.nix`
-edits.
+System features are drop-in files in `modules/nixos/` (grouped into category folders — core/,
+boot/, desktop/, devices/, network/, security/, gaming/, services/, maintenance/), auto-imported
+recursively by `lib/importNixFiles.nix` — creating the file activates it; no import list or
+`default.nix` edits.
 
 ## Steps
 
-1. **Create `modules/nixos/<feature>.nix`.** One feature per file, named after the feature.
-   Never name a feature file `default.nix` or `hardware-configuration.nix` — the auto-importer
-   skips those names.
+1. **Create `modules/nixos/<category>/<feature>.nix`.** One feature per file, named after the
+   feature; pick the category folder matching the feature's domain (standalone features stay at
+   the tree root, like `power.nix`). Never name a feature file `default.nix` or
+   `hardware-configuration.nix` — the auto-importer skips those names.
 
 2. **Follow the module skeleton:**
 
@@ -33,8 +35,8 @@ edits.
    ```
 
    Sub-options sit under the same path (`cfg.<feature>.port`, `cfg.<feature>.libraries`) via
-   `lib.mkOption`. Real examples: `modules/nixos/audio.nix` (minimal), `modules/nixos/ssh.nix`
-   (sub-options).
+   `lib.mkOption`. Real examples: `modules/nixos/desktop/audio.nix` (minimal),
+   `modules/nixos/network/ssh.nix` (sub-options).
 
 3. **Verify every option name against pinned nixpkgs 26.05** — not against latest docs. Use
    search.nixos.org with the release filter set to 26.05, or grep the pinned nixpkgs sources on

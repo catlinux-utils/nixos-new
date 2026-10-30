@@ -57,8 +57,10 @@ modules reach every input through `specialArgs.inputs`.
 The checkout is the live tree; [AGENTS.md](AGENTS.md)'s repo map is the authoritative overview.
 In short: `lib/` (mkHost + auto-importer), `overlays/unstable.nix`, `hosts/<name>/` (default.nix +
 hardware-configuration.nix + disko.nix), `modules/nixos/` and `modules/home/` (auto-imported
-feature modules, with `desktop/` and `hyprland/` subfolders), `scripts/` (disk helpers),
-`secrets/` (sops, Phase 3).
+feature modules grouped into category folders — `core/`, `boot/`, `desktop/`, `devices/`,
+`network/`, `security/`, `gaming/`, `services/`, `maintenance/` on the system side; `apps/`,
+`cli/`, `desktop/`, `keys/`, `theming/` on the home side; reorganized 2026-10-30, the checkout is
+the live tree), `scripts/` (disk helpers), `secrets/` (sops, Phase 3).
 
 ### 1.3 `lib/`
 
@@ -91,8 +93,8 @@ graphics/audio — a feature that implies another sets the other's switch (see
 
 Home-feature options live in the NixOS tree (`modules/nixos/home-options.nix`) so hosts set them
 under the same flat `cfg.*` namespace; the modules are option-less and gate on `osConfig.cfg.*`
-(all enable flags default **on**). `modules/home/hyprland/` is the worked example of the bridge:
-`config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... }`.
+(all enable flags default **on**). `modules/home/desktop/hyprland/` is the worked example of the
+bridge: `config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... }`.
 
 ### 1.7 `hosts/`
 
@@ -115,7 +117,7 @@ Per-host switch wiring: [docs/OPTIONS.md](docs/OPTIONS.md) host matrices. Foreig
 
 ### 1.8 nh
 
-`modules/nixos/nh.nix`, always on: `programs.nh` with `flake = toString cfg.nh.flakeDir` (sets
+`modules/nixos/core/nh.nix`, always on: `programs.nh` with `flake = toString cfg.nh.flakeDir` (sets
 `NH_FLAKE`; the bare `FLAKE` variable is deprecated by nh — never set both) and daily
 `nh clean --keep 5 --keep-since 3d`. `nix.gc.automatic` stays off — nh.clean owns GC.
 
@@ -453,6 +455,7 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | Options namespace | unified `cfg.*` | neutral, greppable, zero collision with upstream options |
 | Host assembly | `lib/mkHost.nix` helper | adding a host = one directory + one flake entry; no copy-paste in flake.nix |
 | Module discovery | recursive auto-importer | drop-in files; no import lists to maintain |
+| Module tree | category folders by domain (system: core/boot/desktop/devices/network/security/gaming/services/maintenance; home: apps/cli/desktop/keys/theming; 2026-10-30) | 40+ flat files were unscannable; the recursive importer makes folder grouping evaluation-free — categories are tree organisation only, options stay flat under `cfg.*` |
 | Nix implementation | Lix via `nix.package = pkgs.lixPackageSets.latest.lix` | maintained fork with better errors; ships in the pinned nixpkgs — no extra flake input |
 | home.stateVersion | set centrally in `mkHost` via `home-manager.sharedModules` | HM has no default; a first-install marker must not follow nixpkgs pin bumps |
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |

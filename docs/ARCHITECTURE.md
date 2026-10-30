@@ -44,7 +44,7 @@ flake.nix
         CI evaluates the ISO derivation only, never builds it
         (hardware.enableAllHardware makes the closure huge)
 
-nh (configured in modules/nixos/nh.nix, flake path = cfg.nh.flakeDir):
+nh (configured in modules/nixos/core/nh.nix, flake path = cfg.nh.flakeDir):
   nh os switch    builds & activates nixosConfigurations.<hostname>  (OS + Home Manager)
   nh home switch  user environment only
   nh clean        daily garbage collection (--keep 5 --keep-since 3d); nix.gc.automatic stays off
@@ -64,6 +64,13 @@ as the live reference. The load-bearing parts:
 - **`lib/importNixFiles.nix`** — recursive importer used by both `default.nix` importers. It skips
   `default.nix` (would recurse) and `hardware-configuration.nix`. Consequence: **drop-in modules**
   — creating `modules/nixos/foo.nix` makes it active with zero import edits.
+- **Category folders** — both module trees group feature files by domain:
+  `modules/nixos/{core,boot,desktop,devices,network,security,gaming,services,maintenance}/` and
+  `modules/home/{apps,cli,desktop,keys,theming}/`. The recursive importer flattens them, so a
+  category is pure tree organisation — it never changes evaluation or the flat `cfg.*` option
+  namespace. Standalone features (`compat.nix`, `power.nix`, `sandbox.nix`,
+  `modules/nixos/home-options.nix`, `modules/home/{gaming,home-tools,xdg}.nix`) stay at the tree
+  root.
 - **`hosts/<name>/default.nix`** — the self-contained host entry: one `cfg = { ... }` tree,
   sectioned identity (`user`), locale, `nh.flakeDir`, git identity (`home.git`), then feature
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
@@ -89,8 +96,8 @@ as the live reference. The load-bearing parts:
   (`programs.hyprland.withUWSM`, with `programs.uwsm.waylandCompositors` configured so the
   "Hyprland (UWSM)" session entry exists for display managers), which activates `graphical-session.target`. User units (the
   quickshell bar, hypridle, mako, hyprpaper, the polkit agent) bind to it from the home side
-  (`modules/home/hyprland/`), so nothing is autostarted via `exec-once`. The session config
-  itself is a plain vendored file (`modules/home/hyprland/hyprland.lua`, Hyprland's Lua config
+  (`modules/home/desktop/hyprland/`), so nothing is autostarted via `exec-once`. The session config
+  itself is a plain vendored file (`modules/home/desktop/hyprland/hyprland.lua`, Hyprland's Lua config
   format) copied verbatim to `~/.config/hypr/` — kept interpolation-free so it doubles as a
   portable config for non-NixOS machines; the rofi launcher and its rasi follow the same pattern
   (with the rasi carrying an optional `?import` of the runtime palette overlay, so a machine
@@ -100,9 +107,9 @@ as the live reference. The load-bearing parts:
   system side creates; its conf is a two-source dispatcher — hardcoded fallback `$lock*` color
   variables, an optional matugen overlay that redefines them, then the sourced layout file. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
-- **Runtime theming flow** — `modules/home/palette.nix` (rides `cfg.home.theming.enable` + a
+- **Runtime theming flow** — `modules/home/theming/palette.nix` (rides `cfg.home.theming.enable` + a
   wallpaper): **matugen** (from nixpkgs, no flake input) extracts a Material-You palette from
-  the running wallpaper and renders the vendored templates in `modules/home/palette/templates/`
+  the running wallpaper and renders the vendored templates in `modules/home/theming/templates/`
   (bar palette JSON, kitty colors, mako config, rofi color overlay, hyprlock color variables,
   gtk3/gtk4 css) into `~/.cache/theming/` —
   deliberately outside HM management, since store symlinks can't be overwritten at runtime. The
@@ -129,7 +136,7 @@ system as the host and receive `osConfig` (the host's final config). Home module
 are declared in `modules/nixos/home-options.nix`), read via `osConfig`:
 
 ```nix
-# modules/home/hyprland/session.nix
+# modules/home/desktop/hyprland/session.nix
 config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... };
 ```
 

@@ -38,7 +38,7 @@ to nixpkgs **26.05** + Home Manager **release-26.05**.
     fetch tools — prefer small single files or targeted paths
   - or grep the flake's nixpkgs store path on a Nix machine
 - Hosts run **Lix** (`nix.package = pkgs.lixPackageSets.latest.lix`, set in
-  `modules/nixos/nix.nix`) — CLI-compatible with `nix`, so the commands above work unchanged;
+  `modules/nixos/core/nix.nix`) — CLI-compatible with `nix`, so the commands above work unchanged;
   check Lix-specific settings against docs.lix.systems.
 
 ## Repo map
@@ -55,12 +55,16 @@ hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots a
                        GDM-autologin Hyprland live env; built with
                        nixos-rebuild build-image --image-variant iso
 scripts/               nixos-disk (partition+format), nixos-mount, nixos-umount, nixos-format-part
-modules/nixos/         system feature modules (auto-imported, cfg.* options);
-                       includes desktop/{base,gnome,hyprland,plasma}.nix, compat.nix,
-                       sandbox.nix
-modules/home/          home-manager feature modules (auto-imported); includes
-                       xdg.nix, home-tools.nix, hyprland/ (session config),
-                       palette/ (matugen templates — runtime theming)
+modules/nixos/         system feature modules (auto-imported, cfg.* options), grouped
+                       in category folders: core/ (always-on baseline), boot/,
+                       desktop/ (DEs + audio/graphics/geolocation), devices/,
+                       network/, security/, gaming/, services/, maintenance/;
+                       compat.nix, power.nix, sandbox.nix and home-options.nix (the
+                       cfg.home.* option hub) at the root
+modules/home/          home-manager feature modules (auto-imported) in category
+                       folders: apps/, cli/, desktop/ (gnome, plasma, hyprland/),
+                       keys/, theming/ (palette + matugen templates); gaming.nix,
+                       home-tools.nix, xdg.nix at the root
 docs/ARCHITECTURE.md   how it all fits together
 docs/OPTIONS.md        every cfg.* option: type, default, effect, per-host matrix
 PLAN.md TODO.md        roadmap / actionable next steps
@@ -87,7 +91,12 @@ AGENTS.md README.md    this file / project overview
   one line when they fit, final newline. Don't hand-format against nixfmt's choices.
 - Prefer `lib.mkEnableOption` / `lib.mkIf` / `lib.mkOption` over raw attrsets.
 - One feature per file; the file is named after the feature (`ssh.nix`, `gaming.nix`). A feature
-  that outgrows one file becomes a folder of sibling `.nix` files (`modules/home/hyprland/`).
+  that outgrows one file becomes a folder of sibling `.nix` files (`modules/home/desktop/hyprland/`).
+- Modules are grouped into **category folders** by domain (`modules/nixos/core|boot|desktop|
+  devices|network|security|gaming|services|maintenance/`, `modules/home/apps|cli|desktop|keys|
+  theming/`); the recursive auto-importer flattens them, so categories organise the tree only —
+  every option still lives in the flat `cfg.*` namespace. A genuinely standalone feature stays at
+  the tree root (`power.nix`, `compat.nix`, `sandbox.nix`, `home-options.nix`).
 - Bleeding-edge packages come only via `pkgs.unstable.<pkg>` (the one overlay) — never add extra
   nixpkgs inputs for single packages (sole exception: lanzaboote's input carries its own
   nixpkgs to build `lzbt`, which 26.05 lacks).
@@ -96,8 +105,10 @@ AGENTS.md README.md    this file / project overview
 
 ## Feature-module pattern (checklist)
 
-1. File goes in `modules/nixos/` (system) or `modules/home/` (user) — **auto-imported**, no import
-   list edits, no default.nix changes.
+1. File goes in the matching category folder under `modules/nixos/` (system) or `modules/home/`
+   (user) — **auto-imported** (recursively, folders included), no import list edits, no default.nix
+   changes. Pick the folder whose domain the feature belongs to; when a second module joins a
+   root-level feature, promote both into a new category folder.
 2. Declare `options.cfg.<feature>.enable = lib.mkEnableOption "<description>";`
 3. Wrap all config in `config = lib.mkIf config.cfg.<feature>.enable { ... };`
 4. Home-side modules are option-less: they gate on `osConfig.cfg.*` (including
@@ -109,11 +120,12 @@ AGENTS.md README.md    this file / project overview
    `desktop/hyprland.nix` setting `cfg.desktop.enable` in PLAN.md §1.5).
 7. The auto-importer skips files named `default.nix` and `hardware-configuration.nix` — never
    give a feature module either name.
-8. A feature folder (`modules/home/hyprland/`) works the same as a single file: every `.nix` in it
+8. A feature folder (`modules/home/desktop/hyprland/`) works the same as a single file: every
+   `.nix` in it
    is auto-imported, so the folder must not contain a `default.nix`. Keep one writer per shared
    settings key across the folder's files (no double-owned config).
 9. Raw config assets (`hyprland.lua`, `rofi.rasi`, the quickshell QML, the matugen templates in
-   `modules/home/palette/templates/`) are vendored verbatim next to their module — never generate
+   `modules/home/theming/templates/`) are vendored verbatim next to their module — never generate
    them from Nix values or interpolate into them; they must stay copyable to non-NixOS machines.
    The auto-importer only picks up `.nix`, so non-Nix asset files inside feature folders are
    safe. Runtime-generated files (the matugen palette + rendered templates) live in
@@ -156,13 +168,15 @@ in the same commit.
 
 ### Add a NixOS module
 
-1. Create `modules/nixos/<feature>.nix` following the pattern checklist (auto-imported).
+1. Create `modules/nixos/<category>/<feature>.nix` following the pattern checklist (auto-imported;
+   category folder per the Nix style rules).
 2. Enable it in the relevant `hosts/*/default.nix`.
 3. If it exposes sub-options beyond `.enable`, document them in ARCHITECTURE.md's option table.
 
 ### Add a home module
 
-1. Create `modules/home/<feature>.nix` following the pattern checklist (auto-imported); gate it on
+1. Create `modules/home/<category>/<feature>.nix` following the pattern checklist (auto-imported;
+   category folder per the Nix style rules); gate it on
    `osConfig.cfg.home.<feature>.*`.
 2. Declare the feature's options in `modules/nixos/home-options.nix` (not in the module) — hosts
    set them under the same flat `cfg.*` tree.
@@ -192,14 +206,15 @@ it makes every committed secret unrecoverable), and replace the placeholder reci
    sops encrypts via the `.sops.yaml` creation rules; commit **encrypted only**
    (`.gitignore` allows `secrets/*.yaml` and nothing else plaintext).
 3. Declare it in a module: `sops.secrets.<name> = { };` (plus `owner`/`group`/`restartUnits`
-   when needed). Default source file: `sops.defaultSopsFile` (set in `modules/nixos/secrets.nix`).
+   when needed). Default source file: `sops.defaultSopsFile` (set in
+   `modules/nixos/security/secrets.nix`).
 4. Consume by **file, never value** — the store-leak rule: anything interpolated into a Nix
    expression lands in the world-readable Nix store. Reference the decrypted file via
    `config.sops.secrets.<name>.path` (e.g. `EnvironmentFile`, `XDG_AUTOSTART`-style options,
    HM `sops`-aware integrations) instead of copying its content into config.
 
 Hosts decrypt with their SSH ed25519 host key (`sops.age.sshKeyPaths`, set in
-`modules/nixos/secrets.nix`) — a newly enrolled host's derived age recipient must be appended to
+`modules/nixos/security/secrets.nix`) — a newly enrolled host's derived age recipient must be appended to
 `.sops.yaml` and files re-encrypted (`sops updatekeys <file>`) to decrypt secrets created
 before it existed.
 

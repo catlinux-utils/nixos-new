@@ -1,7 +1,9 @@
 # Options — the complete `cfg.*` reference
 
 Every knob a host can set, in one place. Options are declared in the NixOS module tree
-(`modules/nixos/*.nix`; home-feature options in `modules/nixos/home-options.nix`) and hosts set
+(`modules/nixos/**/*.nix`, grouped into category folders — folder membership is tree organisation
+only, options stay in the flat `cfg.*` tree; home-feature options in
+`modules/nixos/home-options.nix`) and hosts set
 them in `hosts/<name>/default.nix` under the flat `cfg.*` tree.
 
 Conventions: feature switches are `lib.mkEnableOption` → **default off**; hosts flip them.
