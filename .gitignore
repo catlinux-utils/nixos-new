@@ -9,3 +9,6 @@ result-*
 secrets/*
 !secrets/README.md
 !secrets/*.yaml
+
+# external reference clone (read-only inspiration), never part of the flake
+suderman_nixos/
