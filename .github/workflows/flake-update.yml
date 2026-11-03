@@ -21,5 +21,5 @@ jobs:
         with:
           branch: flake-update
           delete-branch: true
-          title: flake: manual update
+          title: "flake: manual update"
           body: Automated `nix flake update` — lets CI surface nixpkgs breakage before a manual rebuild does.
