@@ -378,7 +378,10 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 - [x] HM-side syncthing tray — `modules/home/syncthing-tray.nix` on `cfg.syncthing.enable` +
       `cfg.desktop.enable` (quickshell hosts the StatusNotifier icon on hyprland)
 - [x] `theming.nix` (rides `cfg.desktop.enable`): HM `dconf.enable` (without it every
-      `dconf.settings` is silently dropped), dark gtk + qt adwaita. **Stylix: deferred, then
+      `dconf.settings` is silently dropped), dark gtk + qt adwaita. GTK3 apps (nemo etc.) get
+      `adw-gtk3-dark` + Noto Sans 10 — GTK3's built-in Adwaita ignores both
+      `gtk-application-prefer-dark-theme` from settings.ini and the matugen named-color
+      overrides, so without a theme name they stay plain light. **Stylix: deferred, then
       resolved (2026-10-28) as runtime theming instead** — see `palette.nix`
 - [x] Runtime wallpaper theming (`palette.nix` + `theming/templates/`, behind
       `cfg.home.theming.enable` + a wallpaper): **matugen** (`pkgs.unstable.matugen`, no new

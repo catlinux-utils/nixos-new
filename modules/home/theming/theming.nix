@@ -16,6 +16,26 @@
     gtk.enable = true;
     gtk.colorScheme = "dark";
 
+    # gtk3 apps (nemo, gparted, pinta, nm-applet menus) can't be recolored by
+    # the matugen gtk.css: GTK3's built-in Adwaita only knows its own
+    # theme_*-style palette, not libadwaita's named colors, and
+    # gtk-application-prefer-dark-theme from settings.ini is app-controlled —
+    # without a theme name they come up plain light Adwaita. adw-gtk3 is a
+    # libadwaita replica for GTK3 that defines the same named colors, so the
+    # generated palette recolors it untouched (HM writes gtk-theme-name to
+    # gtk4's settings.ini too; libadwaita ignores it)
+    gtk.theme = {
+      package = pkgs.adw-gtk3;
+      name = "adw-gtk3-dark";
+    };
+
+    # without gtk-font-name GTK apps fall back to the compiled default
+    # (Cantarell), which isn't installed
+    gtk.font = {
+      name = "Noto Sans";
+      size = 10;
+    };
+
     # icon theme for tray/status icons (nm-applet etc.) — hosts without a full
     # DE (e.g. the live ISO) otherwise have no icon theme at all and the bar
     # renders missing-icon placeholders
