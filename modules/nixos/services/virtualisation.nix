@@ -12,16 +12,17 @@
     waydroid.enable = lib.mkEnableOption "Waydroid, Android apps in a container";
   };
 
-  # both container stacks own the docker socket — enabling two is a mistake
-  assertions = [
-    {
-      assertion =
-        !(config.cfg.virtualisation.docker.enable && config.cfg.virtualisation.podman.enable);
-      message = "cfg.virtualisation: docker and podman are mutually exclusive (shared docker socket).";
-    }
-  ];
-
   config = lib.mkMerge [
+    {
+      # both container stacks own the docker socket — enabling two is a mistake
+      assertions = [
+        {
+          assertion = !(config.cfg.virtualisation.docker.enable && config.cfg.virtualisation.podman.enable);
+          message = "cfg.virtualisation: docker and podman are mutually exclusive (shared docker socket).";
+        }
+      ];
+    }
+
     (lib.mkIf config.cfg.virtualisation.docker.enable {
       virtualisation.docker = {
         enable = true;
