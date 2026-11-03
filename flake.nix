@@ -1,6 +1,5 @@
 {
-  description =
-    "Multi-host NixOS flake (desktop, laptop, server, wsl, installer ISO) with Home Manager";
+  description = "Multi-host NixOS flake (desktop, laptop, server, wsl, installer ISO) with Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -56,13 +55,19 @@
       nixpkgs,
       nixpkgs-unstable,
       home-manager,
+      ...
     }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
       unstable-overlay = import ./overlays/unstable.nix nixpkgs-unstable;
       mkHost = import ./lib/mkHost.nix {
-        inherit lib home-manager inputs unstable-overlay;
+        inherit
+          lib
+          home-manager
+          inputs
+          unstable-overlay
+          ;
       };
     in
     {
