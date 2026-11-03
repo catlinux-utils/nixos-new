@@ -10,7 +10,7 @@
     shell.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "zsh + starship + modern CLI tools";
+      description = "zsh + catlinux theme + modern CLI tools";
     };
 
     git = {
