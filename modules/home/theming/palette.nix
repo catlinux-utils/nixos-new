@@ -26,6 +26,8 @@ in
   #                                     across reboots; the authoritative file)
   #   ~/.cache/theming/               — generated palette, kitty, mako, rofi,
   #                                     hyprlock outputs
+  #   gtk-3.0/gtk-4.0 css and the kvantum theme render straight into
+  #   ~/.config (paths HM deliberately doesn't manage)
   config =
     lib.mkIf
       (
@@ -46,7 +48,7 @@ in
             [ "$#" -eq 1 ] || { echo "usage: wallswitch <image>" >&2; exit 1; }
             src=$1
             [ -f "$src" ] || { echo "wallswitch: no such file: $src" >&2; exit 1; }
-            mkdir -p ${stateDir}
+            mkdir -p ${stateDir} ${homeDir}/.config/Kvantum/matugen
             cp -- "$src" ${current}
             systemctl --user restart hyprpaper.service
             ${pkgs.unstable.matugen}/bin/matugen image ${current} ${matugenFlags}
@@ -101,6 +103,12 @@ in
           [templates.gtk4]
           input_path = "${./templates/gtk.css.tmpl}"
           output_path = "${homeDir}/.config/gtk-4.0/gtk.css"
+
+          # kvantum theme for qt apps (qt5ct/qt6ct select the style; the
+          # pointer at ~/.config/Kvantum/kvantum.kvconfig lives in theming.nix)
+          [templates.kvantum]
+          input_path = "${./templates/kvantum-colors.kvconfig.tmpl}"
+          output_path = "${homeDir}/.config/Kvantum/matugen/matugen.kvconfig"
         '';
 
         # backend = none + post_command: wallswitch is the single switching
@@ -131,7 +139,7 @@ in
           Service = {
             Type = "oneshot";
             ExecStart = pkgs.writeShellScript "matugen-palette-start" ''
-              mkdir -p ${stateDir} ${cacheDir}
+              mkdir -p ${stateDir} ${cacheDir} ${homeDir}/.config/Kvantum/matugen
               [ -f ${current} ] || cp ${osConfig.cfg.home.hyprland.wallpaper} ${current}
               # --prefer: matugen 4.x asks interactively which dominant color to
               # use when an image yields several — a systemd service has no TTY,

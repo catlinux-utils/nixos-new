@@ -129,10 +129,10 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 
 Declared in `modules/nixos/home-options.nix`; the option-less modules in `modules/home/` gate on
 them via `osConfig`. All default **true** except where noted. Modules with **no option** ride
-system switches instead: `brave.nix`, `vscode.nix`, `desktop-apps.nix`, `theming.nix`,
-`mpv.nix` and `easyeffects.nix` require `cfg.desktop.enable` (easyeffects also
-`cfg.audio.enable`; vscode configures settings/extensions declaratively; theming enables HM
-`dconf` and sets dark gtk + qt adwaita for every desktop), `gaming.nix` on `cfg.gaming.enable`,
+system switches instead: `brave.nix`, `vscode.nix`, `desktop-apps.nix`, `theming.nix` and
+`mpv.nix` require `cfg.desktop.enable` (vscode configures settings/extensions declaratively;
+theming enables HM `dconf` and sets dark gtk (`adw-gtk3`) + qt (qt5ct/qt6ct + kvantum) for
+every desktop), `gaming.nix` on `cfg.gaming.enable`,
 `kdeconnect.nix` on `cfg.kdeconnect.enable`, `gnome.nix` on `cfg.desktop.gnome.enable`,
 `plasma.nix` on `cfg.desktop.plasma.enable` (also imports the plasma-manager HM module, inert
 without the switch), `syncthing-tray.nix` on `cfg.syncthing.enable` + `cfg.desktop.enable`,
@@ -152,11 +152,10 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.nix-index.enable` | bool, on | nix-index (command-not-found) + comma (`run nix-index` once) |
 | `cfg.home.gpg.enable` | bool, on | gpg + gpg-agent with ssh-agent support |
 | `cfg.home.ssh.enable` | bool, on | ssh client: agent keys, connection multiplexing |
-| `cfg.home.easyeffects.enable` | bool, on | EasyEffects (also needs audio + desktop) |
 | `cfg.home.password-store.enable` | bool, on | pass (`pass init <gpg-id>` on first use) |
 | `cfg.home.tmux.enable` | bool, **off** | tmux — ssh-serving hosts flip it (server does) |
 | `cfg.home.obs.enable` | bool, **off** | OBS Studio screen recording (needs a desktop session) |
-| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, gtk, rofi, hyprlock), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management. Works on any desktop (GNOME/Hyprland/Plasma) — GNOME manages wallpaper natively, theming recolors GTK/Qt. |
+| `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, rofi, hyprlock; gtk css + the kvantum theme render straight into `~/.config`), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management. Works on any desktop (GNOME/Hyprland/Plasma) — GNOME manages wallpaper natively, theming recolors GTK/Qt. |
 | `cfg.home.theming.wallpapers` | listOf path, `[]` | shipped collection installed to `~/Pictures/Wallpapers/` (store symlinks; picking one copies it) |
 | `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off. Hyprland-only. |
 

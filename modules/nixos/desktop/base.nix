@@ -38,7 +38,7 @@ in
         ];
       };
 
-      # gsettings/dconf backend for desktop apps (HM's easyeffects, gtk theming)
+      # gsettings/dconf backend for desktop apps (HM's gtk/qt theming)
       programs.dconf.enable = true;
 
       xdg.portal = {

@@ -79,12 +79,6 @@
       description = "ssh client defaults (agent, connection multiplexing)";
     };
 
-    easyeffects.enable = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "EasyEffects daemon (PipeWire EQ/compressor); needs audio + a desktop session";
-    };
-
     password-store.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;

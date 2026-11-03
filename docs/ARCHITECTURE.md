@@ -112,8 +112,10 @@ as the live reference. The load-bearing parts:
   wallpaper): **matugen** (`pkgs.unstable.matugen` — 26.05 pins 4.0.0, which lacks `--prefer`)
   extracts a Material-You palette from the running wallpaper and renders the vendored templates
   in `modules/home/theming/templates/` (bar palette JSON, kitty colors, mako config, rofi color
-  overlay, hyprlock color variables, zsh prompt colors, gtk3/gtk4 css) into `~/.cache/theming/` — deliberately
-  outside HM management, since store symlinks can't be overwritten at runtime. Every invocation
+  overlay, hyprlock color variables, zsh prompt colors, gtk3/gtk4 css, kvantum theme for qt) —
+  most into `~/.cache/theming/`, the gtk css and the kvantum theme straight into `~/.config`
+  (paths HM deliberately doesn't manage, since store symlinks can't be overwritten at runtime).
+  Every invocation
   shares one `matugenFlags` binding: `-m dark -t scheme-fidelity --prefer saturation` — fidelity
   keeps the wallpaper's own hue at high chroma (the default tonal-spot washes every role into
   one gray-blue family), and `--prefer` picks the dominant color headlessly. The kitty template

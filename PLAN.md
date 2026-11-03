@@ -368,6 +368,8 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 - [x] `ssh.nix` — ssh client: multiplexing, key preferences; pairs with the keys-only server
 - [x] `vscode.nix` — rides `cfg.desktop.enable`
 - [x] `easyeffects.nix` — PipeWire EQ; gated on its switch + `cfg.audio` + `cfg.desktop`
+      **removed 2026-11-04** (module + `cfg.home.easyeffects.enable` option; restore from git
+      history when wanted again)
 - [x] `nix-index.nix` — nix-index + comma (channel-less command-not-found)
 - [x] CLI modernizers into `zsh.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
 - [x] `tmux.nix` — opt-in (default false); ssh-serving hosts flip it (server does)
@@ -378,10 +380,14 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 - [x] HM-side syncthing tray — `modules/home/syncthing-tray.nix` on `cfg.syncthing.enable` +
       `cfg.desktop.enable` (quickshell hosts the StatusNotifier icon on hyprland)
 - [x] `theming.nix` (rides `cfg.desktop.enable`): HM `dconf.enable` (without it every
-      `dconf.settings` is silently dropped), dark gtk + qt adwaita. GTK3 apps (nemo etc.) get
+      `dconf.settings` is silently dropped), dark gtk + qt. GTK3 apps (nemo etc.) get
       `adw-gtk3-dark` + Noto Sans 10 — GTK3's built-in Adwaita ignores both
       `gtk-application-prefer-dark-theme` from settings.ini and the matugen named-color
-      overrides, so without a theme name they stay plain light. **Stylix: deferred, then
+      overrides, so without a theme name they stay plain light. Qt apps go through
+      qt5ct/qt6ct + kvantum (HM's `qtct` platform theme; `QT_QPA_PLATFORMTHEME` covers Qt5+Qt6
+      since qt6ct registers both plugin names) with the palette theme rendered by matugen, and
+      `qadwaitadecorations` kept explicitly for Qt wayland titlebars (the old `"adwaita"`
+      platform theme auto-added it, `qtct` doesn't). **Stylix: deferred, then
       resolved (2026-10-28) as runtime theming instead** — see `palette.nix`
 - [x] Runtime wallpaper theming (`palette.nix` + `theming/templates/`, behind
       `cfg.home.theming.enable` + a wallpaper): **matugen** (`pkgs.unstable.matugen`, no new
