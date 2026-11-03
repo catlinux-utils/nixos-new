@@ -7,4 +7,4 @@ map (path: import path) (
     && baseNameOf path != "default.nix"
     && baseNameOf path != "hardware-configuration.nix"
   ) (lib.filesystem.listFilesRecursive dir)
-);
+)
