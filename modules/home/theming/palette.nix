@@ -59,7 +59,11 @@ in
               exit 1
             fi
             echo "[$(date +%T)] switching to $1" >> "$log"
-            cp -- "$1" ${current} || { echo "[$(date +%T)] error: cp failed" >> "$log"; note "copy failed"; exit 1; }
+            # -f: an older seed could leave `current` read-only (store paths are
+            # r--r--r--, and cp inherits the source mode) — force unlinks and
+            # recreates it; chmod keeps the copy writable for the next switch
+            cp -f -- "$1" ${current} || { echo "[$(date +%T)] error: cp failed" >> "$log"; note "copy failed"; exit 1; }
+            chmod 600 ${current}
             if systemctl --user restart hyprpaper.service; then
               echo "[$(date +%T)] hyprpaper restarted" >> "$log"
             else
@@ -160,7 +164,10 @@ in
             Type = "oneshot";
             ExecStart = pkgs.writeShellScript "matugen-palette-start" ''
               mkdir -p ${stateDir} ${cacheDir} ${homeDir}/.config/Kvantum/matugen
-              [ -f ${current} ] || cp ${osConfig.cfg.home.hyprland.wallpaper} ${current}
+              # install -m, not cp: the wallpaper is a store path (r--r--r--)
+              # and cp would reproduce that mode on the copy, making every
+              # later wallswitch cp fail with EACCES
+              [ -f ${current} ] || install -m 600 ${osConfig.cfg.home.hyprland.wallpaper} ${current}
               # --prefer: matugen 4.x asks interactively which dominant color to
               # use when an image yields several — a systemd service has no TTY,
               # so without it the seed dies with "not a terminal"
