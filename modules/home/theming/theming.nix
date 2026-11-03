@@ -1,6 +1,7 @@
 {
   lib,
   osConfig,
+  pkgs,
   ...
 }:
 {
@@ -14,6 +15,14 @@
     # libadwaita and portal-following apps read
     gtk.enable = true;
     gtk.colorScheme = "dark";
+
+    # icon theme for tray/status icons (nm-applet etc.) — hosts without a full
+    # DE (e.g. the live ISO) otherwise have no icon theme at all and the bar
+    # renders missing-icon placeholders
+    gtk.iconTheme = {
+      package = pkgs.adwaita-icon-theme;
+      name = "Adwaita";
+    };
 
     # qt apps follow adwaita — HM auto-detects the style packages
     # (adwaita-qt, adwaita-qt6) and wayland decorations (qadwaitadecorations)
