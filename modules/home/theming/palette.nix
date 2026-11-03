@@ -39,19 +39,39 @@ in
         home.packages = [
           pkgs.unstable.matugen
           pkgs.waypaper
+          pkgs.libnotify # notify-send for wallswitch failure reports (mako displays)
+          # switch the running wallpaper: copy into the persistent state slot,
+          # restart hyprpaper to reload it (the pinned nixpkgs pair is
+          # hyprctl/hyprpaper protocol-incompatible — no IPC switch), then
+          # regenerate the palette from the copy. Every step logs to
+          # ~/.cache/theming/wallswitch.log and failures notify — waypaper
+          # spawns this detached, so without the log a failing step would be
+          # completely silent. Steps are fail-soft: a hyprpaper restart
+          # failure must not eat the palette render (and vice versa).
           (pkgs.writeShellScriptBin "wallswitch" ''
-            # switch the running wallpaper: copy into the persistent state slot,
-            # restart hyprpaper to reload it (the pinned nixpkgs pair is
-            # hyprctl/hyprpaper protocol-incompatible — no IPC switch), then
-            # regenerate the palette from the copy
             set -eu
-            [ "$#" -eq 1 ] || { echo "usage: wallswitch <image>" >&2; exit 1; }
-            src=$1
-            [ -f "$src" ] || { echo "wallswitch: no such file: $src" >&2; exit 1; }
-            mkdir -p ${stateDir} ${homeDir}/.config/Kvantum/matugen
-            cp -- "$src" ${current}
-            systemctl --user restart hyprpaper.service
-            ${pkgs.unstable.matugen}/bin/matugen image ${current} ${matugenFlags}
+            log="${cacheDir}/wallswitch.log"
+            note() { command -v notify-send >/dev/null && notify-send -u critical wallswitch "$1" || true; }
+            mkdir -p ${cacheDir} ${stateDir} ${homeDir}/.config/Kvantum/matugen
+            if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
+              echo "[$(date +%T)] error: usage: wallswitch <image> (got: $*)" >> "$log"
+              note "bad arguments: $*"
+              exit 1
+            fi
+            echo "[$(date +%T)] switching to $1" >> "$log"
+            cp -- "$1" ${current} || { echo "[$(date +%T)] error: cp failed" >> "$log"; note "copy failed"; exit 1; }
+            if systemctl --user restart hyprpaper.service; then
+              echo "[$(date +%T)] hyprpaper restarted" >> "$log"
+            else
+              echo "[$(date +%T)] error: hyprpaper restart failed (rc=$?)" >> "$log"
+              note "hyprpaper restart failed — wallpaper may be stale"
+            fi
+            if ${pkgs.unstable.matugen}/bin/matugen image ${current} ${matugenFlags} >> "$log" 2>&1; then
+              echo "[$(date +%T)] palette rendered" >> "$log"
+            else
+              echo "[$(date +%T)] error: matugen failed (see above in this log)" >> "$log"
+              note "palette render failed — check $log"
+            fi
           '')
         ];
 
