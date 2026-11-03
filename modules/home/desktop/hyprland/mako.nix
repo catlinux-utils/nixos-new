@@ -14,8 +14,9 @@
 
     systemd.user.services.mako = {
       Unit.After = lib.mkIf osConfig.cfg.home.theming.enable [ "matugen-palette.service" ];
-      Service.ExecStart = lib.mkIf osConfig.cfg.home.theming.enable (lib.mkForce
-        "${pkgs.mako}/bin/mako -c ${config.home.homeDirectory}/.cache/theming/mako.conf");
+      Service.ExecStart = lib.mkIf osConfig.cfg.home.theming.enable (
+        lib.mkForce "${pkgs.mako}/bin/mako -c ${config.home.homeDirectory}/.cache/theming/mako.conf"
+      );
     };
   };
 }
