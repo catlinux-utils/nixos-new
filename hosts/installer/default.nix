@@ -11,10 +11,15 @@
 {
   lib,
   pkgs,
+  inputs,
   ...
 }:
 let
-  nixosModules = pkgs.path + "/nixos/modules";
+  # The pinned nixpkgs source. This must come from inputs (specialArgs), NOT
+  # from the `pkgs` module arg: imports and disabledModules resolve before the
+  # module system has a config, and `pkgs` is only reachable through
+  # config._module.args — forcing it here is an infinite recursion.
+  nixosModules = inputs.nixpkgs + "/nixos/modules";
 in
 {
   imports = [
@@ -39,6 +44,9 @@ in
     user = {
       name = "nixos";
       fullName = "Live installer (nixos)";
+      # mirrors upstream installation-device's "" (it wins anyway) and gates
+      # the promptless keyring seed (modules/home/keyring.nix)
+      initialHashedPassword = "";
     };
 
     # the live environment boots into the repo's Hyprland desktop (GDM
@@ -71,9 +79,19 @@ in
   # owns its own bootloader.
   services.xserver.displayManager.gdm = {
     enable = true;
-    wayland = true;
     autoLogin.enable = true;
     autoLogin.user = "nixos";
+  };
+
+  # Image-only host: `nix flake check` (and any non-image eval) sees this BASE
+  # config, while the `iso` variant (iso-image.nix) owns boot and mounts. 26.05
+  # defaults grub on for non-containers and stage-1 asserts a root fs — mirror
+  # the variant's media overrides here so the base stays assert-clean; the
+  # variant re-wins them at the same priority with the real live-ISO layout.
+  boot.loader.grub.enable = lib.mkImageMediaOverride false;
+  fileSystems."/" = lib.mkImageMediaOverride {
+    fsType = "tmpfs";
+    options = [ "mode=0755" ];
   };
 
   # memory headroom for the live session

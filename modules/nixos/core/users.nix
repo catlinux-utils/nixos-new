@@ -18,7 +18,7 @@
     };
     initialHashedPassword = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = "$6$rounds=656000$abcdefghijklmnop$pQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQe";  # "cat" hashed
+      default = "$6$rounds=656000$abcdefghijklmnop$pQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQe"; # "cat" hashed
       description = ''
         Hashed password applied at first deploy only (`mkpasswd -m sha-512`).
         Default is "cat" (replace with your own: run `mkpasswd -m sha-512 cat` on target).
@@ -38,9 +38,12 @@
       description = config.cfg.user.fullName;
       extraGroups = [ "wheel" ];
       shell = pkgs.zsh;
-      initialHashedPassword =
-        lib.mkIf (config.cfg.user.initialHashedPassword != null)
-          config.cfg.user.initialHashedPassword;
+      # mkDefault: upstream installation-device.nix (imported by the installer
+      # host) sets "" for its passwordless `nixos` user and must win over this
+      # placeholder on live media
+      initialHashedPassword = lib.mkIf (config.cfg.user.initialHashedPassword != null) (
+        lib.mkDefault config.cfg.user.initialHashedPassword
+      );
     };
   };
 }
