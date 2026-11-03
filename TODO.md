@@ -13,14 +13,10 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       — makes this Windows machine nix-capable, unblocking local validation. The `wsl` host is
       already registered (`cfg.nh.flakeDir` points at `~/nixos-new` on the WSL Linux side)
 - [ ] After the bootstrap: clone this repo to `~/nixos-new` inside WSL, then `nh os switch --dry`
-      → `nh os test` → `nh os switch` on the `wsl` host
-- [ ] On a Nix machine (or WSL2 with nix): `nix flake check` + `nix fmt` the scaffold (this run
-      also proves the 2026-10-30 module-tree category reorganization — pure file moves, no content
-      edits)
-- [ ] Push, then run the manual CI workflow (Actions tab) — first `nix flake check` / `nix fmt`
-      verdict plus per-host toplevel builds and the installer-ISO eval step; then run the
-      flake-update workflow and merge its PR to land the first `flake.lock` (pinning
-      nixos-hardware, disko and lanzaboote too)
+      → `nh os test` → `nh os switch`
+- [ ] Push, then run the manual CI workflow (Actions tab) — per-host toplevel builds and the
+      installer-ISO eval step; then run the flake-update workflow and merge its PR to land the
+      first `flake.lock` (pinning nixos-hardware, disko and lanzaboote too)
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
 - [ ] Per host (Phase 2): replace `REPLACE_WITH_DISK_ID` in `hosts/*/disko.nix` with the
@@ -40,19 +36,15 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 
 ## Legacy-flake ports (PLAN §2.2)
 
-Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items first, medium after:
-
-- [ ] `nix flake check` + `nix fmt` on a nix machine (WSL once bootstrapped) — every module was
-      audited against the pinned branch sources (raw nixpkgs/HM files, mynixos) on 2026-10-27:
-      ~65 module files verified, 4 eval-breaking bugs found and fixed (font attrs, flatseal,
-      delta rename); what remains is the real eval/format run
+Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items first, medium after.
 
 ## Backlog
 
-- [ ] Installer ISO — implemented (`hosts/installer/default.nix`: GDM-autologin Hyprland
-      live env); build it on a Nix machine (`nixos-rebuild build-image --flake .#installer
-      --image-variant iso`), boot it once to verify the live session, write the .iso to USB
-      and do one real install from it
+- [ ] Installer ISO — built for real (2026-11-03: `nixos-rebuild build-image --flake
+      .#installer --image-variant iso` exit 0; 3.9 GB hybrid ISO, BIOS+UEFI bootable,
+      autologin resolves to the `hyprland-uwsm` session; boot-tested in a VM through several
+      fix rounds — uwsm autodetect session, hyprpaper 0.8 conf, fidelity palette). Remaining:
+      write the .iso to USB and do one real install from it
 - [ ] Phase 6 dormant modules — enable per host when relevant: `cfg.updates.auto.*` (manual nh
       vs auto trade-off), `cfg.boot.secureBoot.*` (UEFI hardware + real eval first),
       `cfg.attic.*` (server; waits on the sops key + a secret)

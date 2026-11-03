@@ -93,8 +93,9 @@ as the live reference. The load-bearing parts:
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.
 - **Hyprland session flow** — the system side launches the session through uwsm
-  (`programs.hyprland.withUWSM`, with `programs.uwsm.waylandCompositors` configured so the
-  "Hyprland (UWSM)" session entry exists for display managers), which activates `graphical-session.target`. User units (the
+  (`programs.hyprland.withUWSM`; uwsm's module registers the
+  "Hyprland (UWSM)" session entry for display managers by default, pointing at
+  `/run/current-system/sw/bin/Hyprland`), which activates `graphical-session.target`. User units (the
   quickshell bar, hypridle, mako, hyprpaper, the polkit agent) bind to it from the home side
   (`modules/home/desktop/hyprland/`), so nothing is autostarted via `exec-once`. The session config
   itself is a plain vendored file (`modules/home/desktop/hyprland/hyprland.lua`, Hyprland's Lua config
@@ -108,14 +109,25 @@ as the live reference. The load-bearing parts:
   variables, an optional matugen overlay that redefines them, then the sourced layout file. Hyprland's own HM systemd integration is disabled
   (`wayland.windowManager.hyprland.systemd.enable = false`) — uwsm owns target activation.
 - **Runtime theming flow** — `modules/home/theming/palette.nix` (rides `cfg.home.theming.enable` + a
-  wallpaper): **matugen** (from nixpkgs, no flake input) extracts a Material-You palette from
-  the running wallpaper and renders the vendored templates in `modules/home/theming/templates/`
-  (bar palette JSON, kitty colors, mako config, rofi color overlay, hyprlock color variables,
-  gtk3/gtk4 css) into `~/.cache/theming/` —
-  deliberately outside HM management, since store symlinks can't be overwritten at runtime. The
-  running wallpaper is a *copied state file* (`~/.local/state/theming/current`): hyprpaper
-  always loads it, the `wallswitch` script (also wired as waypaper's `post_command`) overwrites
-  it on every pick, and a login oneshot seeds it from the host's install-time default
+  wallpaper): **matugen** (`pkgs.unstable.matugen` — 26.05 pins 4.0.0, which lacks `--prefer`)
+  extracts a Material-You palette from the running wallpaper and renders the vendored templates
+  in `modules/home/theming/templates/` (bar palette JSON, kitty colors, mako config, rofi color
+  overlay, hyprlock color variables, zsh prompt colors, gtk3/gtk4 css) into `~/.cache/theming/` — deliberately
+  outside HM management, since store symlinks can't be overwritten at runtime. Every invocation
+  shares one `matugenFlags` binding: `-m dark -t scheme-fidelity --prefer saturation` — fidelity
+  keeps the wallpaper's own hue at high chroma (the default tonal-spot washes every role into
+  one gray-blue family), and `--prefer` picks the dominant color headlessly. The kitty template
+  themes only the terminal chrome (bg/fg/selection/cursor/borders/tabs) and leaves the ANSI
+  slots unset: Material roles are tone-80 pastels that wash out as terminal colors, so kitty's
+  default vivid palette survives theming. The zsh template feeds the catlinux prompt theme's
+  `CATLINUX_*` variables (the theme sources the generated file and keeps hardcoded fallbacks
+  for machines without it). The running wallpaper is a *copied state file*
+  (`~/.local/state/theming/current`): hyprpaper loads it from a verbatim-written 0.8.x-format
+  hyprlang conf (HM's settings renderer still targets the removed `preload`/`wallpaper=`
+  syntax), the `wallswitch` script (also wired as waypaper's `post_command`) overwrites
+  the copy on every pick and then restarts `hyprpaper.service` — the pinned pair (hyprctl 0.55 +
+  hyprpaper 0.8) is protocol-incompatible, so IPC switching can't work — and re-renders the
+  palette; a login oneshot seeds it from the host's install-time default
   (`cfg.home.hyprland.wallpaper`, a member of the shipped `hosts/<host>/wallpapers/` set
   installed to `~/Pictures/Wallpapers/` for the waypaper GUI) exactly once. `Theme.qml` reads
   the palette JSON at runtime with the hand-tuned colors as fallbacks, so the vendored assets
@@ -143,7 +155,7 @@ config = lib.mkIf osConfig.cfg.desktop.hyprland.enable { ... };
 Rule of thumb: the *system* decides whether a feature exists and what its options are; the *home*
 layer adds user-facing configuration for it. Hosts set both sides through the same flat `cfg.*`
 namespace. Some home modules ride a system switch with no option of their own — e.g.
-`browser.nix`, `theming.nix`, `vscode.nix` and `mpv.nix` gate on `cfg.desktop.enable`,
+`brave.nix`, `theming.nix`, `vscode.nix` and `mpv.nix` gate on `cfg.desktop.enable`,
 `gnome.nix` on `cfg.desktop.gnome.enable` (like the `hyprland/` folder), so headless hosts don't
 carry GUI software; `palette.nix` additionally requires `cfg.home.theming.enable` and a set
 wallpaper.

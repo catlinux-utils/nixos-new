@@ -136,13 +136,40 @@ Per-host switch wiring: [docs/OPTIONS.md](docs/OPTIONS.md) host matrices. Foreig
 4. Per real host (Phase 2): real hardware config in, then `nh os switch --dry` → `nh os test` →
    `nh os switch`.
 
+First real run (2026-11-03, desktop host, Lix 2.95.4): `nix flake check` clean on all five hosts
+and the ISO derivation eval (`config.system.build.images.iso`), `nix fmt` clean. Fixes the run
+forced:
+
+1. `flake.nix` — outputs pattern `inputs@{...}` lacked `...`; the six later-added inputs failed
+   the call.
+2. `lib/importNixFiles.nix` — stray `;` terminating the expression.
+3. `desktop/base.nix` + `services/virtualisation.nix` — top-level `assertions` next to `config`;
+   the module system rejects the mix. Moved into `config` (ungated) via `mkMerge`.
+4. disko — `inputs.disko.nixosModules.default` wired in `mkHost` (was never imported); hosts
+   without a layout (`wsl`, `installer`) leave the option unset.
+5. `hosts/{desktop,laptop,server}/disko.nix` — rewritten to disko's real schema (partitions under
+   `content`, `luks`/`btrfs`/`filesystem` types; verified against the pinned disko source in the
+   store). Placeholder `hardware-configuration.nix` files trimmed to `stateVersion` only — their
+   fake `fileSystems."/"` collided with disko's generated mounts.
+6. HM rofi — `programs.rofi.enable` unconditionally generates `config.rasi`, conflicting with the
+   vendored rasi; rofi now ships as a plain package + `xdg.configFile`.
+7. installer — `pkgs.path` in `imports` forces the `pkgs` module arg (only reachable through
+   `config`) → infinite recursion; now `inputs.nixpkgs`. Base mirrors the iso variant's media
+   overrides (26.05 defaults `grub.enable` on for non-containers; stage-1 asserts a root fs).
+   Dead `gdm.wayland` flag dropped (GNOME 50). `initialHashedPassword` set via `mkDefault` so
+   upstream's passwordless `""` wins on live media.
+8. HM ssh — deprecated aliases → `programs.ssh.settings."*"`, `enableDefaultConfig = false`.
+
 ### 1.11 Phase 1 acceptance criteria
 
 - [x] `flake.nix` + `lib/` + `overlays/` present; three `nixosConfigurations` declared
 - [x] All module files exist and follow the feature-module pattern; no manual import lists outside
       the two `default.nix` importers
-- [ ] `nix flake check` passes on a Nix machine (placeholder hardware configs included)
-- [ ] `nix fmt` clean
+- [x] `nix flake check` passes on a Nix machine (placeholder hardware configs included) — ran
+      2026-11-03 on the desktop host (Lix 2.95.4), all five hosts clean; the run also proved the
+      2026-10-30 category-folder reorganization and surfaced 8 eval/warning-level issues, all
+      fixed in the same change (see the Phase 1.10 run notes)
+- [x] `nix fmt` clean (RFC 101 via nixfmt-rfc-style, idempotent on re-run)
 - [x] README host table, PLAN checkboxes, TODO updated
 
 ---
@@ -260,11 +287,11 @@ Small — edits to existing modules:
       (adwaita, size 24, gtk enabled) + the uwsm env file `~/.config/uwsm/env-hyprland` setting
       `HYPRCURSOR_THEME`/`HYPRCURSOR_SIZE`.
 - [x] **Hyprland tray apps** — `modules/home/hyprland/tray.nix`: nm-applet + pavucontrol.
-- [x] **hypridle hardening** — `idle.nix` listener set: `lock_cmd` guards against duplicate
+- [x] **hypridle hardening** — `hypridle.nix` listener set: `lock_cmd` guards against duplicate
       hyprlock, `before_sleep_cmd = "loginctl lock-session"`, backlight dim at 150 s, lock at
       300 s, dpms off at 330 s, suspend at 900 s.
-- [x] **shell.nix utilities** — yt-dlp, ffmpeg, ncdu, duf, unzip, p7zip; case-insensitive zsh
-      completion + `cat = bat` alias.
+- [x] **zsh.nix utilities** — yt-dlp, ffmpeg, ncdu, duf, unzip, p7zip, fastfetch, onefetch,
+      tokei; case-insensitive zsh completion + `cat = bat` alias.
 - [x] **nh clean tuning** — daily, `--keep 5 --keep-since 3d` (legacy cadence).
 - [x] **git email** — the legacy commit identity on all four hosts; confirm it is the wanted one
       (TODO).
@@ -336,13 +363,13 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 - [x] `direnv.nix` — `programs.direnv` + `nix-direnv`; paired with GC-survivor settings in
       `nix.nix` so dev-shell deps survive GC
 - [x] `gpg.nix` — `programs.gpg` + `services.gpg-agent` (ssh-agent integration)
-- [x] `browser.nix` — `programs.brave` (swapped from firefox so the lua's SUPER+W
+- [x] `brave.nix` — `programs.brave` (swapped from firefox so the lua's SUPER+W
       `brave-browser.desktop` bind resolves)
 - [x] `ssh.nix` — ssh client: multiplexing, key preferences; pairs with the keys-only server
 - [x] `vscode.nix` — rides `cfg.desktop.enable`
 - [x] `easyeffects.nix` — PipeWire EQ; gated on its switch + `cfg.audio` + `cfg.desktop`
 - [x] `nix-index.nix` — nix-index + comma (channel-less command-not-found)
-- [x] CLI modernizers into `shell.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
+- [x] CLI modernizers into `zsh.nix`: bat, zoxide, atuin, yazi, lazygit, tealdeer
 - [x] `tmux.nix` — opt-in (default false); ssh-serving hosts flip it (server does)
 - [x] `mpv.nix` — desktop video player
 - [x] `password-store.nix` — `programs.password-store` (pairs with gpg.nix)
@@ -353,12 +380,18 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 - [x] `theming.nix` (rides `cfg.desktop.enable`): HM `dconf.enable` (without it every
       `dconf.settings` is silently dropped), dark gtk + qt adwaita. **Stylix: deferred, then
       resolved (2026-10-28) as runtime theming instead** — see `palette.nix`
-- [x] Runtime wallpaper theming (`palette.nix` + `palette/templates/`, behind
-      `cfg.home.theming.enable` + a wallpaper): **matugen** (nixpkgs, no new input) extracts a
-      Material-You palette from the running wallpaper and renders vendored templates into
-      `~/.cache/theming/` — deliberately outside HM management (store symlinks can't be
-      overwritten at runtime). **waypaper** (SUPER+SHIFT+W) calls the `wallswitch` script: copy →
-      state file `~/.local/state/theming/current` → hyprpaper reload → matugen; the state copy is
+- [x] Runtime wallpaper theming (`palette.nix` + `theming/templates/`, behind
+      `cfg.home.theming.enable` + a wallpaper): **matugen** (`pkgs.unstable.matugen`, no new
+      input — 26.05 pins 4.0.0, which lacks `--prefer`) extracts a Material-You palette from the
+      running wallpaper (`-m dark -t scheme-fidelity --prefer saturation`; fidelity keeps the
+      wallpaper's hue at high chroma where the default tonal-spot washes everything gray-blue)
+      and renders vendored templates into `~/.cache/theming/` — deliberately outside HM
+      management (store symlinks can't be overwritten at runtime). The kitty template themes
+      only the terminal chrome — ANSI slots stay unset so kitty's default vivid palette
+      survives (Material tone-80 pastels wash out as terminal colors). **waypaper**
+      (SUPER+SHIFT+W) calls the `wallswitch` script: copy → state file
+      `~/.local/state/theming/current` → hyprpaper restart (hyprctl/hyprpaper protocol
+      mismatch on the 26.05 pin — no IPC switch) → matugen; the state copy is
       the source of truth (reboots restore the last pick). The default wallpaper
       (`cfg.home.hyprland.wallpaper`) seeds the state file exactly once on first graphical login.
       Theme.qml and the rofi/hyprlock templates consume the palette with hardcoded fallbacks, so
@@ -389,7 +422,10 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
       lists variants; artifact also at `config.system.build.images.iso`, which is all CI
       evaluates). Variants: `iso` (live media) vs `iso-installer` (installer profiles +
       `enableAllHardware`); `isoImage.isoName` was renamed → `image.baseName`/`image.fileName`
-      in 25.05
+      in 25.05. First real build (2026-11-03, Lix 2.95.4, nixos-rebuild build-image):
+      exit 0 — 3.9 GB hybrid ISO (BIOS MBR via isohdpfx.bin + EFI El Torito),
+      `services.displayManager.sessionData.autologinSession` = `hyprland-uwsm` (GDM
+      logs straight into the Hyprland (UWSM) session)
 - **impermanence (stateless root) — declined** (2026-10-27, user decision): the stateless-root
   workflow doesn't fit how these machines are used; hosts keep a conventional persistent root.
   Preservation was evaluated as the modern alternative — moot with this decision. The Phase 2

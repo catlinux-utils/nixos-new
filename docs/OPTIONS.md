@@ -129,7 +129,7 @@ One DE per host — an assertion makes two enabled DEs fail evaluation. DE modul
 
 Declared in `modules/nixos/home-options.nix`; the option-less modules in `modules/home/` gate on
 them via `osConfig`. All default **true** except where noted. Modules with **no option** ride
-system switches instead: `browser.nix`, `vscode.nix`, `desktop-apps.nix`, `theming.nix`,
+system switches instead: `brave.nix`, `vscode.nix`, `desktop-apps.nix`, `theming.nix`,
 `mpv.nix` and `easyeffects.nix` require `cfg.desktop.enable` (easyeffects also
 `cfg.audio.enable`; vscode configures settings/extensions declaratively; theming enables HM
 `dconf` and sets dark gtk + qt adwaita for every desktop), `gaming.nix` on `cfg.gaming.enable`,
@@ -141,7 +141,7 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|
-| `cfg.home.shell.enable` | bool, on | zsh + starship + fzf/eza/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer + yt-dlp/ffmpeg/ncdu/duf/zip utilities |
+| `cfg.home.shell.enable` | bool, on | zsh + catlinux theme + fzf/eza/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer + yt-dlp/ffmpeg/ncdu/duf/zip utilities |
 | `cfg.home.git.enable` | bool, on | git + delta + lfs, `init.defaultBranch = main` |
 | `cfg.home.git.name` / `.email` | nullOr str, `null` | git identity (null = unset) |
 | `cfg.home.terminal.enable` | bool, on | kitty |
