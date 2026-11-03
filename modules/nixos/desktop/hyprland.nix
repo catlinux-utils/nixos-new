@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  pkgs,
   ...
 }:
 {
@@ -49,5 +50,13 @@
     # password-store=gnome-libsecret); PAM unlocks the keyring at login
     services.gnome.gnome-keyring.enable = true;
     security.pam.services.login.enableGnomeKeyring = true;
+
+    # the home-side tray applet (tray.nix) exports its icons by NAME
+    # (IconName nm-*, no pixmap), and they ship in the applet's own hicolor
+    # dir — the package must sit in the system profile for the tray consumer
+    # (the quickshell bar) to resolve them; without it the bar renders a
+    # broken-image placeholder wherever no other profile happens to carry the
+    # icons (e.g. the live ISO)
+    environment.systemPackages = [ pkgs.networkmanagerapplet ];
   };
 }
