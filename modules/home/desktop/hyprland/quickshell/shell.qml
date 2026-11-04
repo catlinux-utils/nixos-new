@@ -497,9 +497,9 @@ ShellRoot {
 
     // ── bar building blocks ──
 
-    // dim icon glyph, vertically centered (color overridable per instance)
+    // accent-tinted icon glyph, vertically centered (color overridable per instance)
     component BarIcon: Text {
-        color: root.col5
+        color: root.col11
         font.family: root.iconFont
         font.pixelSize: root.iconSize
         Layout.alignment: Qt.AlignVCenter
@@ -516,7 +516,7 @@ ShellRoot {
 
     // bold value text, vertically centered
     component BarText: Text {
-        color: root.col14
+        color: root.col15
         font.pixelSize: root.fontSize
         font.family: root.fontFamily
         font.bold: true
@@ -533,9 +533,10 @@ ShellRoot {
     }
 
     // rounded group box: lays its children out in a centered row inside a
-    // slightly rounded background with a contrasting 1px border; `interactive`
-    // brightens on hover for clickable clusters (same treatment as the
-    // workspace pills). `tint` colors both fill and border.
+    // slightly rounded outline — border only, no fill (the bar background
+    // shows through); `interactive` boxes get a faint tint fill on hover
+    // (same treatment as the workspace pills). `tint` colors the border
+    // (and the hover fill).
     component BarBox: Rectangle {
         default property alias content: boxRow.data
         property bool interactive: false
@@ -547,9 +548,9 @@ ShellRoot {
         Layout.rightMargin: 3
         implicitWidth: boxRow.implicitWidth + 20
         radius: 6
-        color: Qt.alpha(tint, interactive && boxHover.hovered ? 0.18 : 0.10)
+        color: interactive && boxHover.hovered ? Qt.alpha(tint, 0.10) : "transparent"
         border.width: 1
-        border.color: Qt.alpha(tint, interactive && boxHover.hovered ? 0.50 : 0.30)
+        border.color: Qt.alpha(tint, interactive && boxHover.hovered ? 0.55 : 0.35)
 
         Behavior on color {
             ColorAnimation {
@@ -748,9 +749,9 @@ ShellRoot {
                         Layout.leftMargin: root.pad
                         Layout.preferredWidth: workspaceRow.implicitWidth + 12
                         radius: 6
-                        color: Qt.rgba(1, 1, 1, 0.10)
+                        color: "transparent"
                         border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.30)
+                        border.color: Qt.rgba(1, 1, 1, 0.35)
 
                         MouseArea {
                             anchors.fill: parent
@@ -800,7 +801,7 @@ ShellRoot {
 
                                         anchors.centerIn: parent
                                         text: modelData
-                                        color: isActive ? root.col15 : (hasWindows ? root.col15 : root.col3)
+                                        color: isActive ? root.col15 : (hasWindows ? root.col15 : root.col1)
                                         font.pixelSize: root.fontSize + 1
                                         font.family: root.fontFamily
                                         font.bold: isActive
