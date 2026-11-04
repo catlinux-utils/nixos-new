@@ -1,7 +1,7 @@
 # nixos-new
 
 ThePolishcat's NixOS configuration flake. A single flake manages several machines
-(`desktop`, `laptop`, `server`, `wsl`) plus a live installer ISO. Home Manager is
+(`desktop`, `desktop-lite`, `laptop`, `server`, `wsl`) plus a live installer ISO. Home Manager is
 wired in as a NixOS module, rebuilds go through `nh`, and the Nix implementation is
 Lix on nixpkgs **26.05**, with unstable available as `pkgs.unstable.<pkg>`.
 
@@ -13,6 +13,7 @@ switches in `hosts/<name>/default.nix`, modules stay machine-agnostic.
 | Host | Role | Session |
 |------|------|---------|
 | `desktop` | workstation | Hyprland |
+| `desktop-lite` | slim profile for the same machine as `desktop` — no gaming, ollama, printing, kdeconnect, geolocation or tailscale | Hyprland |
 | `laptop` | portable | GNOME |
 | `server` | headless | none (SSH + Docker) |
 | `wsl` | NixOS-WSL dev host | none |

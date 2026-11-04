@@ -30,6 +30,10 @@ These modules apply on every host — only their value options are configurable:
 
 Default off unless noted. "On" = hosts currently setting it.
 
+`desktop-lite` is not given its own column: it's the slim profile for the same machine as
+`desktop` — its wiring equals the `desktop` column minus `gaming`, `ollama`, `kdeconnect`,
+`printing`, `geolocation` and `tailscale` (everything else, including home options, identical).
+
 | Option | Turns on | desktop | laptop | server | wsl |
 |---|---|:---:|:---:|:---:|:---:|
 | `cfg.boot.enable` | loader base: ESP at `/efi` (both loaders), EFI vars, silent boot, zram (systemd-boot is the fallback loader — UKIs via `cfg.boot.secureBoot.enable` replace it) | ✓ | ✓ | ✓ | – (WSL owns boot) |

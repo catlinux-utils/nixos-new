@@ -108,6 +108,7 @@ the real repo path on that machine. Hostname is set by `mkHost`.
 | Host | Role | Session |
 |---|---|---|
 | `desktop` | workstation | Hyprland |
+| `desktop-lite` | slim profile for the same machine as `desktop` (no gaming, ollama, printing, kdeconnect, geolocation, tailscale) | Hyprland |
 | `laptop` | portable | GNOME |
 | `server` | headless | none |
 | `wsl` | dev host (Phase 1.5) | WSLg |

@@ -1,5 +1,5 @@
 {
-  description = "Multi-host NixOS flake (desktop, laptop, server, wsl, installer ISO) with Home Manager";
+  description = "Multi-host NixOS flake (desktop, desktop-lite, laptop, server, wsl, installer ISO) with Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
@@ -68,6 +68,12 @@
     {
       nixosConfigurations = {
         desktop = mkHost { hostname = "desktop"; };
+
+        # Same machine as `desktop`, slim profile: full Hyprland workstation
+        # without the gaming stack, ollama, printing, kdeconnect, geolocation
+        # and tailscale — deploy with `nh os switch --flake .#desktop-lite`
+        desktop-lite = mkHost { hostname = "desktop-lite"; };
+
         laptop = mkHost { hostname = "laptop"; };
         server = mkHost { hostname = "server"; };
         wsl = mkHost { hostname = "wsl"; };
