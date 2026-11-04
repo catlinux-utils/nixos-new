@@ -23,18 +23,17 @@ lib.nixosSystem {
 
   modules = [
     (
-      { config, pkgs, ... }:
+      { config, ... }:
       {
         options.cfg.git.remote = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
           description = ''
-            Origin URL for the flake working copy at cfg.nh.flakeDir. When set
-            and the directory isn't a git repo (e.g. the git-cleaned copy the
-            installer flow delivers via scripts/nixos-copy-repo), activation
-            inits one with this remote — so later hardware-configuration
-            changes can be committed (identity: cfg.home.git) and pushed from
-            the host itself.
+            Origin URL for the flake working copy at cfg.nh.flakeDir.
+            scripts/nixos-copy-repo reads it from the host file and
+            preconfigures the delivered copy's git (origin + main tracking) —
+            so later hardware-configuration changes can be committed (identity:
+            cfg.home.git) and pushed from the host itself.
           '';
         };
 
@@ -44,21 +43,10 @@ lib.nixosSystem {
           # username; hosts override it (wsl) and the installer inherits it as-is
           cfg.nh.flakeDir = lib.mkDefault "/home/${config.cfg.user.name}/github/nixos";
 
-          # host-assembly git wiring: one-shot at activation, only when the
-          # flake dir exists and has no .git (a manual clone or a previous run
-          # leaves it alone). Runs as root, so the fresh .git is handed to the
-          # host's user; identity comes from the HM-side git config at commit
-          # time.
-          system.activationScripts.repoGit = lib.mkIf (config.cfg.git.remote != null) (
-            lib.stringAfter [ "users" "groups" ] ''
-              dir="${toString config.cfg.nh.flakeDir}"
-              if [ -d "$dir" ] && [ ! -e "$dir/.git" ]; then
-                ${pkgs.git}/bin/git -C "$dir" init -b main
-                ${pkgs.git}/bin/git -C "$dir" remote add origin ${config.cfg.git.remote}
-                chown -R ${config.cfg.user.name}:users "$dir/.git"
-              fi
-            ''
-          );
+          # NOTE: git wiring of the delivered working copy (origin + tracking)
+          # lives in scripts/nixos-copy-repo — the only path that puts the repo
+          # on a host — not in an activation script; keep it that way unless a
+          # second delivery path appears.
 
         };
       }

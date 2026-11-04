@@ -77,15 +77,45 @@ reboot
 
 ---
 
-### Post-Install: On the booted target machine, clone repo & rebuild
+### One-time GitHub auth (per machine, via gh)
+
+The repo's remote is SSH (`cfg.git.remote`), but a fresh machine has no SSH
+key GitHub knows — `git push`/`git clone` fail with `Permission denied
+(publickey)`. `gh` (ships with the git tooling) sets everything up in one
+interactive flow — no manual keygen, no GitHub settings page:
 
 ```bash
-# With the installer ISO flow (or nixos-copy-repo step) the repo is already
-# at ~/github/nixos — and the first activation turns it into a git repo with
-# origin set (cfg.git.remote), so commit/push works right away.
-# Otherwise clone it there:
-git clone git@github.com:catlinux-utils/nixos-new.git ~/github/nixos
+gh auth login
+# → GitHub.com
+# → SSH → "Generate a new SSH key" (passphrase optional; it uploads the key)
+# → "Login with a web browser" → type the one-time code at
+#   https://github.com/login/device
+
+ssh -T git@github.com   # → "Hi <username>!" — done, SSH works everywhere
+```
+
+### Post-Install: first sync & rebuild
+
+```bash
 cd ~/github/nixos
+
+# The installer flow (or nixos-copy-repo) delivers the repo WITHOUT git
+# history — nixos-copy-repo turns it into a git repo with origin AND
+# main-tracking preconfigured (cfg.git.remote), so plain `git pull` and
+# `git push` work right away.
+# One-time sync, keeping local changes (e.g. the generated
+# hardware-configuration.nix):
+git add -A
+git commit -m "feat(desktop): generated hardware configuration"
+git fetch origin
+git rebase origin/main
+# → replays your commit(s) onto GitHub's history. On a hardware-configuration
+#   conflict (remote has the placeholder), keep YOUR generated version:
+#   edit the file, `git add <file>`, `git rebase --continue`.
+
+git push
+
+# No local changes to commit? A plain `git pull` is all you need.
 
 # First rebuild — dry-run, then switch (nh reads cfg.nh.flakeDir = ~/github/nixos)
 nh os switch --dry
@@ -95,11 +125,18 @@ nh os switch
 nh home switch
 ```
 
+On a machine without the installer flow, clone instead (after the gh auth
+above):
+
+```bash
+gh repo clone catlinux-utils/nixos-new ~/github/nixos
+```
+
 **Notes:**
 
 - The generated `fileSystems` + LUKS initrd entries reflect the layout `scripts/nixos-disk`/`nixos-mount` create (mounts resolve via `/dev/mapper/cryptroot` and disk UUIDs — machine-independent).
 - The `wsl` host doesn't need `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
-- Set `cfg.user.initialHashedPassword` in the host config for first login; otherwise the account is locked until you run `passwd` from a root shell.
+- Set `cfg.user.initialPassword` in the host config for first login; otherwise the account is locked until you run `passwd` from a root shell.
 
 ---
 
@@ -220,7 +257,7 @@ This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detec
 
 `sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs on every btrfs mount.
 
-**Commit it later, from the booted host** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via `scripts/nixos-copy-repo`; on the host, `cfg.git.remote` makes the first activation turn the working copy into a git repo with `origin` set, so `git add hosts/<host>/hardware-configuration.nix && git commit && git push` just works (identity: `cfg.home.git`).
+**Commit it later, from the booted host** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via `scripts/nixos-copy-repo`, which also turns the copy into a git repo with `origin` + tracking preconfigured (`cfg.git.remote`), so `git add hosts/<host>/hardware-configuration.nix && git commit && git push` just works (identity: `cfg.home.git`).
 
 Repeat for each host (`laptop`, `server`). The `wsl` host doesn't need one — NixOS-WSL owns boot and the filesystem.
 
