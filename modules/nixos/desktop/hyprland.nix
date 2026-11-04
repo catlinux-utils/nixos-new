@@ -60,12 +60,15 @@
     # prompting — nothing is ever stored in plaintext config
     security.pam.services.gdm-autologin.enableGnomeKeyring = true;
 
-    # the home-side tray applet (tray.nix) exports its icons by NAME
-    # (IconName nm-*, no pixmap), and they ship in the applet's own hicolor
-    # dir — the package must sit in the system profile for the tray consumer
-    # (the quickshell bar) to resolve them; without it the bar renders a
-    # broken-image placeholder wherever no other profile happens to carry the
-    # icons (e.g. the live ISO)
-    environment.systemPackages = [ pkgs.networkmanagerapplet ];
+    # the home-side tray applets (tray.nix, blueman.nix) export their icons by
+    # NAME (IconName nm-*/blueman-*, no pixmap), and they ship in each applet's
+    # own hicolor dir — the packages must sit in the system profile for the
+    # tray consumer (the quickshell bar) to resolve them; without it the bar
+    # renders a broken-image placeholder wherever no other profile happens to
+    # carry the icons (e.g. the live ISO)
+    environment.systemPackages = [
+      pkgs.networkmanagerapplet
+      pkgs.blueman
+    ];
   };
 }

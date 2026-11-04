@@ -4,7 +4,7 @@
   ...
 }:
 {
-  options.cfg.bluetooth.enable = lib.mkEnableOption "bluetooth (bluez + blueman applet)";
+  options.cfg.bluetooth.enable = lib.mkEnableOption "bluetooth (bluez stack)";
 
   config = lib.mkIf config.cfg.bluetooth.enable {
     hardware.bluetooth = {
@@ -16,7 +16,7 @@
       };
     };
 
-    # tray applet — the hosts enabling this are desktop sessions anyway
-    services.blueman.enable = true;
+    # the blueman tray applet lives home-side (modules/home/apps/blueman.nix),
+    # gated on this same switch
   };
 }

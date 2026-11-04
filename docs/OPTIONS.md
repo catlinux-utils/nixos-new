@@ -59,7 +59,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.compat.appimage.enable` | AppImage via binfmt | ✓ | ✓ | – | – |
 | `cfg.firmware.enable` | fwupd | ✓ | ✓ | ✓ | – |
 | `cfg.storage.enable` | weekly fstrim + smartd | ✓ | ✓ | ✓ | – |
-| `cfg.bluetooth.enable` | bluez (battery reporting, auto-enable) + blueman applet | ✓ | ✓ | – | – |
+| `cfg.bluetooth.enable` | bluez (battery reporting, auto-enable); blueman applet + GUI via home (gated on `cfg.desktop`) | ✓ | ✓ | – | – |
 | `cfg.printing.enable` | CUPS + Avahi mDNS + SANE (scanner/lp groups) | ✓ | ✓ | – | – |
 | `cfg.geolocation.enable` | geoclue2 (night light, auto timezone) | ✓ | ✓ | – | – |
 | `cfg.tailscale.enable` | tailscaled (mesh client; `tailscale up` once per host) | ✓ | ✓ | ✓ | – |
