@@ -61,9 +61,13 @@ ShellRoot {
     // ── command center (toggled by clicking the clock) ──
     // A small Overlay-layer panel under the clock with media controls, volume
     // and brightness sliders, quick actions and a month calendar. `ccScreen`
-    // keeps it on the monitor whose clock was clicked; a full-screen Top-layer
-    // click-catcher closes it when clicking anywhere outside.
+    // keeps it on the monitor whose clock was clicked; hovering off it (and the
+    // clock) dismisses it, clicks outside it never land on the popup at all.
     property bool ccOpen: false
+    // hover-dismiss: the popup stays open while the pointer is over the popup
+    // itself or the clock; a short grace timer closes it once it's over neither
+    property bool ccHoverPopup: false
+    property bool ccHoverClock: false
     property var ccScreen: null
     property date ccMonth: {
         var n = new Date();
@@ -1082,6 +1086,8 @@ ShellRoot {
                             MouseArea {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
+                                onContainsMouseChanged: root.ccHoverClock = containsMouse
                                 onClicked: root.toggleCc(modelData)
                             }
 
@@ -1112,35 +1118,14 @@ ShellRoot {
 
     }
 
-    // ── command center click-catcher: a transparent full-screen layer under
-    // the popup on every monitor; clicking anywhere outside the popup closes it
-    Variants {
-        model: Quickshell.screens
-
-        PanelWindow {
-            property var modelData
-
-            screen: modelData
-            visible: root.ccOpen
-            color: "transparent"
-            exclusionMode: ExclusionMode.Ignore
-
-            anchors {
-                top: true
-                left: true
-                right: true
-                bottom: true
-            }
-
-            WlrLayershell.layer: WlrLayer.Top
-
-            MouseArea {
-                anchors.fill: parent
-                onClicked: root.ccOpen = false
-            }
-
-        }
-
+    // ── command center hover-dismiss: the popup closes on its own when the
+    // pointer rests over neither the popup nor the clock for a moment. There is
+    // deliberately no full-screen click-catcher — clicks outside the popup pass
+    // through to the windows below.
+    Timer {
+        interval: 150
+        running: root.ccOpen && !root.ccHoverPopup && !root.ccHoverClock
+        onTriggered: root.ccOpen = false
     }
 
     // ── command center panel: media, volume, brightness, quick actions,
@@ -1180,6 +1165,10 @@ ShellRoot {
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.25)
                 implicitHeight: ccCol.implicitHeight + 20
+
+                HoverHandler {
+                    onHoveredChanged: root.ccHoverPopup = hovered
+                }
 
                 ColumnLayout {
                     id: ccCol
@@ -1327,6 +1316,7 @@ ShellRoot {
                                 from: 0
                                 to: 1
                                 stepSize: 0.01
+                                wheelEnabled: true // scroll to step
                                 value: volSlider.pressed ? volSlider.value : (root.sinkAudio?.volume ?? 0)
                                 onMoved: {
                                     if (root.sinkAudio)
