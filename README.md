@@ -61,7 +61,7 @@ sudo ./scripts/nixos-mount
 # 3. Generate the hardware config into the repo
 #    (sudo: the btrfs probe needs root; the redirect in your own shell keeps
 #    the file owned by the live-session user)
-sudo nixos-generate-config --show-hardware-config \
+sudo nixos-generate-config --show-hardware-config --root /mnt \
   > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (sudo: nixos-install lays down the target's system closure)

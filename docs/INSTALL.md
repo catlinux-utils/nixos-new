@@ -32,9 +32,13 @@ sudo ./scripts/nixos-disk
 sudo ./scripts/nixos-mount
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
-#    Run from repo root (on target or via SSH); sudo — the btrfs probe needs
-#    root, the redirect keeps the file owned by the live-session user:
-sudo nixos-generate-config --show-hardware-config > hosts/desktop/hardware-configuration.nix
+#    --root /mnt is REQUIRED: it limits the scan to the target's mounts and
+#    strips the /mnt prefix — without it the live session's own tmpfs/ISO
+#    mounts land in the config and the installed system won't boot.
+#    Run from repo root; sudo — the btrfs probe needs root; the redirect
+#    keeps the file owned by the live-session user:
+sudo nixos-generate-config --show-hardware-config --root /mnt \
+  > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (root: nixos-install lays down the target's system closure)
 sudo nixos-install --flake .#desktop --root /mnt
@@ -61,8 +65,9 @@ sudo ./scripts/nixos-format-part -i
 # 2. Mount everything (auto-detects the disk)
 sudo ./scripts/nixos-mount
 
-# 3. Generate hardware config INTO THE REPO (tracked, host-specific)
-sudo nixos-generate-config --show-hardware-config \
+# 3. Generate hardware config INTO THE REPO (tracked, host-specific;
+#    --root /mnt required — see note in Option A)
+sudo nixos-generate-config --show-hardware-config --root /mnt \
   > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (root: nixos-install lays down the target's system closure)
@@ -249,7 +254,7 @@ After mounting the target system at `/mnt`, generate the hardware config **into 
 
 ```bash
 # From repo root (on the target machine or via SSH):
-sudo nixos-generate-config --show-hardware-config \
+sudo nixos-generate-config --show-hardware-config --root /mnt \
   > hosts/desktop/hardware-configuration.nix
 ```
 
