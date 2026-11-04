@@ -99,11 +99,13 @@ in
 
   # autostart: open the repo's install guide when the live session starts —
   # a systemd user service bound to graphical-session.target (activated by
-  # uwsm), the same channel as the polkit agent. oneshot + kitty's --detach
-  # so the unit exits immediately instead of holding up the target while vim
-  # is open. vim comes from the upstream installer profile, kitty via HM
-  # (useGlobalPkgs: same pkgs here); absolute store paths because a bare PATH
-  # in a user unit isn't guaranteed.
+  # uwsm), the same channel as the polkit agent. kitty runs as the service's
+  # foreground main PID (no --detach: the detached child's failure is
+  # invisible, exit 0 is all the journal ever sees) and ExecStartPre waits
+  # for the wayland socket — target activation can race the compositor's
+  # first socket setup. bat pages the guide read-only (same viewer as the
+  # shell's cat); kitty/bat via HM (useGlobalPkgs: same pkgs here), absolute
+  # store paths because a bare PATH in a user unit isn't guaranteed.
   home-manager.users.${config.cfg.user.name}.systemd.user.services.installer-guide = {
     Unit = {
       Description = "Open the install guide (~/github/nixos/docs/INSTALL.md)";
@@ -111,8 +113,13 @@ in
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.kitty}/bin/kitty --detach ${pkgs.vim}/bin/vim %h/github/nixos/docs/INSTALL.md";
+      Type = "simple";
+      ExecStartPre =
+        # block up to ~15s for WAYLAND_DISPLAY and its socket to exist
+        # (dollar-signs doubled: systemd expands $VAR itself at command
+        # start, these must be expanded by bash per loop iteration)
+        "${pkgs.bash}/bin/bash -c 'for i in $(seq 1 150); do [ -n \"$$WAYLAND_DISPLAY\" ] && [ -S \"$$XDG_RUNTIME_DIR/$$WAYLAND_DISPLAY\" ] && exit 0; sleep 0.1; done; echo \"no wayland socket ($$WAYLAND_DISPLAY in $$XDG_RUNTIME_DIR)\" >&2; exit 1'";
+      ExecStart = "${pkgs.kitty}/bin/kitty ${pkgs.bat}/bin/bat %h/github/nixos/docs/INSTALL.md";
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
