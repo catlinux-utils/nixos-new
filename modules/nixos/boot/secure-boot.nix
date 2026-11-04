@@ -54,7 +54,12 @@
       measuredBoot = lib.mkIf config.cfg.boot.secureBoot.measuredBoot.enable {
         enable = true;
         # firmware + GPT + boot-loader code + Secure Boot policy
-        pcrs = lib.mkDefault [ 0 2 4 7 ];
+        pcrs = lib.mkDefault [
+          0
+          2
+          4
+          7
+        ];
       };
 
       autoGenerateKeys.enable = lib.mkIf config.cfg.boot.secureBoot.autoKeys.enable true;

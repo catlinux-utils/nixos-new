@@ -36,7 +36,6 @@
       };
     };
 
-    users.users.${config.cfg.user.name}.openssh.authorizedKeys.keys =
-      config.cfg.ssh.authorizedKeys;
+    users.users.${config.cfg.user.name}.openssh.authorizedKeys.keys = config.cfg.ssh.authorizedKeys;
   };
 }

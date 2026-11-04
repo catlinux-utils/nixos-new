@@ -19,18 +19,20 @@
     };
   };
 
-  config = lib.mkIf config.cfg.ollama.enable (lib.mkMerge [
-    { services.ollama.enable = true; }
+  config = lib.mkIf config.cfg.ollama.enable (
+    lib.mkMerge [
+      { services.ollama.enable = true; }
 
-    (lib.mkIf (config.cfg.ollama.rocmGfx != null) {
-      services.ollama = {
-        package = pkgs.ollama-rocm;
-        rocmOverrideGfx = config.cfg.ollama.rocmGfx;
-        environmentVariables = {
-          HIP_VISIBLE_DEVICES = "0";
-          OLLAMA_FLASH_ATTENTION = "0";
+      (lib.mkIf (config.cfg.ollama.rocmGfx != null) {
+        services.ollama = {
+          package = pkgs.ollama-rocm;
+          rocmOverrideGfx = config.cfg.ollama.rocmGfx;
+          environmentVariables = {
+            HIP_VISIBLE_DEVICES = "0";
+            OLLAMA_FLASH_ATTENTION = "0";
+          };
         };
-      };
-    })
-  ]);
+      })
+    ]
+  );
 }

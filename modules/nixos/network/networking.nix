@@ -41,10 +41,8 @@
 
       # wifi.powersave upstream is nullOr bool (null = leave NM's default);
       # macAddress "stable" keeps one random MAC per network, not per connect
-      networking.networkmanager.wifi.powersave =
-        lib.mkIf config.cfg.networking.wifi.powersave.enable true;
-      networking.networkmanager.wifi.macAddress =
-        lib.mkIf config.cfg.networking.wifi.macRandomization.enable "stable";
+      networking.networkmanager.wifi.powersave = lib.mkIf config.cfg.networking.wifi.powersave.enable true;
+      networking.networkmanager.wifi.macAddress = lib.mkIf config.cfg.networking.wifi.macRandomization.enable "stable";
     })
 
     (lib.mkIf config.cfg.networking.firewall.enable {

@@ -18,7 +18,10 @@
     };
 
     operation = lib.mkOption {
-      type = lib.types.enum [ "switch" "boot" ];
+      type = lib.types.enum [
+        "switch"
+        "boot"
+      ];
       default = "switch";
       description = ''
         Activate the new generation immediately (switch) or only stage it as
