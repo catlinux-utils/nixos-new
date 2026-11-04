@@ -4,12 +4,12 @@ Complete disk preparation, installation, and post-install steps for this flake.
 
 ## Scripts Overview
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/nixos-disk` | Interactive or flag-driven disk partitioning + formatting (LUKS + Btrfs/ext4/xfs) |
-| `scripts/nixos-mount` | Mount prepared disk with all subvolumes for `nixos-install`; `--umount` unmounts and closes LUKS |
-| `scripts/nixos-format-part` | Format selected existing partitions per-partition (FS, encryption, subvolumes) |
-| `scripts/nixos-copy-repo` | Copy this repo onto the target before reboot (`~/github/nixos` of the host's `cfg.user.name`) |
+| Script                      | Purpose                                                                                          |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `scripts/nixos-disk`        | Interactive or flag-driven disk partitioning + formatting (LUKS + Btrfs/ext4/xfs)                |
+| `scripts/nixos-mount`       | Mount prepared disk with all subvolumes for `nixos-install`; `--umount` unmounts and closes LUKS |
+| `scripts/nixos-format-part` | Format selected existing partitions per-partition (FS, encryption, subvolumes)                   |
+| `scripts/nixos-copy-repo`   | Copy this repo onto the target before reboot (`~/github/nixos` of the host's `cfg.user.name`)    |
 
 ---
 
@@ -22,6 +22,8 @@ carrying `cryptroot`. No drive names needed.
 ### Option A: New Disk (partition + format)
 
 ```bash
+# 0.
+cd ~/github/nixos
 # 1. Boot installer ISO or live Linux (as root)
 sudo ./scripts/nixos-disk
 # → prompts for: disk, encryption, filesystems, layout, sizes
@@ -32,8 +34,7 @@ sudo ./scripts/nixos-mount
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
 #    Run from repo root (on target or via SSH); sudo — the btrfs probe needs
 #    root, the redirect keeps the file owned by the live-session user:
-sudo nixos-generate-config --show-hardware-config \
-  > hosts/desktop/hardware-configuration.nix
+sudo nixos-generate-config --show-hardware-config > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (root: nixos-install lays down the target's system closure)
 sudo nixos-install --flake .#desktop --root /mnt
@@ -95,6 +96,7 @@ nh home switch
 ```
 
 **Notes:**
+
 - The generated `fileSystems` + LUKS initrd entries reflect the layout `scripts/nixos-disk`/`nixos-mount` create (mounts resolve via `/dev/mapper/cryptroot` and disk UUIDs — machine-independent).
 - The `wsl` host doesn't need `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
 - Set `cfg.user.initialHashedPassword` in the host config for first login; otherwise the account is locked until you run `passwd` from a root shell.
@@ -167,11 +169,11 @@ sudo nixos-install --flake .#desktop --root /mnt
 
 ## Partition Layouts Created
 
-| Layout | Partitions | Subvolumes |
-|--------|------------|------------|
-| **auto** (default) | ESP (1G) + cryptroot (rest) [+ cryptswap] | `@`, `@home`, `@snapshots`, `@log`, `@nix` |
-| **manual** | You choose sizes | Per your selection |
-| **server** | ESP + cryptroot (100G) + cryptdata (rest) | root: `@` `@home` `@snapshots` `@log` `@nix`; data: `docker`, `containers`, `syncthing`, `backups`, `libvirt` |
+| Layout             | Partitions                                | Subvolumes                                                                                                    |
+| ------------------ | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **auto** (default) | ESP (1G) + cryptroot (rest) [+ cryptswap] | `@`, `@home`, `@snapshots`, `@log`, `@nix`                                                                    |
+| **manual**         | You choose sizes                          | Per your selection                                                                                            |
+| **server**         | ESP + cryptroot (100G) + cryptdata (rest) | root: `@` `@home` `@snapshots` `@log` `@nix`; data: `docker`, `containers`, `syncthing`, `backups`, `libvirt` |
 
 All LUKS2, labeled (`ESP`, `cryptroot`, `crypthome`, `cryptdata`, `cryptswap`) for auto-detection.
 
@@ -261,10 +263,10 @@ nh home switch
 
 ## Filesystem Choice
 
-| FS | Pros | Cons |
-|----|------|------|
-| **btrfs** | Snapshots, compression (zstd), subvolumes, send/receive | Slightly more complex |
-| **ext4** | Simple, universal, fast | No native snapshots/compression |
-| **xfs** | Scalable, fast for large files | No shrink, no native snapshots |
+| FS        | Pros                                                    | Cons                            |
+| --------- | ------------------------------------------------------- | ------------------------------- |
+| **btrfs** | Snapshots, compression (zstd), subvolumes, send/receive | Slightly more complex           |
+| **ext4**  | Simple, universal, fast                                 | No native snapshots/compression |
+| **xfs**   | Scalable, fast for large files                          | No shrink, no native snapshots  |
 
 Btrfs + zstd recommended for desktop/laptop (compresses game assets, shaders, configs).
