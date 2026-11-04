@@ -1,8 +1,13 @@
-# Phase 6 — Secure Boot via lanzaboote. Dormant: nothing enables it yet. The
-# flake input deliberately does NOT follow nixpkgs (see flake.nix): the module
-# defaults its `package` to lanzaboote's own `lzbt` build (nixpkgs 26.05 has no
-# lzbt), and the module itself is officially nixos-unstable-only — enable per
-# host only after a real eval on a Nix machine, on UEFI hardware.
+# Secure Boot via lanzaboote — the UKI boot path. lzbt builds a signed UKI
+# (kernel + initrd + cmdline) per generation into ESP/EFI/Linux; the signed
+# systemd-boot it installs discovers them, so the boot menu stays short and
+# non-NixOS entries (e.g. Windows Boot Manager, auto-listed) are easy to
+# reach. Firmware Secure Boot may stay OFF — UKIs are signed regardless, and
+# SB becomes a firmware toggle once enrolled.
+#
+# The flake input deliberately does NOT follow nixpkgs (see flake.nix): the
+# module defaults its `package` to lanzaboote's own `lzbt` build (nixpkgs 26.05
+# has no lzbt), and the module itself is officially nixos-unstable-only.
 #
 # First-use flow (per host): enable + rebuild → autoGenerateKeys creates the
 # sbctl key bundle under pkiBundle on first boot → autoEnrollKeys stages
@@ -20,7 +25,7 @@
   imports = [ inputs.lanzaboote.nixosModules.lanzaboote ];
 
   options.cfg.boot.secureBoot = {
-    enable = lib.mkEnableOption "Secure Boot via lanzaboote (signed systemd-boot)";
+    enable = lib.mkEnableOption "UKI boot via lanzaboote (signed UKIs per generation; Secure Boot optional)";
 
     autoKeys.enable = lib.mkEnableOption ''
       automatic generation and enrollment of the Secure Boot key bundle
@@ -48,8 +53,11 @@
       enable = true;
       # sbctl key bundle, created by autoGenerateKeys on first boot
       pkiBundle = "/var/lib/sbctl";
-      # systemd-pcrlock hard-caps stored generations at 4
-      configurationLimit = lib.mkIf config.cfg.boot.secureBoot.measuredBoot.enable 4;
+      # short boot menu: one entry per kept generation, Windows easy to reach.
+      # systemd-pcrlock (measuredBoot) hard-caps stored generations at 4
+      configurationLimit = lib.mkDefault (
+        if config.cfg.boot.secureBoot.measuredBoot.enable then 4 else 5
+      );
 
       measuredBoot = lib.mkIf config.cfg.boot.secureBoot.measuredBoot.enable {
         enable = true;

@@ -6,7 +6,7 @@
 }:
 {
   options.cfg.boot = {
-    enable = lib.mkEnableOption "systemd-boot with silent boot and zram";
+    enable = lib.mkEnableOption "UKI boot via lanzaboote (silent boot, zram)";
 
     zenKernel.enable = lib.mkEnableOption "the zen kernel (linuxPackages_zen)";
 
@@ -22,12 +22,18 @@
 
   config = lib.mkIf config.cfg.boot.enable {
     boot.loader = {
+      # systemd-boot is the fallback loader; boot.secureBoot (lanzaboote UKIs)
+      # forces it off and installs its signed variant instead
       systemd-boot = {
         enable = true;
         # belt-and-suspenders alongside `nh clean`
         configurationLimit = 10;
       };
-      efi.canTouchEfiVariables = true;
+      efi = {
+        canTouchEfiVariables = true;
+        # ESP at /efi — UKIs land in /efi/EFI/Linux (see disko.nix layouts)
+        efiSysMountPoint = "/efi";
+      };
     };
 
     boot.initrd.systemd.enable = true;

@@ -97,6 +97,32 @@
       description = "OBS Studio — opt-in screen recording";
     };
 
+    # desktop app bundles — default on with the desktop, but each can be
+    # dropped per host; the installer ISO turns them all off (slim live env)
+    vscode.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "VS Code with the profile's settings and extensions";
+    };
+
+    desktopApps.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "nemo-with-extensions, gparted, pinta";
+    };
+
+    brave.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Brave browser";
+    };
+
+    mpv.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "mpv media player";
+    };
+
     theming = {
       enable = lib.mkOption {
         type = lib.types.bool;

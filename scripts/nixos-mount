@@ -34,7 +34,7 @@ Options:
   -h, --help        Show help
 
 Mounts:
-  - ESP -> /mnt/boot
+  - ESP -> /mnt/efi (UKIs live in efi/EFI/Linux)
   - cryptroot -> /mnt (with subvolumes @, @home, @snapshots, @log, @nix)
   - crypthome -> /mnt/home (if exists, subvolume @home)
   - cryptdata -> /mnt/var/lib (if exists, subvolumes docker, containers, etc.)
@@ -136,10 +136,12 @@ main() {
   mount_subvol "$ROOTDEV" @log "$MNT/var/log"
   mount_subvol "$ROOTDEV" @nix "$MNT/nix"
 
-  # Boot
-  mkdir -p "$MNT/boot"
-  mount "$ESP" "$MNT/boot"
-  ok "Mounted ESP -> $MNT/boot"
+  # Boot (ESP at /efi — UKI layout, matches the disko.nix mountpoints)
+  mkdir -p "$MNT/efi"
+  mount "$ESP" "$MNT/efi"
+  ok "Mounted ESP -> $MNT/efi"
+  # nixos-install expects an EFI dir on the ESP (case-sensitive vfat)
+  mkdir -p "$MNT/efi/EFI"
 
   # Separate /home
   if [[ -n "$CRYPTHOME" ]]; then

@@ -45,6 +45,8 @@
     # features — host matrix: PLAN.md §1.7
     boot.enable = true;
     boot.plymouth.enable = true; # zen kernel undecided — stays off for now
+    boot.secureBoot.enable = true; # UKIs via lanzaboote; ESP at /efi
+    boot.secureBoot.autoKeys.enable = true;
     networking.networkManager.enable = true;
     networking.resolved.enable = true;
     audio.enable = true;

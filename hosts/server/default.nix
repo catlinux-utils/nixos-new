@@ -33,6 +33,8 @@
     # features — headless: no desktop, no audio/graphics/NM; compat is nix-ld
     # only (vscode-server) — host matrix: PLAN.md §1.7
     boot.enable = true;
+    boot.secureBoot.enable = true; # UKIs via lanzaboote; ESP at /efi
+    boot.secureBoot.autoKeys.enable = true;
     ssh.enable = true;
     home.tmux.enable = true; # ssh sessions survive disconnects
     networking.resolved.enable = true;

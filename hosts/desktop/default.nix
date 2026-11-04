@@ -48,6 +48,8 @@
     boot.enable = true;
     boot.zenKernel.enable = true;
     boot.plymouth.enable = true;
+    boot.secureBoot.enable = true; # UKIs via lanzaboote; ESP at /efi
+    boot.secureBoot.autoKeys.enable = true;
     networking.networkManager.enable = true;
     networking.resolved.enable = true;
     audio.enable = true;
