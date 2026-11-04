@@ -22,7 +22,7 @@
     };
 
     # git identity
-    git.remote = "git@github.com:ThePolishcat/nixos-new.git";
+    git.remote = "https://github.com/catlinux-utils/nixos-new.git";
 
     home.git = {
       name = "ThePolishcat";
