@@ -1,5 +1,17 @@
 //@ pragma UseQApplication
 
+// Layout: workspaces (left) | spacer | media, volume, battery, resources,
+// tray, clock (right). Every widget lives in a full-height cell whose content
+// is vertically centered, and icons are separate Text items in a fixed-size
+// icon font instead of being interpolated into value strings — that is what
+// keeps text and glyphs optically level and the spacing proportional.
+// Metrics live in the "layout metrics" properties below; palette comes from
+// Theme.qml (matugen with hand-tuned fallbacks).
+//
+// This is a vendored asset: copyable to non-NixOS machines, never generated
+// from Nix values (AGENTS.md feature-module pattern #9). On machines without
+// JetBrainsMono Nerd Font the glyphs fall back through fontconfig.
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -34,8 +46,64 @@ ShellRoot {
     property color col14: Theme.col14
     property color col15: Theme.col15
     property color col16: Theme.col16
+    property color colUrgent: Theme.colUrgent
     property string fontFamily: "Noto Sans"
     property int fontSize: 12
+
+    // ── layout metrics ──
+    property int barHeight: 28        // panel height (Hyprland reserves this)
+    property int iconSize: 15         // nerd-font glyphs, proportional to text
+    property string iconFont: "JetBrainsMono Nerd Font" // same font as kitty/vscode/hyprlock
+    property int pad: 10              // horizontal padding at the bar edges
+    property int gap: 9               // spacing around separators
+
+    // status colors: warning values shift to accentAlt (col11), critical ones
+    // to urgent (the matugen error color) — icon and value shift together
+    function tempColor(t) {
+        return t >= 85 ? root.colUrgent : (t >= 70 ? root.col11 : root.col14);
+    }
+
+    function cpuColor(u) {
+        return u >= 85 ? root.colUrgent : (u >= 70 ? root.col11 : root.col14);
+    }
+
+    function memColor(u) {
+        return u >= 90 ? root.colUrgent : (u >= 75 ? root.col11 : root.col14);
+    }
+
+    function batteryColor(p) {
+        if (root.batteryCharging)
+            return root.col14;
+        return p <= 15 ? root.colUrgent : (p <= 30 ? root.col11 : root.col14);
+    }
+    // icon follows the charge level (md-battery_10..90), shows a bolt while
+    // charging and md-battery_alert when critical
+    function batteryIcon(p) {
+        if (root.batteryCharging)
+            return "󰂄";
+        if (p <= 15)
+            return "󰂃";
+        if (p <= 10)
+            return "󰁺";
+        if (p <= 20)
+            return "󰁻";
+        if (p <= 30)
+            return "󰁼";
+        if (p <= 40)
+            return "󰁽";
+        if (p <= 50)
+            return "󰁾";
+        if (p <= 60)
+            return "󰁿";
+        if (p <= 70)
+            return "󰂀";
+        if (p <= 80)
+            return "󰂁";
+        if (p <= 90)
+            return "󰂂";
+        return "󰂎";
+    }
+
     property int cpuUsage: 0
     property int memUsage: 0
     property var lastCpuIdle: 0
@@ -43,6 +111,8 @@ ShellRoot {
     property int batteryPerc: 0
     property bool hasBattery: false
     property string batteryPath: ""
+    property string batteryStatusPath: ""
+    property bool batteryCharging: false
     property real cpuTemp: 0
     property string tempPath: ""
     // media comes from MPRIS (event-driven); prefer a playing player, else the first
@@ -89,15 +159,23 @@ ShellRoot {
         path: root.batteryPath
     }
 
+    FileView {
+        id: batteryStatusLoader
+
+        path: root.batteryStatusPath
+    }
+
     Process {
         id: batteryResolve
 
-        command: ["sh", "-c", "for d in /sys/class/power_supply/BAT*; do [ -e \"$d/capacity\" ] && { echo \"$d/capacity\"; exit 0; }; done; exit 1"]
+        command: ["sh", "-c", "for d in /sys/class/power_supply/BAT*; do [ -e \"$d/capacity\" ] && { echo \"$d/capacity $d/status\"; exit 0; }; done; exit 1"]
         Component.onCompleted: running = true
 
         stdout: SplitParser {
             onRead: (data) => {
-                root.batteryPath = data.trim();
+                var paths = data.trim().split(" ");
+                root.batteryPath = paths[0] ?? "";
+                root.batteryStatusPath = paths[1] ?? "";
                 root.hasBattery = root.batteryPath !== "";
             }
         }
@@ -168,7 +246,66 @@ ShellRoot {
             if (!isNaN(perc))
                 root.batteryPerc = perc;
 
+            batteryStatusLoader.reload();
+            root.batteryCharging = batteryStatusLoader.text().trim().startsWith("Charging");
         }
+    }
+
+    // ── bar building blocks ──
+
+    // dim icon glyph, vertically centered (color overridable per instance)
+    component BarIcon: Text {
+        color: root.col5
+        font.family: root.iconFont
+        font.pixelSize: root.iconSize
+        Layout.alignment: Qt.AlignVCenter
+        verticalAlignment: Text.AlignVCenter
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+
+        }
+
+    }
+
+    // bold value text, vertically centered
+    component BarText: Text {
+        color: root.col14
+        font.pixelSize: root.fontSize
+        font.family: root.fontFamily
+        font.bold: true
+        Layout.alignment: Qt.AlignVCenter
+        verticalAlignment: Text.AlignVCenter
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+
+        }
+
+    }
+
+    // separator between widgets
+    component BarSeparator: Rectangle {
+        Layout.preferredWidth: 1
+        Layout.preferredHeight: 12
+        Layout.alignment: Qt.AlignVCenter
+        Layout.leftMargin: root.gap
+        Layout.rightMargin: root.gap
+        color: root.col1
+    }
+
+    // short separator between stats inside one widget
+    component MiniSeparator: Rectangle {
+        Layout.preferredWidth: 1
+        Layout.preferredHeight: 10
+        Layout.alignment: Qt.AlignVCenter
+        Layout.leftMargin: 7
+        Layout.rightMargin: 7
+        color: root.col1
     }
 
     Variants {
@@ -176,14 +313,9 @@ ShellRoot {
 
         PanelWindow {
             property var modelData
-            property var monitor: Hyprland.monitors.values.find((m) => {
-                return m.name === modelData.name;
-            }) || null
-            property bool hasWindowsOnWorkspace: monitor && monitor.activeWorkspace ? monitor.activeWorkspace.toplevels.values.length > 0 : false
-            property string focusedTitle: (monitor && hasWindowsOnWorkspace && Hyprland.activeToplevel && Hyprland.activeToplevel.workspace.id === monitor.activeWorkspace.id) ? (Hyprland.activeToplevel.title ?? "") : ""
 
             screen: modelData
-            implicitHeight: 23
+            implicitHeight: root.barHeight
             color: "transparent"
 
             anchors {
@@ -201,24 +333,19 @@ ShellRoot {
 
             Rectangle {
                 anchors.fill: parent
-                //radius: 5
                 color: root.colBg
 
                 RowLayout {
                     anchors.fill: parent
                     spacing: 0
 
-                    //left elements
-                    Item {
-                        width: 8
-                    }
-
+                    // ── left: workspaces ──
                     Item {
                         id: workspaceContainer
 
                         Layout.fillHeight: true
+                        Layout.leftMargin: root.pad
                         Layout.preferredWidth: workspaceRow.implicitWidth
-                        Layout.alignment: Qt.AlignVCenter
 
                         MouseArea {
                             anchors.fill: parent
@@ -232,13 +359,14 @@ ShellRoot {
                             }
                         }
 
-                        RowLayout {
+                        Row {
                             id: workspaceRow
 
-                            height: parent.height
+                            anchors.centerIn: parent
+                            spacing: 3
 
                             Repeater {
-                                model: 10
+                                model: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
 
                                 Rectangle {
                                     property int wsId: index + 1
@@ -248,20 +376,27 @@ ShellRoot {
                                     property bool hasWindows: workspace ? workspace.toplevels.values.length > 0 : false
                                     property bool isActive: Hyprland.focusedWorkspace?.id === wsId
 
-                                    Layout.fillHeight: true
-                                    radius: 5
-                                    color: isActive ? (Qt.rgba(1, 1, 1, 0.15)) : "transparent"
-                                    Layout.preferredWidth: 16
-                                    Layout.leftMargin: 4
-                                    Layout.rightMargin: 4
+                                    width: wsLabel.implicitWidth + 14
+                                    height: root.barHeight - 8
+                                    radius: height / 2
+                                    color: isActive ? Qt.rgba(1, 1, 1, 0.15) : (hoverArea.containsPress ? Qt.rgba(1, 1, 1, 0.11) : (hoverArea.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : "transparent"))
+
+                                    Behavior on color {
+                                        ColorAnimation {
+                                            duration: 150
+                                        }
+
+                                    }
 
                                     Text {
-                                        text: wsId
-                                        color: parent.hasWindows ? root.col15 : root.col3
-                                        font.pixelSize: parent.isActive ? root.fontSize + 3 : root.fontSize + 1
-                                        font.family: root.fontFamily
-                                        font.bold: parent.isActive
+                                        id: wsLabel
+
                                         anchors.centerIn: parent
+                                        text: modelData
+                                        color: isActive ? root.col15 : (hasWindows ? root.col15 : root.col3)
+                                        font.pixelSize: root.fontSize + 1
+                                        font.family: root.fontFamily
+                                        font.bold: isActive
 
                                         Behavior on color {
                                             ColorAnimation {
@@ -270,18 +405,13 @@ ShellRoot {
 
                                         }
 
-                                        Behavior on font.pixelSize {
-                                            NumberAnimation {
-                                                duration: 150
-                                                easing.type: Easing.OutQuad
-                                            }
-
-                                        }
-
                                     }
 
                                     MouseArea {
+                                        id: hoverArea
+
                                         anchors.fill: parent
+                                        hoverEnabled: true
                                         onClicked: Hyprland.dispatch(`hl.dsp.focus({ workspace = ${wsId} })`)
                                         onWheel: (wheel) => {
                                             return wheel.accepted = false;
@@ -297,93 +427,62 @@ ShellRoot {
 
                     }
 
-                    // Rectangle {
-                    //     Layout.preferredWidth: 1
-                    //     Layout.preferredHeight: 16
-                    //     Layout.alignment: Qt.AlignVCenter
-                    //     Layout.leftMargin: 8
-                    //     Layout.rightMargin: 8
-                    //     color: root.col1
-                    //     visible: focusedTitle !== ""
-                    // }
-                    // // Window Title
-
-                    // Text {
-                    //     text: focusedTitle
-                    //     color: root.col7
-                    //     font.pixelSize: root.fontSize
-                    //     font.family: root.fontFamily
-                    //     font.bold: true
-                    //     Layout.alignment: Qt.AlignVCenter
-                    //     Layout.leftMargin: 8
-                    //     Layout.rightMargin: 8
-                    //     Layout.maximumWidth: 400
-                    //     elide: Text.ElideRight
-                    //     visible: focusedTitle !== ""
-                    // }
-
+                    // ── right cluster ──
                     Item {
                         Layout.fillWidth: true
                     }
-                    //right elements
 
-                    Text {
-                        text: "▶ " + audioAuthor + " - " + audioTitle
-                        color: root.col7
-                        font.pixelSize: root.fontSize
-                        font.family: root.fontFamily
-                        font.bold: true
-                        Layout.rightMargin: 8
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.maximumWidth: 300
-                        elide: Text.ElideRight
-                        visible: audioTitle !== ""
+                    // Media (MPRIS) — hidden entirely when nothing is playing
+                    RowLayout {
+                        visible: root.audioTitle !== ""
+                        Layout.fillHeight: true
+                        spacing: 6
+
+                        BarIcon {
+                            text: "󰎈"
+                            color: root.activePlayer?.isPlaying ? root.col7 : root.col3
+                        }
+
+                        BarText {
+                            text: root.audioAuthor !== "" ? root.audioAuthor + " - " + root.audioTitle : root.audioTitle
+                            color: root.activePlayer?.isPlaying ? root.col7 : root.col3
+                            Layout.maximumWidth: 300
+                            elide: Text.ElideRight
+                        }
+
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 16
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 0
-                        Layout.rightMargin: 8
-                        color: root.col1
-                        visible: audioTitle !== ""
+                    BarSeparator {
+                        visible: root.audioTitle !== ""
                     }
 
+                    // Volume — click toggles mute, middle-click opens pavucontrol, wheel steps 1%
                     Item {
-                        // // Update when the default sink changes (e.g., new headphones)
-                        // Connections {
-                        //     target: Pipewire
-                        //     function onSinksChanged() {
-                        //         volumeRoot.defaultSink = Pipewire.sinks.values.find(sink => sink.name === "@DEFAULT_SINK@") || null
-                        //     }
-                        // }
-
                         id: volumeRoot
 
                         readonly property PwNode defaultSink: Pipewire.defaultAudioSink
                         readonly property PwNode source: Pipewire.defaultAudioSource
 
+                        Layout.fillHeight: true
                         Layout.preferredWidth: volumeRow.implicitWidth
-                        Layout.preferredHeight: parent.height
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.rightMargin: 8
 
                         PwObjectTracker {
                             objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource]
                         }
 
-                        Row {
+                        RowLayout {
                             id: volumeRow
 
                             anchors.centerIn: parent
+                            spacing: 5
 
-                            Text {
-                                text: (volumeRoot.defaultSink?.audio?.muted ? "   " : "   ") + Math.floor((volumeRoot.defaultSink?.audio?.volume || 0) * 100) + "%"
-                                color: root.col14
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                            BarIcon {
+                                text: volumeRoot.defaultSink?.audio?.muted ? "" : ""
+                            }
+
+                            BarText {
+                                text: Math.floor((volumeRoot.defaultSink?.audio?.volume || 0) * 100) + "%"
+                                color: volumeRoot.defaultSink?.audio?.muted ? root.col3 : root.col14
                             }
 
                         }
@@ -398,6 +497,7 @@ ShellRoot {
                         MouseArea {
                             anchors.fill: parent
                             acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: (event) => {
                                 if (event.button === Qt.MiddleButton) {
                                     pavucontrolProc.running = true;
@@ -424,47 +524,36 @@ ShellRoot {
 
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 16
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 0
-                        Layout.rightMargin: 8
-                        color: root.col1
-                    }
+                    BarSeparator { }
+
                     // Battery
+                    RowLayout {
+                        visible: root.hasBattery
+                        Layout.fillHeight: true
+                        spacing: 5
 
-                    Text {
-                        text: "󰂎  " + root.batteryPerc + "%"
-                        color: root.col14
-                        font.pixelSize: root.fontSize
-                        font.family: root.fontFamily
-                        font.bold: true
-                        Layout.alignment: Qt.AlignVCenter
+                        BarIcon {
+                            text: root.batteryIcon(root.batteryPerc)
+                            color: root.batteryColor(root.batteryPerc)
+                        }
+
+                        BarText {
+                            text: root.batteryPerc + "%"
+                            color: root.batteryColor(root.batteryPerc)
+                        }
+
+                    }
+
+                    BarSeparator {
                         visible: root.hasBattery
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 10
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        color: root.col1
-                        visible: root.hasBattery
-                    }
-
+                    // CPU / memory / temperature — click opens btop
                     Item {
                         id: resourcesContainer
 
                         Layout.fillHeight: true
                         Layout.preferredWidth: resourcesRow.implicitWidth
-                        Layout.alignment: Qt.AlignVCenter
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: btop.running = true
-                        }
 
                         Process {
                             id: btop
@@ -473,114 +562,116 @@ ShellRoot {
                             running: false
                         }
 
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: btop.running = true
+                            cursorShape: Qt.PointingHandCursor
+                        }
+
                         RowLayout {
                             id: resourcesRow
 
-                            height: parent.height
+                            anchors.centerIn: parent
+                            spacing: 5
 
-                            // CPU usage
-                            Text {
-                                text: "  " + cpuUsage + "%"
-                                color: root.col14
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                            BarIcon {
+                                text: ""
+                                color: root.cpuColor(root.cpuUsage)
                             }
 
-                            Rectangle {
-                                Layout.preferredWidth: 1
-                                Layout.preferredHeight: 10
-                                Layout.leftMargin: 8
-                                Layout.rightMargin: 8
-                                color: root.col1
-                            }
-                            // Memory usage
-
-                            Text {
-                                text: "   " + memUsage + "%"
-                                color: root.col14
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                            BarText {
+                                text: root.cpuUsage + "%"
+                                color: root.cpuColor(root.cpuUsage)
                             }
 
-                            Rectangle {
-                                Layout.preferredWidth: 1
-                                Layout.preferredHeight: 10
-                                Layout.leftMargin: 8
-                                Layout.rightMargin: 8
-                                color: root.col1
-                            }
-                            // CPU temperature
+                            MiniSeparator { }
 
-                            Text {
-                                text: "  " + cpuTemp.toFixed(1) + "°C"
-                                color: root.col14
-                                font.pixelSize: root.fontSize
-                                font.family: root.fontFamily
-                                font.bold: true
+                            BarIcon {
+                                text: ""
+                                color: root.memColor(root.memUsage)
+                            }
+
+                            BarText {
+                                text: root.memUsage + "%"
+                                color: root.memColor(root.memUsage)
+                            }
+
+                            MiniSeparator { }
+
+                            BarIcon {
+                                text: ""
+                                color: root.tempColor(root.cpuTemp)
+                            }
+
+                            BarText {
+                                text: root.cpuTemp.toFixed(1) + "°C"
+                                color: root.tempColor(root.cpuTemp)
                             }
 
                         }
 
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 16
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        color: root.col1
+                    BarSeparator {
+                        visible: sysTray.count > 0
                     }
+
                     // Tray
-
-                    Row {
-                        spacing: 6
+                    Item {
+                        Layout.fillHeight: true
+                        Layout.preferredWidth: trayRow.implicitWidth
                         visible: sysTray.count > 0
 
-                        Repeater {
-                            id: sysTray
+                        Row {
+                            id: trayRow
 
-                            model: SystemTray.items
+                            anchors.centerIn: parent
+                            spacing: 6
 
-                            WrapperMouseArea {
-                                id: mouseArea
+                            Repeater {
+                                id: sysTray
 
-                                required property SystemTrayItem modelData
+                                model: SystemTray.items
 
-                                acceptedButtons: Qt.AllButtons
-                                onClicked: (event) => {
-                                    switch (event.button) {
-                                    case Qt.LeftButton:
-                                        modelData.activate();
-                                        break;
-                                    case Qt.RightButton:
-                                        if (modelData.hasMenu)
-                                            menu.open();
+                                WrapperMouseArea {
+                                    id: mouseArea
 
-                                        break;
+                                    required property SystemTrayItem modelData
+
+                                    acceptedButtons: Qt.AllButtons
+                                    onClicked: (event) => {
+                                        switch (event.button) {
+                                        case Qt.LeftButton:
+                                            modelData.activate();
+                                            break;
+                                        case Qt.RightButton:
+                                            if (modelData.hasMenu)
+                                                menu.open();
+
+                                            break;
+                                        }
+                                        event.accepted = true;
                                     }
-                                    event.accepted = true;
-                                }
 
-                                IconImage {
-                                    implicitHeight: 14
-                                    implicitWidth: 14
-                                    anchors.fill: parent
-                                    source: modelData.icon
-                                }
+                                    IconImage {
+                                        implicitHeight: root.iconSize
+                                        implicitWidth: root.iconSize
+                                        anchors.fill: parent
+                                        source: modelData.icon
+                                    }
 
-                                QsMenuAnchor {
-                                    id: menu
+                                    QsMenuAnchor {
+                                        id: menu
 
-                                    menu: mouseArea.modelData.menu
+                                        menu: mouseArea.modelData.menu
 
-                                    anchor {
-                                        item: mouseArea
-                                        edges: Edges.Top
-                                        gravity: Edges.Top
-                                        adjustment: PopupAdjustment.All
+                                        anchor {
+                                            item: mouseArea
+                                            edges: Edges.Top
+                                            gravity: Edges.Top
+                                            adjustment: PopupAdjustment.All
+                                        }
+
                                     }
 
                                 }
@@ -591,27 +682,17 @@ ShellRoot {
 
                     }
 
-                    Rectangle {
-                        Layout.preferredWidth: 1
-                        Layout.preferredHeight: 16
-                        Layout.alignment: Qt.AlignVCenter
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        color: root.col1
+                    BarSeparator {
                         visible: sysTray.count > 0
                     }
-                    // Clock
 
-                    Text {
+                    // Clock
+                    BarText {
                         id: clockText
 
-                        text: Qt.locale().toString(clock.date, "dddd - dd/MM/yyyy - hh:mm") //Qt.formatDateTime(clock.date, "dddd - dd/MM/yyyy - hh:mm")
+                        text: Qt.locale().toString(clock.date, "dddd - dd/MM/yyyy - hh:mm")
                         color: root.col16
-                        font.pixelSize: root.fontSize
-                        font.family: root.fontFamily
-                        font.bold: true
-                        Layout.rightMargin: 8
-                        Layout.alignment: Qt.AlignVCenter
+                        Layout.rightMargin: root.pad
 
                         SystemClock {
                             id: clock
@@ -622,6 +703,7 @@ ShellRoot {
                     }
 
                 }
+
             }
 
         }

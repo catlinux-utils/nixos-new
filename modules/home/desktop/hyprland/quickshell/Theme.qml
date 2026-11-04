@@ -59,4 +59,6 @@ Singleton {
   readonly property color col14: pick("accent", "#c7d1fb")
   readonly property color col15: pick("bright", "#edf0fc")
   readonly property color col16: pick("bright", "#dbe0f5")
+  // semantic status color (matugen error); used by bar widgets when a value goes critical
+  readonly property color colUrgent: pick("urgent", "#f38ba8")
 }
