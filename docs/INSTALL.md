@@ -25,8 +25,10 @@ sudo ./scripts/nixos-disk /dev/nvme0n1
 sudo ./scripts/nixos-mount /dev/nvme0n1
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
-#    Run from repo root (on target or via SSH):
-nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
+#    Run from repo root (on target or via SSH); sudo — the btrfs probe needs
+#    root, the redirect keeps the file owned by the live-session user:
+sudo nixos-generate-config --show-hardware-config --no-filesystems \
+  > hosts/desktop/hardware-configuration.nix
 
 # 4. Commit the hardware config
 git add hosts/desktop/hardware-configuration.nix
@@ -54,7 +56,8 @@ sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
 sudo ./scripts/nixos-mount /dev/nvme0n1
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
-nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
+sudo nixos-generate-config --show-hardware-config --no-filesystems \
+  > hosts/desktop/hardware-configuration.nix
 
 # 4. Commit the hardware config
 git add hosts/desktop/hardware-configuration.nix
@@ -194,10 +197,13 @@ After mounting the target system at `/mnt`, generate the hardware config **into 
 
 ```bash
 # From repo root (on the target machine or via SSH):
-nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
+sudo nixos-generate-config --show-hardware-config --no-filesystems \
+  > hosts/desktop/hardware-configuration.nix
 ```
 
-This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detected hardware (kernel modules, firmware, disks, etc.). The `--no-filesystems` flag skips the generated `fileSystems` block since this repo manages mounts via `disko.nix` / `scripts/nixos-mount`.
+This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detected hardware (kernel modules, firmware, etc.). The `--no-filesystems` flag skips the generated `fileSystems` block since this repo manages mounts via `disko.nix` / `scripts/nixos-mount`; `--show-hardware-config` prints to stdout and the redirect happens in your own shell, so the file stays owned by the live-session user.
+
+`sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs even with `--no-filesystems`.
 
 **Commit it:**
 

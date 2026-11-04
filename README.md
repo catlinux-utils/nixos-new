@@ -16,7 +16,7 @@ switches in `hosts/<name>/default.nix`, modules stay machine-agnostic.
 | `laptop` | portable | GNOME |
 | `server` | headless | none (SSH + Docker) |
 | `wsl` | NixOS-WSL dev host | none |
-| `installer` | live ISO — boots into the repo's Hyprland desktop via GDM autologin | Hyprland |
+| `installer` | live ISO — boots into the repo's Hyprland desktop via greetd autologin | Hyprland |
 
 The installer is a regular host that builds as an image (it has no
 `hardware-configuration.nix`; the `iso` image variant owns the bootloader):
@@ -59,7 +59,10 @@ sudo ./scripts/nixos-disk /dev/nvme0n1
 sudo ./scripts/nixos-mount /dev/nvme0n1
 
 # 3. Generate the hardware config into the repo
-nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
+#    (sudo: the btrfs probe needs root; the redirect in your own shell keeps
+#    the file owned by the live-session user)
+sudo nixos-generate-config --show-hardware-config --no-filesystems \
+  > hosts/desktop/hardware-configuration.nix
 
 # 4. Install
 nixos-install --flake .#desktop --root /mnt
