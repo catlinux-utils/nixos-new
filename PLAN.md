@@ -320,9 +320,10 @@ Medium — new modules/options:
 - [x] **KDE Connect** — `modules/nixos/kdeconnect.nix` (firewall 1714–1764 TCP+UDP) + HM daemon on
       the same switch. Enabled on desktop, laptop.
 - [x] **Boot extras** — `boot.nix`: `cfg.boot.zenKernel.enable`, `cfg.boot.plymouth.enable` +
-      theme. Desktop runs zen + plymouth; laptop plymouth only. Legacy Limine entries don't port
-      1:1 — memtest86+ (systemd-boot option) and the Windows chainload are decided with real
-      hardware configs (Phase 2).
+      theme. Desktop runs zen + plymouth; laptop plymouth only. memtest86+ (systemd-boot option)
+      still decided with real hardware configs (Phase 2); Windows needs no chainload config —
+      systemd-boot auto-lists Windows Boot Manager, and the generation cap (5, see
+      `secure-boot.nix`) keeps the menu short enough to reach it.
 - [x] **Quickshell bar (replaces waybar)** — `modules/home/hyprland/quickshell.nix` + QML vendored
       verbatim into `modules/home/hyprland/quickshell/`; waybar deleted. User unit bound to
       `graphical-session.target` (uwsm-activated); `playerctl` is the only new runtime dep. QML
@@ -445,13 +446,17 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
   workflow doesn't fit how these machines are used; hosts keep a conventional persistent root.
   Preservation was evaluated as the modern alternative — moot with this decision. The Phase 2
   state-management decision per host reduces to disk layout + snapshots + `backup.nix`
-- [x] Secure boot via lanzaboote (dormant module, 2026-10-28) —
+- [x] Secure boot via lanzaboote (dormant module, 2026-10-28; live UKI boot path, 2026-11-04) —
       `cfg.boot.secureBoot.{enable, autoKeys.enable, measuredBoot.enable}` wrapping their module;
       input pinned to v1.2.0 and deliberately NOT following nixpkgs (26.05 has no `lzbt`; their
-      module mkDefaults `boot.lanzaboote.package` to their own nixos-unstable build). Enable-time
-      caveats: officially nixos-unstable-only — eval on a Nix machine first; UEFI hardware
-      required; pcrlock (measuredBoot) caps boot generations at 4; TPM2-LUKS autoCryptenroll left
-      per-host
+      module mkDefaults `boot.lanzaboote.package` to their own nixos-unstable build). 2026-11-04:
+      enabled on desktop/laptop/server as THE boot path — signed UKI per generation in
+      `ESP/EFI/Linux` (ESP moved to `/efi` in disko + `boot.loader.efi.efiSysMountPoint`), the
+      signed systemd-boot discovers them, boot menu capped at 5 generations (4 with
+      pcrlock/measuredBoot) so Windows (auto-listed) stays easy to reach; firmware Secure Boot
+      stays optional until key enrollment happens on real hardware. Enable-time caveats:
+      officially nixos-unstable-only — eval on a Nix machine first; UEFI hardware required;
+      TPM2-LUKS autoCryptenroll left per-host
 - [x] plymouth boot splash — ported early as `cfg.boot.plymouth.enable` by §2.2 boot extras
 - [ ] colmena / deploy-rs for remote server deploys — deferred (2026-10-28, user decision):
       auto-updates covers server freshness, 4 hosts are cheap to `nh` by hand, and a deployer
@@ -465,7 +470,8 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
       layouts (desktop: single cryptroot; laptop: cryptroot + swapfile; server: cryptroot +
       separate cryptdata for /var/lib/docker, syncthing, backups). nixos-hardware placeholder
       imports in each host's default.nix. `scripts/nixos-disk` for manual partitioning,
-      `nixos-mount`/`umount`/`format-part` for install-time mounting. `REPLACE_WITH_DISK_ID` and
+      `nixos-mount` (mount / `--umount`)/`format-part` for install-time mounting. ESP at `/efi`
+      (2026-11-04, UKI layout). `REPLACE_WITH_DISK_ID` and
       real model modules pending per host; nixos-anywhere usage still open
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
       Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
@@ -514,6 +520,7 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | Dev-machine validation | NixOS-WSL host (Phase 1.5), bootstrapped from the prebuilt tarball | dissolves the no-nix-on-Windows constraint; repo lives on the WSL Linux filesystem, agent sessions validate via `wsl.exe` |
 | Validation machine (update) | local nix-capable desktop (2026-11-04) | the desktop runs NixOS (legacy flake's deploy), so `nix flake check`/`nix fmt`/`nh` validate directly — the WSL distro install is no longer a prerequisite; `wsl` host stays registered |
 | Installer ISO | `nixosConfigurations.installer` — a mkHost host that builds as an image | upstream's `build-image --image-variant` needs a nixosConfiguration ref; assembling via mkHost keeps one host-assembly path and gives the live env the full HM Hyprland session (2026-10-28) |
+| ISO app set | vscode + mpv off in the live env via `cfg.home.{vscode,mpv}.enable = false` (2026-11-04) | the installer needs the session + terminal tooling; browser, file manager and gparted stay for real install work — the bundles ride `cfg.desktop.enable` but each has a per-host kill switch |
 | Secure Boot input | lanzaboote pinned v1.2.0, deliberately not following nixpkgs | `lzbt` is absent from 26.05; their module mkDefaults `boot.lanzaboote.package` to a build from the nixos-unstable nixpkgs the input carries itself (2026-10-28) |
 | Deploy tooling (colmena / deploy-rs) | deferred (2026-10-28, user decision) | auto-updates covers server freshness; 4 hosts are cheap to `nh` by hand; a deployer needs a nix-capable machine anyway (WSL pending); adding colmena later costs ~nothing |
 | Disk layout | Btrfs-on-LUKS via Disko per host (2026-10-28) | desktop/laptop: single cryptroot; server: cryptroot + cryptdata for /var/lib; enables nixos-anywhere + TPM2-LUKS autoCryptenroll |

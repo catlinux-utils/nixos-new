@@ -31,7 +31,7 @@ Default off unless noted. "On" = hosts currently setting it.
 
 | Option | Turns on | desktop | laptop | server | wsl |
 |---|---|:---:|:---:|:---:|:---:|
-| `cfg.boot.enable` | systemd-boot, EFI vars, silent boot, zram | ✓ | ✓ | ✓ | – (WSL owns boot) |
+| `cfg.boot.enable` | loader base: ESP at `/efi` (both loaders), EFI vars, silent boot, zram (systemd-boot is the fallback loader — UKIs via `cfg.boot.secureBoot.enable` replace it) | ✓ | ✓ | ✓ | – (WSL owns boot) |
 | `cfg.boot.zenKernel.enable` | zen kernel (`linuxPackages_zen`) | ✓ | – | – | – |
 | `cfg.boot.plymouth.enable` | Plymouth boot splash (theme: `cfg.boot.plymouth.theme`) | ✓ | ✓ | – | – |
 | `cfg.networking.networkManager.enable` | NetworkManager | ✓ | ✓ | – | – |
@@ -77,12 +77,13 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.backup.enable` | restic + borg job passthroughs (dormant — credentials wait on the Phase 3 sops key) | – | – | – | – |
 | `cfg.secrets.enable` | sops-nix defaults (age via SSH host key, `secrets/secrets.yaml`); needs the master age identity set up first (see `.sops.yaml`) | – | – | – | – |
 | `cfg.updates.auto.enable` | scheduled flake-aware auto-updates (`system.autoUpgrade` pulls the flake at `cfg.nh.flakeDir`) — dormant | – | – | – | – |
-| `cfg.boot.secureBoot.enable` | Secure Boot via lanzaboote, signed systemd-boot — dormant (officially nixos-unstable-only; eval on a Nix machine before enabling) | – | – | – | – |
+| `cfg.boot.secureBoot.enable` | UKIs via lanzaboote: signed UKI per generation in `ESP/EFI/Linux`, discovered by the signed systemd-boot lzbt installs (firmware Secure Boot optional — off works); boot menu capped at 5 generations (4 with measuredBoot) so non-NixOS entries (Windows auto-listed) stay easy to reach; ESP at `/efi` | ✓ | ✓ | ✓ | – |
 | `cfg.attic.enable` | attic binary-cache server (`services.atticd`) — dormant, needs a sops secret first | – | – | – | – |
 
 ### Disk layouts (Disko, per host)
 
-Each host has a `hosts/<host>/disko.nix` defining a Btrfs-on-LUKS layout:
+Each host has a `hosts/<host>/disko.nix` defining a Btrfs-on-LUKS layout
+(ESP: 1G vfat mounted at `/efi`):
 
 | Host | Layout |
 |---|---|
@@ -155,6 +156,14 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.password-store.enable` | bool, on | pass (`pass init <gpg-id>` on first use) |
 | `cfg.home.tmux.enable` | bool, **off** | tmux — ssh-serving hosts flip it (server does) |
 | `cfg.home.obs.enable` | bool, **off** | OBS Studio screen recording (needs a desktop session) |
+| `cfg.home.vscode.enable` | bool, on | VS Code + profile extensions (needs a desktop session) |
+| `cfg.home.desktopApps.enable` | bool, on | nemo-with-extensions, gparted, pinta (needs a desktop session) |
+| `cfg.home.brave.enable` | bool, on | Brave browser (needs a desktop session) |
+| `cfg.home.mpv.enable` | bool, on | mpv media player (needs a desktop session) |
+
+The four app bundles above ride `cfg.desktop.enable` but can each be dropped per host — the
+installer ISO turns off `vscode` and `mpv` for a slimmer live environment (browser, file
+manager and gparted stay useful during an install).
 | `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, rofi, hyprlock; gtk css + the kvantum theme render straight into `~/.config`), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management. Works on any desktop (GNOME/Hyprland/Plasma) — GNOME manages wallpaper natively, theming recolors GTK/Qt. |
 | `cfg.home.theming.wallpapers` | listOf path, `[]` | shipped collection installed to `~/Pictures/Wallpapers/` (store symlinks; picking one copies it) |
 | `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off. Hyprland-only. |

@@ -20,8 +20,9 @@ flake.nix
   │          nixos-hardware (master) — per-device quirk modules, imported per host (Phase 2)
   │          disko (follows nixpkgs) — declarative disk layouts, wired per host (Phase 2)
   │          lanzaboote (v1.2.0 — does NOT follow nixpkgs: brings its own nixos-unstable to
-  │            build `lzbt`, absent from 26.05) — dormant Secure Boot module
-  │            (cfg.boot.secureBoot.enable)
+  │            build `lzbt`, absent from 26.05) — the UKI boot path: signed UKI per
+  │            generation in ESP/EFI/Linux, discovered by signed systemd-boot; firmware
+  │            Secure Boot optional (cfg.boot.secureBoot.enable, on everywhere but wsl)
   │
   ├─ overlays/unstable.nix ──────► pkgs.unstable.<pkg> available in every module
   │
@@ -77,8 +78,9 @@ as the live reference. The load-bearing parts:
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
   `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
   and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
-- **`hosts/<host>/disko.nix`** — declarative disk layout (Btrfs-on-LUKS) per host; consumed
-  by the `disko` flake input; enables `nixos-anywhere` installs and TPM2-LUKS autoCryptenroll.
+- **`hosts/<host>/disko.nix`** — declarative disk layout (Btrfs-on-LUKS, ESP 1G at `/efi`)
+  per host; consumed by the `disko` flake input; enables `nixos-anywhere` installs and
+  TPM2-LUKS autoCryptenroll.
   Desktop/laptop: single `cryptroot` partition; server: `cryptroot` + `cryptdata` for
   `/var/lib` (docker, syncthing, backups). Replace `REPLACE_WITH_DISK_ID` with the real
   `/dev/disk/by-id/...` path.

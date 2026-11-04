@@ -55,16 +55,13 @@ sudo ./scripts/nixos-disk /dev/nvme0n1
 #    Reusing existing partitions instead? Format in place:
 #    sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
 
-# 2. Mount
+# 2. Mount (creates /mnt/efi/EFI on the ESP for nixos-install)
 sudo ./scripts/nixos-mount /dev/nvme0n1
 
-# 3. Ensure /efi/EFI exists (case-sensitive ESP mount fix)
-mkdir -p /mnt/efi/EFI
-
-# 4. Generate the hardware config into the repo
+# 3. Generate the hardware config into the repo
 nixos-generate-config --root /mnt --no-filesystems --dir ./hosts/desktop
 
-# 5. Install
+# 4. Install
 nixos-install --flake .#desktop --root /mnt
 
 # 6. Copy the cloned repo onto the new system (before reboot)

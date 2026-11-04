@@ -36,8 +36,9 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
       fix rounds — uwsm autodetect session, hyprpaper 0.8 conf, fidelity palette). Remaining:
       write the .iso to USB and do one real install from it
 - [ ] Phase 6 dormant modules — enable per host when relevant: `cfg.updates.auto.*` (manual nh
-      vs auto trade-off), `cfg.boot.secureBoot.*` (UEFI hardware + real eval first),
-      `cfg.attic.*` (server; waits on the sops key + a secret)
+      vs auto trade-off), `cfg.attic.*` (server; waits on the sops key + a secret).
+      `cfg.boot.secureBoot.*` is live everywhere but wsl (2026-11-04) — first real boot per host
+      still pends: autoKeys generates the sbctl bundle, autoEnrollKeys stages firmware enrollment
 - [ ] Disko layouts — replace `REPLACE_WITH_DISK_ID` in each `hosts/*/disko.nix` with the
       actual disk by-id (e.g. `/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_...`), then test with
       `nixos-anywhere` or the installer ISO
