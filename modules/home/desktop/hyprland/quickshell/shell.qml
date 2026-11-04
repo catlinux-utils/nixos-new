@@ -58,6 +58,12 @@ ShellRoot {
     property string iconFont: "JetBrainsMono Nerd Font" // same font as kitty/vscode/hyprlock
     property int pad: 4               // small inset at the bar edges
 
+    // idle inhibitor ("caffeine"), toggled from the command center's quick
+    // actions: while on, the bar surface holds a Wayland idle-inhibit so the
+    // compositor never reports idle and hypridle's dim/lock/dpms/suspend
+    // listeners stay quiet — no external process, no dbus dance
+    property bool idleInhibited: false
+
     // ── command center (toggled by clicking the clock) ──
     // A small Overlay-layer panel under the clock with media controls, volume
     // and brightness sliders, quick actions and a month calendar. `ccScreen`
@@ -618,11 +624,15 @@ ShellRoot {
 
     }
 
-    // small icon button used for transport, month nav and quick actions
+    // small icon button used for transport, month nav and quick actions;
+    // `active` tints the glyph accent so toggles show their state, `name`
+    // shows as a hover tooltip
     component CcButton: Rectangle {
         id: ccBtn
 
         property string glyph
+        property string name: ""
+        property bool active: false
         property var onActivate: () => {
         }
 
@@ -643,7 +653,13 @@ ShellRoot {
             text: ccBtn.glyph
             font.family: root.iconFont
             font.pixelSize: root.iconSize
-            color: btnMa.containsMouse ? root.col15 : root.col14
+            color: btnMa.containsMouse ? root.col15 : (ccBtn.active ? root.col7 : root.col14)
+        }
+
+        ToolTip {
+            visible: ccBtn.name !== "" && btnMa.containsMouse
+            delay: 450
+            text: ccBtn.name
         }
 
         MouseArea {
@@ -707,6 +723,8 @@ ShellRoot {
         model: Quickshell.screens
 
         PanelWindow {
+            id: barWindow
+
             property var modelData
 
             screen: modelData
@@ -729,6 +747,14 @@ ShellRoot {
             // identifies the bar in `hyprctl layers` so the command center
             // can anchor to its real (possibly stacked) position
             WlrLayershell.namespace: "quickshell:bar"
+
+            // caffeine: inhibit on the bar surface itself — it is always
+            // mapped, so the compositor honors the inhibit whenever
+            // idleInhibited is on
+            IdleInhibitor {
+                window: barWindow
+                enabled: root.idleInhibited
+            }
 
             Rectangle {
                 anchors.fill: parent
@@ -1277,17 +1303,20 @@ ShellRoot {
 
                             CcButton {
                                 glyph: "󰒮"
+                                name: "Previous"
                                 onActivate: () => root.activePlayer?.previous()
                             }
 
                             CcButton {
                                 implicitWidth: 44
                                 glyph: root.activePlayer?.isPlaying ? "󰏤" : "󰐊"
+                                name: root.activePlayer?.isPlaying ? "Pause" : "Play"
                                 onActivate: () => root.activePlayer?.togglePlaying()
                             }
 
                             CcButton {
                                 glyph: "󰒭"
+                                name: "Next"
                                 onActivate: () => root.activePlayer?.next()
                             }
 
@@ -1305,6 +1334,7 @@ ShellRoot {
                             CcButton {
                                 implicitWidth: 28
                                 glyph: root.volumeIcon(root.sinkAudio?.muted ?? false, root.sinkAudio?.volume ?? 0)
+                                name: (root.sinkAudio?.muted ?? false) ? "Unmute" : "Mute"
                                 onActivate: () => {
                                     if (root.sinkAudio)
                                         root.sinkAudio.muted = !root.sinkAudio.muted;
@@ -1340,6 +1370,7 @@ ShellRoot {
                             CcButton {
                                 implicitWidth: 28
                                 glyph: "󰃟"
+                                name: root.brightPerc > 0 ? "Turn screen off" : "Restore brightness"
                                 onActivate: () => {
                                     // tap the icon: jump to 0 / back to previous
                                     if (root.brightPerc > 0) {
@@ -1388,16 +1419,27 @@ ShellRoot {
 
                             CcButton {
                                 glyph: "󰄀"
+                                name: "Screenshot"
                                 onActivate: () => ccScreenshot.running = true
                             }
 
                             CcButton {
                                 glyph: "󰌾"
+                                name: "Lock"
                                 onActivate: () => ccLock.running = true
+                            }
+
+                            // caffeine: filled cup + accent while inhibiting
+                            CcButton {
+                                glyph: root.idleInhibited ? "󰅶" : "󰅵"
+                                active: root.idleInhibited
+                                name: root.idleInhibited ? "Allow idle" : "Inhibit idle"
+                                onActivate: () => root.idleInhibited = !root.idleInhibited
                             }
 
                             CcButton {
                                 glyph: "󰻠"
+                                name: "System resources"
                                 onActivate: () => btop.running = true
                             }
 
@@ -1413,6 +1455,7 @@ ShellRoot {
 
                             CcButton {
                                 glyph: "‹"
+                                name: "Previous month"
                                 onActivate: () => root.ccMonth = new Date(root.ccMonth.getFullYear(), root.ccMonth.getMonth() - 1, 1)
                             }
 
@@ -1441,6 +1484,7 @@ ShellRoot {
 
                             CcButton {
                                 glyph: "›"
+                                name: "Next month"
                                 onActivate: () => root.ccMonth = new Date(root.ccMonth.getFullYear(), root.ccMonth.getMonth() + 1, 1)
                             }
 
