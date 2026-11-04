@@ -5,7 +5,7 @@
   ...
 }:
 {
-  config = lib.mkIf osConfig.cfg.desktop.hyprland.enable {
+  config = lib.mkIf (osConfig.cfg.desktop.hyprland.enable && osConfig.cfg.home.hyprland.lock) {
     # screen locker; the PAM service backing its password prompt is created
     # system-side in modules/nixos/desktop/hyprland.nix
     #

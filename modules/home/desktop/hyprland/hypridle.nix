@@ -5,7 +5,7 @@
   ...
 }:
 {
-  config = lib.mkIf osConfig.cfg.desktop.hyprland.enable {
+  config = lib.mkIf (osConfig.cfg.desktop.hyprland.enable && osConfig.cfg.home.hyprland.lock) {
     # idle daemon: dim at 2.5 min, lock at 5, dpms off at 5.5, suspend at 15
     services.hypridle = {
       enable = true;

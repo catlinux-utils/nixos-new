@@ -149,20 +149,27 @@
     programs.lazygit.enable = true;
     programs.tealdeer.enable = true;
 
-    # general-purpose utilities (no programs.* wrapper exists for these)
-    home.packages = with pkgs; [
-      fastfetch
-      onefetch
-      tokei
-      yt-dlp
-      ffmpeg
-      ncdu
-      duf
-      unzip
-      p7zip
-      nix-tree
-      nix-prefetch-git
-      nix-prefetch-github
-    ];
+    # general-purpose utilities (no programs.* wrapper exists for these);
+    # the heavy tails are per-host kill switches — the installer ISO turns
+    # them off (yt-dlp drags the deno runtime, prefetch tools drag the
+    # nix-*-dev closure)
+    home.packages =
+      with pkgs;
+      [
+        fastfetch
+        onefetch
+        tokei
+        ffmpeg
+        ncdu
+        duf
+        unzip
+        p7zip
+        nix-tree
+      ]
+      ++ lib.optionals osConfig.cfg.home.ytDlp.enable [ yt-dlp ]
+      ++ lib.optionals osConfig.cfg.home.prefetchTools.enable [
+        nix-prefetch-git
+        nix-prefetch-github
+      ];
   };
 }

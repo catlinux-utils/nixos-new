@@ -161,12 +161,17 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 | `cfg.home.brave.enable` | bool, on | Brave browser (needs a desktop session) |
 | `cfg.home.mpv.enable` | bool, on | mpv media player (needs a desktop session) |
 
-The four app bundles above ride `cfg.desktop.enable` but can each be dropped per host — the
-installer ISO turns off `vscode` and `mpv` for a slimmer live environment (browser, file
-manager and gparted stay useful during an install).
+| `cfg.home.pinta.enable` | bool, on | Pinta image editor (split from desktopApps — pulls dotnet) |
+| `cfg.home.ytDlp.enable` | bool, on | yt-dlp in the CLI bundle (pulls the deno runtime) |
+| `cfg.home.prefetchTools.enable` | bool, on | nix-prefetch-git/-github (pulls the nix-*-dev closure) |
+
+The app bundles and CLI tails above can be dropped per host — the installer ISO turns off
+`vscode`, `mpv`, `pinta`, `ytDlp` and `prefetchTools` for a slim live environment (browser,
+file manager and gparted stay useful during an install).
 | `cfg.home.theming.enable` | bool, **off** | runtime wallpaper theming: matugen extracts a Material-You palette from the running wallpaper into `~/.cache/theming/` (bar, kitty, mako, rofi, hyprlock; gtk css + the kvantum theme render straight into `~/.config`), waypaper (`SUPER+SHIFT+W`) is the picker, `wallswitch <image>` the CLI. Generated files are outside HM management. Works on any desktop (GNOME/Hyprland/Plasma) — GNOME manages wallpaper natively, theming recolors GTK/Qt. |
 | `cfg.home.theming.wallpapers` | listOf path, `[]` | shipped collection installed to `~/Pictures/Wallpapers/` (store symlinks; picking one copies it) |
 | `cfg.home.hyprland.wallpaper` | nullOr path, `null` | install-time default wallpaper — seeds `~/.local/state/theming/current` exactly once (the state copy is authoritative afterwards; deleting it re-seeds). Gates hyprpaper (which always loads the state file); null = hyprpaper off. Hyprland-only. |
+| `cfg.home.hyprland.lock` | bool, on | hypridle + hyprlock screen-lock stack (idle auto-lock, SUPER+L, sleep lock); one toggle for the pair — hypridle's `lock_cmd` invokes hyprlock. Off also drops brightnessctl. Passwordless accounts (the installer's live `nixos` user) must turn this off: nothing unlocks hyprlock against an empty shadow hash. Hyprland-only. |
 
 ## Per-host values
 
@@ -177,8 +182,12 @@ manager and gparted stay useful during an install).
 | `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/cat/nixos` |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
 | `cfg.home.hyprland.wallpaper` | `./wallpapers/dusk.png` (install-time default) | – | – | – |
+| `cfg.home.hyprland.lock` | ✓ | – | – | – |
 | `cfg.home.theming.enable` | ✓ | – | – | – |
 | `cfg.home.theming.wallpapers` | `./wallpapers/` (dusk, dawn, moss, ember) | – | – | – |
 
 `cfg.home.git.email` is `88453875+PolskiKocurek@users.noreply.github.com` on all four hosts (the
 legacy flake's commit identity).
+
+The installer ISO (not in the matrix) turns `cfg.home.hyprland.lock` off: the live `nixos`
+user's empty password can't unlock hyprlock, so a locked live session would be unrecoverable.

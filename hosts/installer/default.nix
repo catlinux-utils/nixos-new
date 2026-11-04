@@ -13,6 +13,7 @@
 # modules provide Lix, flakes and the pinned registry instead.
 {
   lib,
+  config,
   pkgs,
   inputs,
   self,
@@ -72,10 +73,20 @@ in
       ];
       hyprland.wallpaper = ../desktop/wallpapers/dusk.png;
 
-      # slim live env: drop the editor and media player — the installer needs
-      # the session + terminal tooling; browser, file manager and gparted stay
+      # no screen lock: the live `nixos` user's empty password can't unlock
+      # hyprlock (no nullok on its PAM service), so a 5-min idle would strand
+      # the session behind an unrecoverable lock screen — and live media has
+      # nothing to protect
+      hyprland.lock = false;
+
+      # slim live env: editor, media player, image editor, yt-dlp (deno) and
+      # the nix prefetch tools (nix-*-dev closure) are dead weight here;
+      # browser, file manager and gparted stay for real install work
       vscode.enable = false;
       mpv.enable = false;
+      pinta.enable = false;
+      ytDlp.enable = false;
+      prefetchTools.enable = false;
     };
 
     networking = {
@@ -86,17 +97,80 @@ in
     };
   };
 
-  # boot-to-desktop: GDM autologin into the uwsm Hyprland session (mirrors the
-  # repo's desktop host pattern where displayManager.enable pulls in the
-  # uwsm-managed "Hyprland (UWSM)" session entry). The upstream
-  # installation-device.nix enables getty autologin on all VTS; GDM takes
-  # tty1, the rest stay as autologin shells. No `cfg.boot` — the ISO variant
-  # owns its own bootloader.
-  services.xserver.displayManager.gdm = {
-    enable = true;
-    autoLogin.enable = true;
-    autoLogin.user = "nixos";
+  # autostart: open the repo's install guide when the live session starts —
+  # a systemd user service bound to graphical-session.target (activated by
+  # uwsm), the same channel as the polkit agent. oneshot + kitty's --detach
+  # so the unit exits immediately instead of holding up the target while vim
+  # is open. vim comes from the upstream installer profile, kitty via HM
+  # (useGlobalPkgs: same pkgs here); absolute store paths because a bare PATH
+  # in a user unit isn't guaranteed.
+  home-manager.users.${config.cfg.user.name}.systemd.user.services.installer-guide = {
+    Unit = {
+      Description = "Open the install guide (~/github/nixos/docs/INSTALL.md)";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.kitty}/bin/kitty --detach ${pkgs.vim}/bin/vim %h/github/nixos/docs/INSTALL.md";
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
+
+  # boot-to-desktop: greetd autologins the `nixos` user straight into the
+  # uwsm Hyprland session (same UX the GDM block provided, without GDM's
+  # greeter dragging the whole GNOME/ibus/speech stack — ~0.7-1G of closure).
+  # The uwsm command mirrors the hyprland-uwsm session entry's Exec
+  # (programs/wayland/uwsm.nix: `uwsm start -F -- <binPath>`). No `cfg.boot` —
+  # the ISO variant owns its own bootloader.
+  services.greetd = {
+    enable = true;
+    settings = {
+      initial_session = {
+        command = "${lib.getExe pkgs.uwsm} start -F -- /run/current-system/sw/bin/Hyprland";
+        user = "nixos";
+      };
+      default_session = {
+        # shown only on logout
+        command = "${lib.getExe pkgs.greetd.tuigreet} --time --asterisks";
+        user = "greeter";
+      };
+    };
+  };
+  # keyring unlock at greetd PAM is automatic: the greetd module defaults
+  # enableGnomeKeyring on when services.gnome.gnome-keyring is enabled
+
+  # fonts: drop the CJK sets (pl-locale installer) and the ~220 MiB full Nerd
+  # Font — plain JetBrains Mono + symbols-only cover the same glyphs via
+  # fontconfig (the bar's icon font falls back through fontconfig by design,
+  # see quickshell/shell.qml). The alias keeps every "JetBrainsMono Nerd
+  # Font" request (kitty, hyprlock, the bar) resolving.
+  fonts.packages = lib.mkForce (
+    with pkgs;
+    [
+      jetbrains-mono
+      nerd-fonts.symbols-only
+      noto-fonts
+      noto-fonts-color-emoji
+    ]
+  );
+  fonts.fontconfig.confPackages = [
+    (pkgs.writeTextDir "etc/fonts/conf.d/69-jetbrainsmono-nerd-alias.conf" ''
+      <?xml version="1.0"?>
+      <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+      <fontconfig>
+        <match target="pattern">
+          <test qual="any" name="family"><string>JetBrainsMono Nerd Font</string></test>
+          <edit name="family" mode="prepend" binding="same"><string>JetBrains Mono</string></edit>
+        </match>
+      </fontconfig>
+    '')
+  ];
+
+  # UEFI-only ISO: no BIOS (grub) boot entry needed on any target machine
+  # (~60 MiB); ModemManager rides NetworkManager's mkDefault — no WWAN on
+  # install targets (~70 MiB with libqmi/mbim)
+  networking.modemmanager.enable = false;
 
   # Image-only host: `nix flake check` (and any non-image eval) sees this BASE
   # config, while the `iso` variant (iso-image.nix) owns boot and mounts. 26.05
@@ -146,7 +220,7 @@ in
     isoImage = {
       makeEfiBootable = true;
       makeUsbBootable = true;
-      # makeBiosBootable defaults to true on x86
+      makeBiosBootable = false; # UEFI-only — drops grub from the closure
       volumeID = "nixos-nixos-new"; # ≤32 chars — stage 1 mounts the CD by it
       configurationName = "nixos-new";
       appendToMenuLabel = " Live";

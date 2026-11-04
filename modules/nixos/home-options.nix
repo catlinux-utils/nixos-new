@@ -123,6 +123,24 @@
       description = "mpv media player";
     };
 
+    pinta.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Pinta image editor (split from the desktopApps bundle — pulls dotnet)";
+    };
+
+    ytDlp.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "yt-dlp in the CLI bundle (pulls the deno runtime — heavy)";
+    };
+
+    prefetchTools.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "nix-prefetch-git/-github CLIs (their nix-*-dev closure is heavy)";
+    };
+
     theming = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -142,6 +160,19 @@
           waypaper picker. Only used when theming.enable is set.
         '';
       };
+    };
+
+    hyprland.lock = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        hypridle + hyprlock screen-lock stack (idle auto-lock, SUPER+L,
+        sleep lock). One toggle for the pair — hypridle's lock_cmd invokes
+        hyprlock, so they only make sense together. Off also drops
+        brightnessctl (the dim listeners' only consumer). Passwordless
+        accounts (the installer's live `nixos` user) must turn this off:
+        nothing typed unlocks hyprlock against an empty shadow hash.
+      '';
     };
 
     hyprland.wallpaper = lib.mkOption {

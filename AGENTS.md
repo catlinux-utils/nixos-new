@@ -54,7 +54,7 @@ hosts/<name>/          default.nix (feature switches) + hardware-configuration.n
                        wsl has none (NixOS-WSL owns boot/disks)
 hosts/<host>/disko.nix  disk layout (Btrfs-on-LUKS) per host (Phase 6), consumed by disko
 hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots as an image:
-                       GDM-autologin Hyprland live env; built with
+                       greetd-autologin Hyprland live env; built with
                        nixos-rebuild build-image --image-variant iso
 scripts/               nixos-disk (partition+format), nixos-mount (mount/--umount), nixos-format-part
 modules/nixos/         system feature modules (auto-imported, cfg.* options), grouped
@@ -189,7 +189,7 @@ in the same commit.
 
 `hosts/installer` is a normal mkHost host — full Home Manager session for the profile's
 passwordless `nixos` user (`cfg.user.name` points at it; no locked `cat` user), booting
-into the repo's Hyprland desktop via GDM Wayland autologin. It imports the
+into the repo's Hyprland desktop via greetd autologin (uwsm session). It imports the
 upstream installer profiles via absolute `pkgs.path` references and `disabledModules` drops
 upstream's `installer/cd-dvd/channel.nix` + `clone-config.nix` (channel-era mechanisms; the
 live env is flake-aware via the repo's own nix.nix). The flake's own source (`self` via

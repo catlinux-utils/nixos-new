@@ -40,7 +40,7 @@ flake.nix
         that builds as an IMAGE: imports modules/nixos/ + upstream installer
         profiles, disables channel.nix/clone-config.nix (flake-aware live
         env), and adds the `iso` image variant (image.modules.iso →
-        config.system.build.images.iso). GDM Wayland autologs into the repo's
+        config.system.build.images.iso). greetd autologs the `nixos` user into the repo's
         Hyprland desktop at boot. Build on a Nix machine:
         `nixos-rebuild build-image --flake .#installer --image-variant iso` —
         CI evaluates the ISO derivation only, never builds it
@@ -85,7 +85,7 @@ as the live reference. The load-bearing parts:
   `/var/lib` (docker, syncthing, backups). Replace `REPLACE_WITH_DISK_ID` with the real
   `/dev/disk/by-id/...` path.
 - **`hosts/installer/default.nix`** — the installer ISO: a normal mkHost host (full Home
-  Manager session, GDM autologin into the uwsm Hyprland desktop, theming riding the desktop
+  Manager session, greetd autologin into the uwsm Hyprland desktop, theming riding the desktop
   host's wallpaper set) that has no hardware-configuration.nix and builds as an IMAGE. It
   imports upstream `profiles/base.nix` + `profiles/installation-device.nix` via absolute
   `pkgs.path` references and `disabledModules` drops upstream's `channel.nix`/`clone-config.nix`

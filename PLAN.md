@@ -429,8 +429,10 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
 ## Phase 6 — Extras (unscheduled) `[ ]`
 
 - [x] Installer ISO (implemented 2026-10-28) — `hosts/installer`: a normal mkHost host that
-      builds as an image — GDM Wayland autologin into the repo's Hyprland desktop with the full
-      HM session for the profile's passwordless `nixos` user. Imports upstream installer profiles
+      builds as an image — greetd autologin into the repo's uwsm Hyprland desktop (GDM until
+      2026-11-04: dropped for the live env — the greeter dragged the whole GNOME/ibus/speech
+      stack, ~0.7-1G of closure) with the
+      full HM session for the profile's passwordless `nixos` user. Imports upstream installer profiles
       via absolute `pkgs.path` references; `disabledModules` drops the channel-era mechanisms
       (the live env is flake-aware via the repo's own nix.nix); no `hardware-configuration.nix`;
       `cfg.boot` stays off (the iso variant owns the loader). Build on a Nix machine:
@@ -441,7 +443,12 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
       in 25.05. First real build (2026-11-03, Lix 2.95.4, nixos-rebuild build-image):
       exit 0 — 3.9 GB hybrid ISO (BIOS MBR via isohdpfx.bin + EFI El Torito),
       `services.displayManager.sessionData.autologinSession` = `hyprland-uwsm` (GDM
-      logs straight into the Hyprland (UWSM) session)
+      logs straight into the Hyprland (UWSM) session). 2026-11-04 ISO slimming (closure audit,
+      8.48 GiB → smaller): greetd replaces GDM, UEFI-only (`makeBiosBootable = false`), no
+      ModemManager, CJK fonts + full Nerd Font dropped (plain JetBrains Mono + symbols-only +
+      a fontconfig alias keeps "JetBrainsMono Nerd Font" resolving — the bar's icon glyphs fall
+      back through fontconfig), vscode/mpv/pinta/yt-dlp/prefetch-tools off via `cfg.home.*`
+      kill switches
 - **impermanence (stateless root) — declined** (2026-10-27, user decision): the stateless-root
   workflow doesn't fit how these machines are used; hosts keep a conventional persistent root.
   Preservation was evaluated as the modern alternative — moot with this decision. The Phase 2
