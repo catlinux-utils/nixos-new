@@ -479,7 +479,15 @@ DE-independent home modules (each follows the §1.6 shape; all landed — option
       imports in each host's default.nix. `scripts/nixos-disk` for manual partitioning,
       `nixos-mount` (mount / `--umount`)/`format-part` for install-time mounting. ESP at `/efi`
       (2026-11-04, UKI layout). `REPLACE_WITH_DISK_ID` and
-      real model modules pending per host; nixos-anywhere usage still open
+      real model modules pending per host; nixos-anywhere usage still open.
+      2026-11-04: **disko removed** — its only real value (declarative re-provisioning via
+      nixos-anywhere) is unused here, the scripts own formatting, and disko's generated mount
+      devices keyed to per-host disk paths / auto partition labels (`disk-main-esp`) that never
+      matched the script labels. Mounts now live in each host's generated
+      `hardware-configuration.nix` (nixos-generate-config emits fileSystems + LUKS initrd
+      entries from the mounted layout); the Btrfs scrub/balance blocks from disko.nix moved to
+      `cfg.btrfsMaintenance.*` (`modules/nixos/maintenance/btrfs.nix`). The flake input is gone;
+      the stale disko node prunes out of flake.lock on the next full `nix flake update`.
 - [ ] TPM2-backed LUKS auto-unlock (`systemd-cryptenroll`, PCR-bound — meaningful sealing wants
       Secure Boot via lanzaboote) — 2026-10-28: groundwork landed (`secure-boot.nix`
       measuredBoot = systemd-pcrlock PCR policy); disko layouts include LUKS label `cryptroot`

@@ -1,13 +1,17 @@
 {
   imports = [
     ./hardware-configuration.nix
-    ./disko.nix
     # nixos-hardware quirks — replace with actual model, e.g.
     # inputs.nixos-hardware.nixosModules.framework-laptop-13-intel-12th-gen
     # inputs.nixos-hardware.nixosModules.dell-xps-13-9310
   ];
 
   cfg = {
+    btrfsMaintenance = {
+      enable = true;
+      light = true; # portable: monthly scrub, no balance
+    };
+
     # identity
     user = {
       name = "cat";

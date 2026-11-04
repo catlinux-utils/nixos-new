@@ -59,13 +59,11 @@ lib.nixosSystem {
               fi
             ''
           );
+
         };
       }
     )
     { nixpkgs.overlays = [ unstable-overlay ]; }
-    # declares the `disko` option that hosts/<name>/disko.nix sets; hosts
-    # without a layout (wsl, installer) simply leave it unset
-    inputs.disko.nixosModules.default
     ../modules/nixos
     ../hosts/${hostname}
 

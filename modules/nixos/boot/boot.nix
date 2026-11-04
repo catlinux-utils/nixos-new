@@ -31,7 +31,7 @@
       };
       efi = {
         canTouchEfiVariables = true;
-        # ESP at /efi — UKIs land in /efi/EFI/Linux (see disko.nix layouts)
+        # ESP at /efi — UKIs land in /efi/EFI/Linux
         efiSysMountPoint = "/efi";
       };
     };

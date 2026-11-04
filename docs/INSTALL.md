@@ -32,7 +32,7 @@ sudo ./scripts/nixos-mount
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
 #    Run from repo root (on target or via SSH); sudo — the btrfs probe needs
 #    root, the redirect keeps the file owned by the live-session user:
-sudo nixos-generate-config --show-hardware-config --no-filesystems \
+sudo nixos-generate-config --show-hardware-config \
   > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (root: nixos-install lays down the target's system closure)
@@ -61,7 +61,7 @@ sudo ./scripts/nixos-format-part -i
 sudo ./scripts/nixos-mount
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
-sudo nixos-generate-config --show-hardware-config --no-filesystems \
+sudo nixos-generate-config --show-hardware-config \
   > hosts/desktop/hardware-configuration.nix
 
 # 4. Install (root: nixos-install lays down the target's system closure)
@@ -95,7 +95,7 @@ nh home switch
 ```
 
 **Notes:**
-- `--no-filesystems` skips the generated `fileSystems` block — this repo manages mounts via `disko.nix` / `scripts/nixos-mount`.
+- The generated `fileSystems` + LUKS initrd entries reflect the layout `scripts/nixos-disk`/`nixos-mount` create (mounts resolve via `/dev/mapper/cryptroot` and disk UUIDs — machine-independent).
 - The `wsl` host doesn't need `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
 - Set `cfg.user.initialHashedPassword` in the host config for first login; otherwise the account is locked until you run `passwd` from a root shell.
 
@@ -210,13 +210,13 @@ After mounting the target system at `/mnt`, generate the hardware config **into 
 
 ```bash
 # From repo root (on the target machine or via SSH):
-sudo nixos-generate-config --show-hardware-config --no-filesystems \
+sudo nixos-generate-config --show-hardware-config \
   > hosts/desktop/hardware-configuration.nix
 ```
 
-This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detected hardware (kernel modules, firmware, etc.). The `--no-filesystems` flag skips the generated `fileSystems` block since this repo manages mounts via `disko.nix` / `scripts/nixos-mount`; `--show-hardware-config` prints to stdout and the redirect happens in your own shell, so the file stays owned by the live-session user.
+This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detected hardware, including the `fileSystems` + LUKS initrd entries for the mounted layout. `--show-hardware-config` prints to stdout and the redirect happens in your own shell, so the file stays owned by the live-session user.
 
-`sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs even with `--no-filesystems`.
+`sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs on every btrfs mount.
 
 **Commit it later, from the booted host** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via `scripts/nixos-copy-repo`; on the host, `cfg.git.remote` makes the first activation turn the working copy into a git repo with `origin` set, so `git add hosts/<host>/hardware-configuration.nix && git commit && git push` just works (identity: `cfg.home.git`).
 

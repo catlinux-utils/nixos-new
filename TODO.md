@@ -9,8 +9,7 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       **off-repo**, replace the placeholder recipient in `.sops.yaml` with its public key
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
-- [ ] Per host (Phase 2): replace `REPLACE_WITH_DISK_ID` in `hosts/*/disko.nix` with the
-      actual disk by-id; replace nixos-hardware placeholders with real model modules
+- [ ] Per host (Phase 2): replace nixos-hardware placeholders with real model modules
 - [x] Disk preparation scripts: `scripts/nixos-disk` (partition+format), `scripts/nixos-mount`
       (mount / `--umount`), `scripts/nixos-format-part` — documented in README with install examples
 - [ ] Confirm the identity values in `hosts/*/default.nix` are what you want: username
@@ -39,9 +38,6 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
       vs auto trade-off), `cfg.attic.*` (server; waits on the sops key + a secret).
       `cfg.boot.secureBoot.*` is live everywhere but wsl (2026-11-04) — first real boot per host
       still pends: autoKeys generates the sbctl bundle, autoEnrollKeys stages firmware enrollment
-- [ ] Disko layouts — replace `REPLACE_WITH_DISK_ID` in each `hosts/*/disko.nix` with the
-      actual disk by-id (e.g. `/dev/disk/by-id/nvme-Samsung_SSD_970_EVO_...`), then test with
-      `nixos-anywhere` or the installer ISO
 - [ ] nixos-hardware — replace placeholder imports in `hosts/*/default.nix` with real model
       modules (run `nixos-hardware` detection on each machine)
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses

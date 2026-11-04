@@ -27,15 +27,9 @@
     };
 
     # per-device/per-GPU hardware quirks, imported per host via specialArgs
-    # `inputs` (Phase 2 disk/hardware decisions) — tracks master, no release
+    # `inputs` (Phase 2 hardware decisions) — tracks master, no release
     # branches; refreshed by the manual flake-update workflow
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
-
-    # declarative disk partitioning — wired in per host when disk layouts land
-    disko = {
-      url = "github:nix-community/disko";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     # Secure Boot (dormant, cfg.boot.secureBoot). Deliberately does NOT follow
     # nixpkgs: `pkgs.lzbt` does not exist in 26.05, and lanzaboote's module

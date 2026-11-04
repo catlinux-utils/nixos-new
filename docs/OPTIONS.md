@@ -81,10 +81,11 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.boot.secureBoot.enable` | UKIs via lanzaboote: signed UKI per generation in `ESP/EFI/Linux`, discovered by the signed systemd-boot lzbt installs (firmware Secure Boot optional — off works); boot menu capped at 5 generations (4 with measuredBoot) so non-NixOS entries (Windows auto-listed) stay easy to reach; ESP at `/efi` | ✓ | ✓ | ✓ | – |
 | `cfg.attic.enable` | attic binary-cache server (`services.atticd`) — dormant, needs a sops secret first | – | – | – | – |
 
-### Disk layouts (Disko, per host)
+### Disk layouts (per-host `hardware-configuration.nix`)
 
-Each host has a `hosts/<host>/disko.nix` defining a Btrfs-on-LUKS layout
-(ESP: 1G vfat mounted at `/efi`):
+Disk layout lives in each host's generated `hardware-configuration.nix` (LUKS-on-Btrfs,
+ESP: 1G vfat mounted at `/efi`); `scripts/nixos-disk` creates it on disk. Btrfs
+maintenance is the `cfg.btrfsMaintenance` switch (`modules/nixos/maintenance/btrfs.nix`).
 
 | Host | Layout |
 |---|---|
@@ -92,7 +93,10 @@ Each host has a `hosts/<host>/disko.nix` defining a Btrfs-on-LUKS layout
 | `laptop` | Single `cryptroot` (100% disk) → same subvolumes; swapfile on `@root` for hibernation |
 | `server` | `cryptroot` (100G) → root subvolumes; `cryptdata` (rest) → Btrfs subvolumes `docker`, `containers`, `syncthing`, `backups`, `libvirt` mounted under `/var/lib` |
 
-Replace `REPLACE_WITH_DISK_ID` with the target disk's `/dev/disk/by-id/...` path.
+### System feature switches (continued)
+
+| `cfg.btrfsMaintenance.enable` | bool, **off** | weekly scrub + monthly balance (`-dusage=50` on `/`) — Btrfs hosts flip it |
+| `cfg.btrfsMaintenance.light` | bool, **off** | lighter schedule for portables: monthly scrub, no balance timer |
 
 ### Sub-options (set per host when needed)
 
@@ -180,6 +184,7 @@ file manager and gparted stay useful during an install).
 |---|---|---|---|---|
 | `cfg.user.name` | `cat` | `cat` | `cat` | `cat` |
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
+| `cfg.btrfsMaintenance.enable` / `.light` | ✓ | ✓ (light) | ✓ | – |
 | `cfg.nh.flakeDir` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/nixos` (WSL-specific) |
 | `cfg.git.remote` | `git@github.com:catlinux-utils/nixos-new.git` | same | same | same |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |

@@ -18,7 +18,6 @@ flake.nix
   │          plasma-manager (follows nixpkgs + home-manager) — HM module for the
   │            dormant plasma home config (no host enables cfg.desktop.plasma.enable yet)
   │          nixos-hardware (master) — per-device quirk modules, imported per host (Phase 2)
-  │          disko (follows nixpkgs) — declarative disk layouts, wired per host (Phase 2)
   │          lanzaboote (v1.2.0 — does NOT follow nixpkgs: brings its own nixos-unstable to
   │            build `lzbt`, absent from 26.05) — the UKI boot path: signed UKI per
   │            generation in ESP/EFI/Linux, discovered by signed systemd-boot; firmware
@@ -33,8 +32,6 @@ flake.nix
               └─ modules/home/     user feature modules
                     └─ read system switches via osConfig.cfg.*
 
-  ├─ hosts/<host>/disko.nix — declarative disk layout (Btrfs-on-LUKS) per host;
-        consumed by `disko` input, enables nixos-anywhere installs
   ├─ hosts/installer ──► nixosConfigurations.installer — the live ISO: a mkHost
         host (Home Manager session for the profile's passwordless `nixos` user)
         that builds as an IMAGE: imports modules/nixos/ + upstream installer
@@ -78,12 +75,13 @@ as the live reference. The load-bearing parts:
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
   `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
   and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.
-- **`hosts/<host>/disko.nix`** — declarative disk layout (Btrfs-on-LUKS, ESP 1G at `/efi`)
-  per host; consumed by the `disko` flake input; enables `nixos-anywhere` installs and
-  TPM2-LUKS autoCryptenroll.
-  Desktop/laptop: single `cryptroot` partition; server: `cryptroot` + `cryptdata` for
-  `/var/lib` (docker, syncthing, backups). Replace `REPLACE_WITH_DISK_ID` with the real
-  `/dev/disk/by-id/...` path.
+- **`hosts/<name>/hardware-configuration.nix`** — per-machine, generated at install time
+  (`nixos-generate-config --show-hardware-config` against the mounted layout): initrd/kernel
+  modules plus the `fileSystems` and LUKS initrd entries. Device paths come out
+  machine-independent (`/dev/mapper/cryptroot`, disk UUIDs). Desktop/laptop: single
+  `cryptroot`; server: `cryptroot` + `cryptdata` for `/var/lib` (docker, syncthing,
+  backups). Btrfs scrub/balance is the shared `cfg.btrfsMaintenance.*` switch. TPM2-LUKS
+  autoCryptenroll rides `cfg.boot.secureBoot`.
 - **`hosts/installer/default.nix`** — the installer ISO: a normal mkHost host (full Home
   Manager session, greetd autologin into the uwsm Hyprland desktop, theming riding the desktop
   host's wallpaper set) that has no hardware-configuration.nix and builds as an IMAGE. It
