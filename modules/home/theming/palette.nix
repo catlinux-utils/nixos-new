@@ -64,10 +64,23 @@ in
             # recreates it; chmod keeps the copy writable for the next switch
             cp -f -- "$1" ${current} || { echo "[$(date +%T)] error: cp failed" >> "$log"; note "copy failed"; exit 1; }
             chmod 600 ${current}
-            if systemctl --user restart hyprpaper.service; then
+            # a restart races when wallswitch fires again while a previous
+            # restart's stop job is still in flight (systemd rejects the new
+            # start as destructive) — retry with a short backoff before
+            # giving up and notifying
+            ok=""
+            for attempt in 1 2 3 4 5; do
+              if systemctl --user restart hyprpaper.service; then
+                ok=1
+                break
+              fi
+              echo "[$(date +%T)] restart attempt $attempt failed, retrying" >> "$log"
+              sleep 1
+            done
+            if [ -n "$ok" ]; then
               echo "[$(date +%T)] hyprpaper restarted" >> "$log"
             else
-              echo "[$(date +%T)] error: hyprpaper restart failed (rc=$?)" >> "$log"
+              echo "[$(date +%T)] error: hyprpaper restart failed after 5 attempts" >> "$log"
               note "hyprpaper restart failed — wallpaper may be stale"
             fi
             if ${pkgs.unstable.matugen}/bin/matugen image ${current} ${matugenFlags} >> "$log" 2>&1; then
@@ -143,12 +156,16 @@ in
         # ~/Pictures (empty) instead of ~/Pictures/Wallpapers. waypaper saving
         # picks into this HM-managed file is harmless (activation restores it;
         # nothing in our flow reads waypaper's remembered wallpaper).
+        # zen_mode hides the options panel (incl. the backend dropdown) — the
+        # backend is fixed to none + wallswitch, so the picker is grid-only;
+        # press z in the GUI to bring the panel back for a session.
         xdg.configFile."waypaper/config.ini".text = ''
           [Settings]
           folder = ${homeDir}/Pictures/Wallpapers
           monitors = All
           backend = none
           post_command = wallswitch $wallpaper
+          zen_mode = true
         '';
 
         # login oneshot: install-time seed — the default wallpaper is copied to
