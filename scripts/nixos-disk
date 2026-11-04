@@ -15,6 +15,7 @@ FS_HOME="btrfs"
 FS_BOOT="vfat"
 LAYOUT="auto"          # auto | manual | server
 HOSTNAME="nixos"
+USE_SWAP="yes"
 SWAP_SIZE="8G"
 BOOT_SIZE="1G"
 ROOT_SIZE=""           # empty = rest of disk
@@ -39,6 +40,7 @@ Options:
   --fs-home btrfs|ext4|xfs  Home filesystem (default: btrfs)
   --fs-boot vfat|ext4       Boot filesystem (default: vfat)
   --layout auto|manual|srv  Layout profile (default: auto)
+  --swap yes|no             Create a swap partition (default: yes)
   --swap-size SIZE          Swap size (default: 8G)
   --boot-size SIZE          Boot partition size (default: 1G)
   --root-size SIZE          Root partition size (default: rest)
@@ -64,6 +66,7 @@ parse_args() {
       --fs-home) FS_HOME="$2"; shift 2 ;;
       --fs-boot) FS_BOOT="$2"; shift 2 ;;
       --layout) LAYOUT="$2"; shift 2 ;;
+      --swap) USE_SWAP="$2"; shift 2 ;;
       --swap-size) SWAP_SIZE="$2"; shift 2 ;;
       --boot-size) BOOT_SIZE="$2"; shift 2 ;;
       --root-size) ROOT_SIZE="$2"; shift 2 ;;
@@ -111,8 +114,10 @@ prompt_config() {
     ENCRYPT_HOME="${ans:-n}"
   }
 
-  read -rp "$(echo -e "${BLU}Encrypt swap? [Y/n]:${NC} ")" ans
-  ENCRYPT_SWAP="${ans:-y}"
+  if [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] ]]; then
+    read -rp "$(echo -e "${BLU}Encrypt swap? [Y/n]:${NC} ")" ans
+    ENCRYPT_SWAP="${ans:-y}"
+  fi
 
   # Filesystems
   echo
@@ -132,8 +137,12 @@ prompt_config() {
 
   # Sizes
   echo
+  if [[ "$LAYOUT" != "server" ]]; then
+    read -rp "$(echo -e "${BLU}Create swap partition? [${USE_SWAP}]:${NC} ")" ans
+    USE_SWAP="${ans:-$USE_SWAP}"
+  fi
   read -rp "$(echo -e "${BLU}Boot size [${BOOT_SIZE}]:${NC} ")" ans; BOOT_SIZE="${ans:-$BOOT_SIZE}"
-  read -rp "$(echo -e "${BLU}Swap size [${SWAP_SIZE}]:${NC} ")" ans; SWAP_SIZE="${ans:-$SWAP_SIZE}"
+  [[ "$USE_SWAP" =~ ^[Yy] ]] && { read -rp "$(echo -e "${BLU}Swap size [${SWAP_SIZE}]:${NC} ")" ans; SWAP_SIZE="${ans:-$SWAP_SIZE}"; }
   [[ -z "$ROOT_SIZE" ]] && read -rp "$(echo -e "${BLU}Root size (empty=rest) [${ROOT_SIZE}]:${NC} ")" ans && ROOT_SIZE="${ans}"
   [[ "$ENCRYPT_HOME" =~ ^[Yy] && -z "$HOME_SIZE" ]] && read -rp "$(echo -e "${BLU}Home size (empty=rest) [${HOME_SIZE}]:${NC} ")" ans && HOME_SIZE="${ans}"
 
@@ -162,7 +171,7 @@ create_partitions() {
   fi
 
   # Swap partition if not using swapfile
-  if [[ "$ENCRYPT_SWAP" =~ ^[Yy] && "$LAYOUT" != "server" ]]; then
+  if [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] && "$ENCRYPT_SWAP" =~ ^[Yy] ]]; then
     ((part++))
     sgdisk -n $part:0:+$SWAP_SIZE -t $part:8309 -c $part:"cryptswap" "$DISK"
   fi
@@ -170,7 +179,7 @@ create_partitions() {
 
 format_partition() {
   local part="$1" label="$2" fs="$3" crypt="$4"
-  [[ -b "$part" ]] || { err "Partition not found: $part"; return 1; }
+  [[ -b "$part" ]] || { err "Partition not found: $label ($part)"; return 1; }
 
   if [[ "$crypt" == "yes" ]]; then
     info "Formatting $label (LUKS2 + $fs)..."
@@ -222,7 +231,12 @@ main() {
   echo "  FS home:      $FS_HOME"
   echo "  FS boot:      $FS_BOOT"
   echo "  Boot size:    $BOOT_SIZE"
-  echo "  Swap size:    $SWAP_SIZE"
+  if [[ "$LAYOUT" == "server" ]]; then
+    echo "  Swap:         no (server layout)"
+  else
+    echo "  Swap:         $USE_SWAP"
+    [[ "$USE_SWAP" =~ ^[Yy] ]] && echo "  Swap size:    $SWAP_SIZE"
+  fi
   echo "  Root size:    ${ROOT_SIZE:-rest}"
   echo "  Home size:    ${HOME_SIZE:-rest}"
   echo "  Hostname:     $HOSTNAME"
@@ -236,12 +250,13 @@ main() {
   partprobe "$DISK"
   sleep 1
 
-  # Find partitions by label
-  ESP=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="ESP" {print $1}')
-  CRYPTROOT=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptroot" {print $1}')
-  CRYPTHOME=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="crypthome" {print $1}')
-  CRYPTDATA=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptdata" {print $1}')
-  CRYPTSWAP=$(lsblk -rno PATH,LABEL "$DISK" | awk '$2=="cryptswap" {print $1}')
+  # Find partitions by GPT partition name (PARTLABEL exists right after sgdisk;
+  # fs LABEL doesn't until formatting)
+  ESP=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="ESP" {print $1}')
+  CRYPTROOT=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptroot" {print $1}')
+  CRYPTHOME=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="crypthome" {print $1}')
+  CRYPTDATA=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptdata" {print $1}')
+  CRYPTSWAP=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptswap" {print $1}')
 
   format_partition "$ESP" "ESP" "$FS_BOOT" "no"
   format_partition "$CRYPTROOT" "cryptroot" "$FS_ROOT" "$ENCRYPT_ROOT"
@@ -257,7 +272,7 @@ main() {
     create_subvolumes "/mnt/var/lib" "cryptdata" "btrfs"
   }
 
-  [[ "$ENCRYPT_SWAP" =~ ^[Yy] && -n "$CRYPTSWAP" ]] && {
+  [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] && "$ENCRYPT_SWAP" =~ ^[Yy] && -n "$CRYPTSWAP" ]] && {
     format_partition "$CRYPTSWAP" "cryptswap" "swap" "yes"
     mkswap /dev/mapper/cryptswap
   }
