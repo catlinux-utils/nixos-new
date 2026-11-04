@@ -88,6 +88,9 @@ AGENTS.md README.md    this file / project overview
 
 ## Nix style
 
+- Keep it simple: prefer the smallest change that solves the problem — the simplest working
+  solution over a clever or speculative one. Don't add options, abstractions, or features nobody
+  asked for.
 - Format with `nix fmt` (RFC 101 style via `nixfmt-rfc-style`): 2-space indent, arguments stay on
   one line when they fit, final newline. Don't hand-format against nixfmt's choices.
 - Prefer `lib.mkEnableOption` / `lib.mkIf` / `lib.mkOption` over raw attrsets.
