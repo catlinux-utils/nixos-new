@@ -14,18 +14,15 @@ to nixpkgs **26.05** + Home Manager **release-26.05**.
 
 ## Environment constraints (read first)
 
-- The dev machine is Windows **without nix**. You cannot build, evaluate, format, or lock anything
-  there.
-- Never claim a build/eval/fmt ran unless you actually ran it on a Nix machine (or WSL2 with nix).
-- The `wsl` host (PLAN Phase 1.5) exists to dissolve this constraint — once its distro is
-  bootstrapped (`wsl --import`, pending), validation runs locally via `wsl.exe`.
-- All validation happens on a nix-capable environment:
+- Validation runs **locally** — the desktop machine is nix-capable (NixOS, currently the legacy
+  flake's deploy; this repo lives next to it at `~/github/nixos-new`). The `wsl` host (PLAN Phase
+  1.5) remains registered for whenever WSL validation is wanted, but nothing is pending on it.
+- Never claim a build/eval/fmt ran unless you actually ran it. Run before claiming:
   - `nix flake check`
-  - `nix fmt` (formatter output exists once Phase 1 lands)
+  - `nix fmt`
   - `nh os switch --dry` / `nh os test` on a target host
-- Because local proof is impossible, be extra careful with option names and import paths. Verify
-  option names against the **pinned** nixpkgs — not against latest docs. Helper pages, weakest to
-  strongest evidence:
+- Even with local eval, verify option names against the **pinned** nixpkgs — not against latest
+  docs. Helper pages, weakest to strongest evidence:
   - [search.nixos.org](https://search.nixos.org) — options for NixOS + home-manager (separate
     tabs), filter to the pinned release
   - [mynixos.com](https://mynixos.com) — rendered package/option pages, e.g.
@@ -144,8 +141,8 @@ invoking the matching skill over improvising:
 - `add-home-module` — new Home Manager module in `modules/home/` (+ options in
   `home-options.nix`)
 - `add-host` — register a machine (`hosts/<name>/` + `flake.nix` entry)
-- `nix-validate` — verification protocol for the no-nix-on-Windows constraint (self-review
-  pass + what must run on a Nix machine)
+- `nix-validate` — verification protocol (self-review pass + which commands must actually run
+  locally before claiming anything works)
 - `sync-docs` — bring PLAN/TODO/ARCHITECTURE/AGENTS/README back in sync after a change
 
 Keep a skill and the matching recipe here consistent — when a recipe changes, update the skill

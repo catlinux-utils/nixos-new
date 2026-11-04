@@ -3,8 +3,9 @@
 How this flake is wired together. For the work queue see [../PLAN.md](../PLAN.md); for conventions
 and recipes see [../AGENTS.md](../AGENTS.md).
 
-> Status: Phase 1 (scaffold) implemented — this document describes the implemented design, pending
-> first machine validation (`nix flake check`, `nix fmt` on a Nix machine; see TODO.md).
+> Status: implemented and validated — `nix flake check` + `nix fmt` clean on the desktop host
+> (2026-11-03, see PLAN §1.10–§1.11); installer ISO built the same day. This document describes
+> the design as it stands.
 
 ## Data flow
 
@@ -38,7 +39,7 @@ flake.nix
         that builds as an IMAGE: imports modules/nixos/ + upstream installer
         profiles, disables channel.nix/clone-config.nix (flake-aware live
         env), and adds the `iso` image variant (image.modules.iso →
-        config.system.build.images.iso). greetd autologs into the repo's
+        config.system.build.images.iso). GDM Wayland autologs into the repo's
         Hyprland desktop at boot. Build on a Nix machine:
         `nixos-rebuild build-image --flake .#installer --image-variant iso` —
         CI evaluates the ISO derivation only, never builds it

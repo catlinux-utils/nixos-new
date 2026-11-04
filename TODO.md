@@ -4,19 +4,9 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
 
 ## Next
 
-- [ ] Phase 3 key setup (one-time, on a nix-capable machine): `nix run nixpkgs#age -- --version`
+- [ ] Phase 3 key setup (one-time, on this nix-capable machine): `nix run nixpkgs#age -- --version`
       → generate the master identity (`age-keygen -o ~/.config/sops/age/keys.txt`), back it up
       **off-repo**, replace the placeholder recipient in `.sops.yaml` with its public key
-- [ ] Bootstrap local nix: install the NixOS-WSL distro (PLAN Phase 1.5) — releases ship `.wsl`
-      bundles now (checked 2026-10-27: tag 2605.7.2): download `nixos.wsl`, then
-      `wsl --install --from-file nixos.wsl` (older tarballs: `wsl --import nixos <dir> <tarball>`)
-      — makes this Windows machine nix-capable, unblocking local validation. The `wsl` host is
-      already registered (`cfg.nh.flakeDir` points at `~/nixos-new` on the WSL Linux side)
-- [ ] After the bootstrap: clone this repo to `~/nixos-new` inside WSL, then `nh os switch --dry`
-      → `nh os test` → `nh os switch`
-- [ ] Push, then run the manual CI workflow (Actions tab) — per-host toplevel builds and the
-      installer-ISO eval step; then run the flake-update workflow and merge its PR to land the
-      first `flake.lock` (pinning nixos-hardware, disko and lanzaboote too)
 - [ ] Per host (Phase 2): replace placeholder `hardware-configuration.nix` with real
       `nixos-generate-config` output from that machine
 - [ ] Per host (Phase 2): replace `REPLACE_WITH_DISK_ID` in `hosts/*/disko.nix` with the

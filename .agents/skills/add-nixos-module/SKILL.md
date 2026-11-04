@@ -64,6 +64,5 @@ recursively by `lib/importNixFiles.nix` — creating the file activates it; no i
 
 ## Validation
 
-This dev machine has no nix — nothing can be built or evaluated locally. Run the `nix-validate`
-self-review pass before claiming anything works; `nix flake check` and `nh os switch --dry`
-happen on a Nix machine.
+Run the `nix-validate` self-review pass after editing, then actually run `nix flake check` and
+`nh os switch --dry` locally before claiming anything works.

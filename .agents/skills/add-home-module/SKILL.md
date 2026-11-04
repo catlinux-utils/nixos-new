@@ -74,5 +74,5 @@ Home Manager runs as a NixOS module here, so home modules read the host's switch
 
 ## Validation
 
-No nix on this machine — run the `nix-validate` self-review pass; `nix flake check` happens on
-a Nix machine.
+Run the `nix-validate` self-review pass, then actually run `nix flake check` locally before
+claiming anything works.

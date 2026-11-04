@@ -23,12 +23,12 @@ A single NixOS flake managing every machine from one repo:
 
 ## Ground truth & constraints
 
-- Development happens on a Windows machine **without nix**. Nothing can be built, evaluated,
-  formatted, or locked there. Never claim a build ran unless it actually ran on a Nix machine.
-  Validation happens on a nix-capable environment ([§1.10](#110-verification-strategy)); Phase 1.5
-  dissolves the constraint locally.
-- `flake.lock` is born on the first real `nix flake update` / build; it cannot be generated on the
-  dev machine.
+- Validation runs locally on the nix-capable desktop machine (NixOS; this repo lives at
+  `~/github/nixos-new` next to the legacy flake). Never claim a build/eval/fmt ran unless it
+  actually ran ([§1.10](#110-verification-strategy)). Phase 1.5's WSL route became moot for
+  validation once the desktop went NixOS (2026-11-04).
+- `flake.lock` is committed; regenerate it only on a Nix machine (`nix flake update`), never by
+  hand-editing.
 
 ## Namespace
 
@@ -128,9 +128,9 @@ Per-host switch wiring: [docs/OPTIONS.md](docs/OPTIONS.md) host matrices. Foreig
 
 ### 1.10 Verification strategy
 
-1. Self-review on the dev machine: import paths relative to each file's location, every option
+1. Self-review pass: import paths relative to each file's location, every option
    name, `cfg.*` namespace consistency.
-2. On any Nix machine (or WSL2 with nix): `nix flake check`, `nix fmt` clean before every commit.
+2. Locally on the nix-capable desktop: `nix flake check`, `nix fmt` clean before every commit.
 3. `nixos-rebuild build-vm --flake .#desktop` — smoke-tests the real module stack (fonts, portals,
    DE wiring) in QEMU without touching an actual host.
 4. Per real host (Phase 2): real hardware config in, then `nh os switch --dry` → `nh os test` →
@@ -176,7 +176,12 @@ forced:
 
 ## Phase 1.5 — WSL dev host `[ ]`
 
-The highest-leverage item — dissolves the "no nix on the dev machine" constraint: the WSL distro
+> 2026-11-04: the goal of this phase (local nix validation) is already met — the desktop machine
+> runs NixOS, so `nix flake check` / `nix fmt` / `nh` run directly on it. The WSL distro install
+> below stays **optional**: the `wsl` host is registered and ready for whenever WSL validation is
+> wanted.
+
+Original motivation — dissolving the "no nix on the dev machine" constraint: the WSL distro
 becomes the fourth host (`wsl`), and all validation (`nix flake check`, `nix fmt`,
 `nix flake update`, `build-vm`) runs locally, including from agent sessions via `wsl.exe`.
 
@@ -197,7 +202,8 @@ Host wiring (once Phase 1 exists):
       handles graphics/audio on the Windows side, NetworkManager is meaningless under WSL NAT;
       never touch `boot.loader*` inside WSL. Always-on `nix`/`nh`/`logging`/`locale`/`users` apply
       fine. `cfg.nh.flakeDir` points at the in-WSL repo path
-- [ ] Rewrite AGENTS.md "Environment constraints" + TODO once validation is local
+- [x] Rewrite AGENTS.md "Environment constraints" + TODO once validation is local (2026-11-04 —
+      met by the nix-capable desktop, without the WSL distro)
 
 Implementation notes (verified against the NixOS-WSL `main` module sources, 2026-10): the module
 defines no `fileSystems` and disables GRUB — `hosts/wsl/` needs no `hardware-configuration.nix`
@@ -506,6 +512,7 @@ Well-maintained flakes to mine for ideas when implementing a feature (reference,
 | journald | always-on `logging.nix` (persistent storage + size cap) | unbounded journal is a silent disk-filler; identical on every host |
 | nixos-hardware | flake input, imported per host via `specialArgs` `inputs` (all hosts, Phase 2) | module collection for per-model/per-GPU wiring — not a package, doesn't violate the unstable-overlay-only rule; tracks `master` (no release branches), refreshed by the weekly flake-update cron |
 | Dev-machine validation | NixOS-WSL host (Phase 1.5), bootstrapped from the prebuilt tarball | dissolves the no-nix-on-Windows constraint; repo lives on the WSL Linux filesystem, agent sessions validate via `wsl.exe` |
+| Validation machine (update) | local nix-capable desktop (2026-11-04) | the desktop runs NixOS (legacy flake's deploy), so `nix flake check`/`nix fmt`/`nh` validate directly — the WSL distro install is no longer a prerequisite; `wsl` host stays registered |
 | Installer ISO | `nixosConfigurations.installer` — a mkHost host that builds as an image | upstream's `build-image --image-variant` needs a nixosConfiguration ref; assembling via mkHost keeps one host-assembly path and gives the live env the full HM Hyprland session (2026-10-28) |
 | Secure Boot input | lanzaboote pinned v1.2.0, deliberately not following nixpkgs | `lzbt` is absent from 26.05; their module mkDefaults `boot.lanzaboote.package` to a build from the nixos-unstable nixpkgs the input carries itself (2026-10-28) |
 | Deploy tooling (colmena / deploy-rs) | deferred (2026-10-28, user decision) | auto-updates covers server freshness; 4 hosts are cheap to `nh` by hand; a deployer needs a nix-capable machine anyway (WSL pending); adding colmena later costs ~nothing |

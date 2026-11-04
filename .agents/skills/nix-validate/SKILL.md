@@ -1,14 +1,13 @@
 ---
 name: nix-validate
-description: Verification protocol for this NixOS flake on a Windows dev machine with no nix. Use after writing or editing any .nix file, before claiming that anything builds/evaluates/works, and when the user asks to "validate", "check", "verify" or "test" the flake or config. Prevents false build claims and pins option names to nixpkgs 26.05.
+description: Verification protocol for this NixOS flake. Use after writing or editing any .nix file, before claiming that anything builds/evaluates/works, and when the user asks to "validate", "check", "verify" or "test" the flake or config. Prevents false build claims and pins option names to nixpkgs 26.05.
 ---
 
-# Validate Nix config (no local nix)
+# Validate Nix config
 
-This dev machine is Windows **without nix**. Nothing can be built, evaluated, formatted or
-locked here. Every claim of "it builds / evaluates / passes" must trace to an actual run on a
-Nix machine (or WSL2 with nix once Phase 1.5 lands — then via `wsl.exe`). Never claim a build
-or eval ran unless it actually did.
+The desktop machine is nix-capable (NixOS; Lix CLI), so everything below runs locally. Every
+claim of "it builds / evaluates / passes" must trace to an actual run you executed. Never claim
+a build or eval ran unless it actually did.
 
 ## What you CAN do locally — the self-review pass
 
@@ -46,7 +45,7 @@ Run this after writing or editing any `.nix` file, before handing off:
    (RFC 101 / nixfmt). Don't hand-chase nixfmt's exact choices — `nix fmt` on a Nix machine is
    the authority.
 
-## What must run on a Nix machine — say so, don't pretend
+## What must actually run — say so, don't pretend
 
 | Purpose | Command |
 |---|---|
@@ -61,7 +60,7 @@ Hosts run **Lix** (`nix.package = pkgs.lixPackageSets.latest.lix` in
 
 ## Reporting
 
-State exactly which commands ran, where, and what they printed. Anything that didn't run stays
-unticked in PLAN.md / listed in TODO.md. `flake.lock` conflicts are also resolved on a Nix
-machine (`nix flake update`, or `nix flake lock --update-input <input>` for one input) — never
-by hand-editing.
+State exactly which commands ran and what they printed. Anything that didn't run stays
+unticked in PLAN.md / listed in TODO.md. `flake.lock` conflicts are resolved by regenerating
+on a nix-capable machine (`nix flake update`, or `nix flake lock --update-input <input>` for
+one input) — never by hand-editing.
