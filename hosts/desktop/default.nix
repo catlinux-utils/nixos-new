@@ -73,4 +73,7 @@
     tailscale.enable = true;
     syncthing.enable = true;
   };
+
+  # first-install marker — do NOT bump together with the nixpkgs pin
+  system.stateVersion = "26.05";
 }

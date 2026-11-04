@@ -142,7 +142,7 @@ in
       };
       default_session = {
         # shown only on logout
-        command = "${lib.getExe pkgs.greetd.tuigreet} --time --asterisks";
+        command = "${lib.getExe pkgs.tuigreet} --time --asterisks";
         user = "greeter";
       };
     };

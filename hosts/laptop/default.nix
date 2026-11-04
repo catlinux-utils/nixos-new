@@ -75,4 +75,7 @@
     # alternatives, cfg.power.thermald.enable for Intel CPUs), cfg.fprintd.enable
     # if a fingerprint reader exists, cfg.networking.wifi.* if wanted
   };
+
+  # first-install marker — do NOT bump together with the nixpkgs pin
+  system.stateVersion = "26.05";
 }

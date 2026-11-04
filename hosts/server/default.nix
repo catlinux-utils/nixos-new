@@ -54,4 +54,7 @@
     # monitoring is opt-in per service (Tailscale/localhost reach by default):
     # cfg.monitoring.nodeExporter.enable / .netdata.enable / .uptimeKuma.enable
   };
+
+  # first-install marker — do NOT bump together with the nixpkgs pin
+  system.stateVersion = "26.05";
 }
