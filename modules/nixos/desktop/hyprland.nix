@@ -39,12 +39,14 @@
     # cannot authenticate
     security.pam.services.hyprlock = { };
 
-    # gnome-keyring unlock at GDM autologin too (the `login` stack only covers
-    # console gettys): on live media the login password is blank, so the
-    # keyring's blank-password keyring unlocks silently; on real hosts the
-    # keyring password equals the login password and still unlocks without
-    # prompting — nothing is ever stored in plaintext config
-    security.pam.services.gdm-autologin.enableGnomeKeyring = true;
+    # login manager: regreet (graphical GTK4 greeter) riding greetd + the cage
+    # kiosk compositor — GDM-style login without GDM's ~0.7-1G GNOME/ibus/
+    # speech stack. Because it goes through greetd, the keyring unlocks at the
+    # greeter login (the greetd module defaults enableGnomeKeyring on when
+    # gnome-keyring is enabled — it is, above); the `login` stack below covers
+    # console gettys. The mkDefault session command lists every wayland-sessions
+    # entry — hyprland-uwsm is pinned via displayManager.defaultSession below.
+    programs.regreet.enable = true;
 
     # libsecret backend for app secrets (VS Code runs with
     # password-store=gnome-libsecret); PAM unlocks the keyring at login
