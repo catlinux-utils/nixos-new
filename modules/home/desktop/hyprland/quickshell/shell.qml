@@ -1,10 +1,11 @@
 //@ pragma UseQApplication
 
-// Layout: workspaces (left) | spacer | media, volume, battery, resources,
-// tray, clock (right). Every widget lives in a full-height cell whose content
-// is vertically centered, and icons are separate Text items in a fixed-size
-// icon font instead of being interpolated into value strings — that is what
-// keeps text and glyphs optically level and the spacing proportional.
+// Layout: workspaces (left) | spacer | media, stats (volume, battery,
+// resources), tray, clock (right). Every cluster sits in a pill-shaped
+// BarBox with a contrasting 1px border. Icons are separate Text items in a
+// fixed-size icon font instead of being interpolated into value strings —
+// that is what keeps text and glyphs optically level and the spacing
+// proportional.
 // Metrics live in the "layout metrics" properties below; palette comes from
 // Theme.qml (matugen with hand-tuned fallbacks).
 //
@@ -13,6 +14,7 @@
 // JetBrainsMono Nerd Font the glyphs fall back through fontconfig.
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
@@ -54,8 +56,90 @@ ShellRoot {
     property int barHeight: 28        // panel height (Hyprland reserves this)
     property int iconSize: 15         // nerd-font glyphs, proportional to text
     property string iconFont: "JetBrainsMono Nerd Font" // same font as kitty/vscode/hyprlock
-    property int pad: 10              // horizontal padding at the bar edges
-    property int gap: 9               // spacing around separators
+    property int pad: 4               // small inset at the bar edges
+
+    // ── command center (toggled by clicking the clock) ──
+    // A small Overlay-layer panel under the clock with media controls, volume
+    // and brightness sliders, quick actions and a month calendar. `ccScreen`
+    // keeps it on the monitor whose clock was clicked; a full-screen Top-layer
+    // click-catcher closes it when clicking anywhere outside.
+    property bool ccOpen: false
+    property var ccScreen: null
+    property date ccMonth: {
+        var n = new Date();
+        return new Date(n.getFullYear(), n.getMonth(), 1);
+    }
+    property var ccCells: root.calendarCells(ccMonth)
+    property var ccWeekdays: {
+        var names = [];
+        for (var i = 0; i < 7; i++)
+            names.push(Qt.locale().standaloneDayName((i + 1) % 7, Locale.ShortFormat));
+        return names;
+    }
+    // y offset of the bar surface per output, read from Hyprland's layer
+    // list when the command center opens — with a second (test) bar stacked
+    // above, the bar does not sit at y=0 and the popup must anchor below its
+    // real position. Our bar is identified by its layer namespace.
+    property var barTops: ({})
+    // brightness comes from /sys like the other stats; writes go through
+    // brightnessctl
+    property string backlightPath: ""
+    property int brightMax: 1
+    property int brightNow: 0
+    property int ccPrevBright: 0
+    readonly property int brightPerc: Math.min(100, Math.max(0, Math.round(100 * root.brightNow / Math.max(1, root.brightMax))))
+    readonly property var sinkAudio: Pipewire.defaultAudioSink?.audio ?? null
+
+    // 42-cell Monday-first month grid, neighbouring months dimmed
+    function calendarCells(d) {
+        var cells = [];
+        var offset = (new Date(d.getFullYear(), d.getMonth(), 1).getDay() + 6) % 7;
+        var dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        var dimPrev = new Date(d.getFullYear(), d.getMonth(), 0).getDate();
+        for (var i = 0; i < 42; i++) {
+            if (i < offset)
+                cells.push({
+                    "day": dimPrev - offset + 1 + i,
+                    "other": true
+                });
+            else if (i - offset < dim)
+                cells.push({
+                    "day": i - offset + 1,
+                    "other": false
+                });
+            else
+                cells.push({
+                    "day": i - offset - dim + 1,
+                    "other": true
+                });
+        }
+        return cells;
+    }
+
+    function toggleCc(screen) {
+        layerQuery.running = true;
+        if (root.ccOpen && root.ccScreen === screen) {
+            root.ccOpen = false;
+            return ;
+        }
+        root.ccScreen = screen;
+        root.activePlayer?.positionChanged(); // refresh the position binding now, not at the first tick
+        root.ccOpen = true;
+    }
+
+    // MprisPlayer reports position/length in seconds (ms precision)
+    function fmtSec(sec) {
+        if (!sec || sec <= 0)
+            return "0:00";
+        var s = Math.floor(sec);
+        return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+
+    SystemClock {
+        id: ccClock
+
+        precision: SystemClock.Seconds
+    }
 
     // status colors: warning values shift to accentAlt (col11), critical ones
     // to urgent (the matugen error color) — icon and value shift together
@@ -104,6 +188,43 @@ ShellRoot {
         return "󰂎";
     }
 
+    // volume follows the sink state: md-volume_off when muted, otherwise
+    // md-volume_high/medium/low stepped by level
+    function volumeIcon(muted, v) {
+        if (muted)
+            return "󰖁";
+        if (v >= 0.5)
+            return "󰕾";
+        if (v >= 0.2)
+            return "󰖀";
+        return "󰕿";
+    }
+
+    // load steps the glyph up with severity: cpu moves to md-speedometer on
+    // warning and md-alert on critical; memory switches to md-alert on critical
+    function cpuIcon(u) {
+        if (u >= 85)
+            return "󰀦";
+        if (u >= 70)
+            return "󰓅";
+        return "󰻠";
+    }
+
+    function memIcon(u) {
+        if (u >= 90)
+            return "󰀦";
+        return "󰍛";
+    }
+
+    // temperature steps up md-thermometer -> md-thermometer_high -> md-thermometer_alert
+    function tempIcon(t) {
+        if (t >= 85)
+            return "󰸁";
+        if (t >= 70)
+            return "󱃂";
+        return "󰔏";
+    }
+
     property int cpuUsage: 0
     property int memUsage: 0
     property var lastCpuIdle: 0
@@ -119,6 +240,11 @@ ShellRoot {
     readonly property MprisPlayer activePlayer: Mpris.players.values.find((p) => p.isPlaying) ?? Mpris.players.values[0] ?? null
     property string audioTitle: root.activePlayer?.trackTitle ?? ""
     property string audioAuthor: root.activePlayer?.trackArtist ?? ""
+    // livestreams (Twitch, browser live tabs) report no usable length — Chromium
+    // emits INT64_MAX, some players emit 0 — treat that as live and hide the
+    // progress/time row instead of showing a bogus clock
+    readonly property bool mediaLive: root.activePlayer !== null
+        && (root.activePlayer.length <= 0 || root.activePlayer.length > 86400) // > 24h can't be a track
 
     FileView {
         id: cpuLoader
@@ -179,6 +305,120 @@ ShellRoot {
                 root.hasBattery = root.batteryPath !== "";
             }
         }
+    }
+
+    FileView {
+        id: brightMaxLoader
+
+        path: root.backlightPath !== "" ? root.backlightPath + "/max_brightness" : ""
+    }
+
+    FileView {
+        id: brightNowLoader
+
+        path: root.backlightPath !== "" ? root.backlightPath + "/actual_brightness" : ""
+    }
+
+    Process {
+        id: brightResolve
+
+        command: ["sh", "-c", "for d in /sys/class/backlight/*; do [ -e \"$d/max_brightness\" ] && { echo \"$d\"; exit 0; }; done"]
+        Component.onCompleted: running = true
+
+        stdout: SplitParser {
+            onRead: (data) => {
+                root.backlightPath = data.trim();
+            }
+        }
+    }
+
+    Process {
+        id: brightSet
+
+        command: ["brightnessctl", "-q", "set", "0%"]
+        running: false
+    }
+
+    // command center: locate the bar's layer surface per output
+    Process {
+        id: layerQuery
+
+        command: ["hyprctl", "-j", "layers"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var tops = {};
+                try {
+                    var outputs = JSON.parse(text);
+                    for (var output in outputs) {
+                        var levels = outputs[output].levels;
+                        for (var level in levels)
+                            for (var i = 0; i < levels[level].length; i++)
+                                if (levels[level][i].namespace === "quickshell:bar")
+                                    tops[output] = levels[level][i].y;
+                    }
+                } catch (e) {}
+                root.barTops = tops;
+            }
+        }
+
+    }
+
+    // command-center quick actions
+    Process {
+        id: ccScreenshot
+
+        command: ["uwsm", "app", "--", "hyprshot", "-m", "region", "-z"]
+        running: false
+    }
+
+    Process {
+        id: ccLock
+
+        command: ["uwsm", "app", "--", "hyprlock"]
+        running: false
+    }
+
+    // MprisPlayer.position is not reactive — reading it is always current but
+    // bindings only refresh when positionChanged fires (players emit it on
+    // seeks, not continuously). Re-emit it on a fast tick while the command
+    // center is open and a track is playing so the progress row moves.
+    Timer {
+        interval: 500
+        running: root.ccOpen && root.activePlayer !== null && root.activePlayer.isPlaying
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.activePlayer.positionChanged()
+    }
+
+    // keeps brightness sliders in sync (set is done by brightnessctl, files
+    // catch up a moment later)
+    Timer {
+        interval: 1500
+        running: root.ccOpen && root.backlightPath !== ""
+        triggeredOnStart: true
+        repeat: true
+        onTriggered: {
+            brightMaxLoader.reload();
+            brightNowLoader.reload();
+            root.brightMax = parseInt(brightMaxLoader.text().trim()) || 1;
+            root.brightNow = parseInt(brightNowLoader.text().trim()) || 0;
+        }
+    }
+
+    // tracked once at root — the bar's volume readout and the command-center
+    // slider both read the default sink/source through it
+    PwObjectTracker {
+        objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource]
+    }
+
+    // shared by the cpu/memory/temperature boxes: click opens btop
+    Process {
+        id: btop
+
+        command: ["sh", "-c", "pidof btop >/dev/null || uwsm app -- kitty -e btop"]
+        running: false
     }
 
     Timer {
@@ -288,17 +528,53 @@ ShellRoot {
 
     }
 
-    // separator between widgets
-    component BarSeparator: Rectangle {
-        Layout.preferredWidth: 1
-        Layout.preferredHeight: 12
+    // rounded group box: lays its children out in a centered row inside a
+    // slightly rounded background with a contrasting 1px border; `interactive`
+    // brightens on hover for clickable clusters (same treatment as the
+    // workspace pills). `tint` colors both fill and border.
+    component BarBox: Rectangle {
+        default property alias content: boxRow.data
+        property bool interactive: false
+        property color tint: "white"
+
+        Layout.preferredHeight: root.barHeight - 8
         Layout.alignment: Qt.AlignVCenter
-        Layout.leftMargin: root.gap
-        Layout.rightMargin: root.gap
-        color: root.col1
+        Layout.leftMargin: 3
+        Layout.rightMargin: 3
+        implicitWidth: boxRow.implicitWidth + 20
+        radius: 6
+        color: Qt.alpha(tint, interactive && boxHover.hovered ? 0.18 : 0.10)
+        border.width: 1
+        border.color: Qt.alpha(tint, interactive && boxHover.hovered ? 0.50 : 0.30)
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+
+        }
+
+        HoverHandler {
+            id: boxHover
+
+            cursorShape: interactive ? Qt.PointingHandCursor : Qt.ArrowCursor
+        }
+
+        RowLayout {
+            id: boxRow
+
+            anchors {
+                fill: parent
+                leftMargin: 10
+                rightMargin: 10
+            }
+
+            spacing: 5
+        }
+
     }
 
-    // short separator between stats inside one widget
+    // short separator between stats inside one box
     component MiniSeparator: Rectangle {
         Layout.preferredWidth: 1
         Layout.preferredHeight: 10
@@ -306,6 +582,120 @@ ShellRoot {
         Layout.leftMargin: 7
         Layout.rightMargin: 7
         color: root.col1
+    }
+
+    // ── command center building blocks ──
+
+    // card wrapping one command-center section; children land in an inner
+    // column pinned to the card's full width
+    component CcSection: Rectangle {
+        default property alias content: secCol.data
+
+        Layout.fillWidth: true
+        radius: 6
+        color: Qt.rgba(1, 1, 1, 0.05)
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, 0.15)
+        implicitHeight: secCol.implicitHeight + 16
+
+        ColumnLayout {
+            id: secCol
+
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: parent.top
+                margins: 8
+            }
+
+            spacing: 8
+        }
+
+    }
+
+    // small icon button used for transport, month nav and quick actions
+    component CcButton: Rectangle {
+        id: ccBtn
+
+        property string glyph
+        property var onActivate: () => {
+        }
+
+        implicitWidth: 34
+        implicitHeight: 26
+        radius: 5
+        color: btnMa.containsMouse ? Qt.alpha(root.col16, 0.30) : Qt.alpha(root.col16, 0.12)
+
+        Behavior on color {
+            ColorAnimation {
+                duration: 150
+            }
+
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: ccBtn.glyph
+            font.family: root.iconFont
+            font.pixelSize: root.iconSize
+            color: btnMa.containsMouse ? root.col15 : root.col14
+        }
+
+        MouseArea {
+            id: btnMa
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: ccBtn.onActivate()
+        }
+
+    }
+
+    // themed slider: thin accent track over a dim groove, round handle
+    component CcSlider: Slider {
+        id: ccSlider
+
+        implicitHeight: 22
+
+        background: Rectangle {
+            x: ccSlider.leftPadding
+            y: ccSlider.topPadding + (ccSlider.availableHeight - height) / 2
+            width: ccSlider.availableWidth
+            height: 4
+            radius: 2
+            color: Qt.alpha(root.col16, 0.15)
+
+            Rectangle {
+                width: ccSlider.visualPosition * parent.width
+                height: parent.height
+                radius: 2
+                color: root.col16
+            }
+
+        }
+
+        handle: Rectangle {
+            x: ccSlider.leftPadding + ccSlider.visualPosition * (ccSlider.availableWidth - width)
+            y: ccSlider.topPadding + (ccSlider.availableHeight - height) / 2
+            width: 12
+            height: 12
+            radius: 6
+            color: root.col15
+            border.width: 1
+            border.color: root.colBg
+        }
+
+    }
+
+    // right-aligned dim value readout next to a slider
+    component CcValueText: Text {
+        color: root.col5
+        font.pixelSize: root.fontSize - 1
+        font.family: root.fontFamily
+        Layout.preferredWidth: 34
+        horizontalAlignment: Text.AlignRight
+        verticalAlignment: Text.AlignVCenter
     }
 
     Variants {
@@ -331,6 +721,10 @@ ShellRoot {
                 right: 0
             }
 
+            // identifies the bar in `hyprctl layers` so the command center
+            // can anchor to its real (possibly stacked) position
+            WlrLayershell.namespace: "quickshell:bar"
+
             Rectangle {
                 anchors.fill: parent
                 color: root.colBg
@@ -340,12 +734,19 @@ ShellRoot {
                     spacing: 0
 
                     // ── left: workspaces ──
-                    Item {
+                    // one shared pill behind the row; the buttons keep their
+                    // own hover/active pill inside it
+                    Rectangle {
                         id: workspaceContainer
 
-                        Layout.fillHeight: true
+                        Layout.preferredHeight: root.barHeight - 8
+                        Layout.alignment: Qt.AlignVCenter
                         Layout.leftMargin: root.pad
-                        Layout.preferredWidth: workspaceRow.implicitWidth
+                        Layout.preferredWidth: workspaceRow.implicitWidth + 12
+                        radius: 6
+                        color: Qt.rgba(1, 1, 1, 0.10)
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.30)
 
                         MouseArea {
                             anchors.fill: parent
@@ -376,10 +777,12 @@ ShellRoot {
                                     property bool hasWindows: workspace ? workspace.toplevels.values.length > 0 : false
                                     property bool isActive: Hyprland.focusedWorkspace?.id === wsId
 
-                                    width: wsLabel.implicitWidth + 14
-                                    height: root.barHeight - 8
-                                    radius: height / 2
-                                    color: isActive ? Qt.rgba(1, 1, 1, 0.15) : (hoverArea.containsPress ? Qt.rgba(1, 1, 1, 0.11) : (hoverArea.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : "transparent"))
+                                    width: wsLabel.implicitWidth + 10
+                                    height: root.barHeight - 14
+                                    radius: 5
+                                    // active workspace gets a translucent accent
+                                    // fill — visible without shouting
+                                    color: isActive ? Qt.alpha(root.col16, 0.40) : (hoverArea.containsPress ? Qt.rgba(1, 1, 1, 0.13) : (hoverArea.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : "transparent"))
 
                                     Behavior on color {
                                         ColorAnimation {
@@ -433,13 +836,12 @@ ShellRoot {
                     }
 
                     // Media (MPRIS) — hidden entirely when nothing is playing
-                    RowLayout {
+                    BarBox {
                         visible: root.audioTitle !== ""
-                        Layout.fillHeight: true
-                        spacing: 6
+                        tint: root.activePlayer?.isPlaying ? root.col7 : root.col3
 
                         BarIcon {
-                            text: "󰎈"
+                            text: root.activePlayer?.isPlaying ? "󰎈" : "󰏤"
                             color: root.activePlayer?.isPlaying ? root.col7 : root.col3
                         }
 
@@ -452,180 +854,163 @@ ShellRoot {
 
                     }
 
-                    BarSeparator {
-                        visible: root.audioTitle !== ""
-                    }
-
+                    // Stats: volume + battery + resources share one box.
                     // Volume — click toggles mute, middle-click opens pavucontrol, wheel steps 1%
-                    Item {
-                        id: volumeRoot
+                    BarBox {
+                        interactive: true
 
-                        readonly property PwNode defaultSink: Pipewire.defaultAudioSink
-                        readonly property PwNode source: Pipewire.defaultAudioSource
+                        Item {
+                            id: volumeRoot
 
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: volumeRow.implicitWidth
+                            readonly property PwNode defaultSink: Pipewire.defaultAudioSink
+                            readonly property PwNode source: Pipewire.defaultAudioSource
 
-                        PwObjectTracker {
-                            objects: [Pipewire.defaultAudioSink, Pipewire.defaultAudioSource]
-                        }
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: volumeRow.implicitWidth
 
-                        RowLayout {
-                            id: volumeRow
+                            RowLayout {
+                                id: volumeRow
 
-                            anchors.centerIn: parent
-                            spacing: 5
+                                anchors.centerIn: parent
+                                spacing: 5
 
-                            BarIcon {
-                                text: volumeRoot.defaultSink?.audio?.muted ? "" : ""
-                            }
-
-                            BarText {
-                                text: Math.floor((volumeRoot.defaultSink?.audio?.volume || 0) * 100) + "%"
-                                color: volumeRoot.defaultSink?.audio?.muted ? root.col3 : root.col14
-                            }
-
-                        }
-
-                        Process {
-                            id: pavucontrolProc
-
-                            command: ["uwsm", "app", "--", "pavucontrol"]
-                            running: false
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: (event) => {
-                                if (event.button === Qt.MiddleButton) {
-                                    pavucontrolProc.running = true;
-                                    return ;
+                                BarIcon {
+                                    text: volumeIcon(volumeRoot.defaultSink?.audio?.muted ?? false, volumeRoot.defaultSink?.audio?.volume || 0)
                                 }
-                                if (volumeRoot.defaultSink?.audio)
-                                    volumeRoot.defaultSink.audio.muted = !volumeRoot.defaultSink.audio.muted;
+
+                                BarText {
+                                    text: Math.floor((volumeRoot.defaultSink?.audio?.volume || 0) * 100) + "%"
+                                    color: volumeRoot.defaultSink?.audio?.muted ? root.col3 : root.col14
+                                }
+
                             }
-                            onWheel: (wheel) => {
-                                if (!volumeRoot.defaultSink?.audio)
-                                    return ;
-                                // 1%
-                                let step = 0.01;
-                                let vol = volumeRoot.defaultSink.audio.volume;
-                                let newVol;
-                                if (wheel.angleDelta.y > 0)
-                                    newVol = Math.min(1, vol + step);
-                                else
-                                    newVol = Math.max(0, vol - step);
-                                volumeRoot.defaultSink.audio.volume = newVol;
-                                wheel.accepted = true;
+
+                            Process {
+                                id: pavucontrolProc
+
+                                command: ["uwsm", "app", "--", "pavucontrol"]
+                                running: false
                             }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: (event) => {
+                                    if (event.button === Qt.MiddleButton) {
+                                        pavucontrolProc.running = true;
+                                        return ;
+                                    }
+                                    if (volumeRoot.defaultSink?.audio)
+                                        volumeRoot.defaultSink.audio.muted = !volumeRoot.defaultSink.audio.muted;
+                                }
+                                onWheel: (wheel) => {
+                                    if (!volumeRoot.defaultSink?.audio)
+                                        return ;
+                                    // 1%
+                                    let step = 0.01;
+                                    let vol = volumeRoot.defaultSink.audio.volume;
+                                    let newVol;
+                                    if (wheel.angleDelta.y > 0)
+                                        newVol = Math.min(1, vol + step);
+                                    else
+                                        newVol = Math.max(0, vol - step);
+                                    volumeRoot.defaultSink.audio.volume = newVol;
+                                    wheel.accepted = true;
+                                }
+                            }
+
                         }
 
-                    }
+                        MiniSeparator { }
 
-                    BarSeparator { }
-
-                    // Battery
-                    RowLayout {
-                        visible: root.hasBattery
-                        Layout.fillHeight: true
-                        spacing: 5
-
-                        BarIcon {
-                            text: root.batteryIcon(root.batteryPerc)
-                            color: root.batteryColor(root.batteryPerc)
-                        }
-
-                        BarText {
-                            text: root.batteryPerc + "%"
-                            color: root.batteryColor(root.batteryPerc)
-                        }
-
-                    }
-
-                    BarSeparator {
-                        visible: root.hasBattery
-                    }
-
-                    // CPU / memory / temperature — click opens btop
-                    Item {
-                        id: resourcesContainer
-
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: resourcesRow.implicitWidth
-
-                        Process {
-                            id: btop
-
-                            command: ["sh", "-c", "pidof btop >/dev/null || uwsm app -- kitty -e btop"]
-                            running: false
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: btop.running = true
-                            cursorShape: Qt.PointingHandCursor
-                        }
-
+                        // Battery
                         RowLayout {
-                            id: resourcesRow
-
-                            anchors.centerIn: parent
+                            visible: root.hasBattery
+                            Layout.fillHeight: true
                             spacing: 5
 
                             BarIcon {
-                                text: ""
-                                color: root.cpuColor(root.cpuUsage)
+                                text: root.batteryIcon(root.batteryPerc)
+                                color: root.batteryColor(root.batteryPerc)
                             }
 
                             BarText {
-                                text: root.cpuUsage + "%"
-                                color: root.cpuColor(root.cpuUsage)
-                            }
-
-                            MiniSeparator { }
-
-                            BarIcon {
-                                text: ""
-                                color: root.memColor(root.memUsage)
-                            }
-
-                            BarText {
-                                text: root.memUsage + "%"
-                                color: root.memColor(root.memUsage)
-                            }
-
-                            MiniSeparator { }
-
-                            BarIcon {
-                                text: ""
-                                color: root.tempColor(root.cpuTemp)
-                            }
-
-                            BarText {
-                                text: root.cpuTemp.toFixed(1) + "°C"
-                                color: root.tempColor(root.cpuTemp)
+                                text: root.batteryPerc + "%"
+                                color: root.batteryColor(root.batteryPerc)
                             }
 
                         }
 
-                    }
+                        MiniSeparator {
+                            visible: root.hasBattery
+                        }
 
-                    BarSeparator {
-                        visible: sysTray.count > 0
+                        // CPU / memory / temperature — click opens btop
+                        // (shared root process)
+                        Item {
+                            id: resourcesContainer
+
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: resourcesRow.implicitWidth
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: btop.running = true
+                                cursorShape: Qt.PointingHandCursor
+                            }
+
+                            RowLayout {
+                                id: resourcesRow
+
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                BarIcon {
+                                    text: cpuIcon(root.cpuUsage)
+                                    color: root.cpuColor(root.cpuUsage)
+                                }
+
+                                BarText {
+                                    text: root.cpuUsage + "%"
+                                    color: root.cpuColor(root.cpuUsage)
+                                }
+
+                                MiniSeparator { }
+
+                                BarIcon {
+                                    text: memIcon(root.memUsage)
+                                    color: root.memColor(root.memUsage)
+                                }
+
+                                BarText {
+                                    text: root.memUsage + "%"
+                                    color: root.memColor(root.memUsage)
+                                }
+
+                                MiniSeparator { }
+
+                                BarIcon {
+                                    text: tempIcon(root.cpuTemp)
+                                    color: root.tempColor(root.cpuTemp)
+                                }
+
+                                BarText {
+                                    text: root.cpuTemp.toFixed(1) + "°C"
+                                    color: root.tempColor(root.cpuTemp)
+                                }
+
+                            }
+
+                        }
+
                     }
 
                     // Tray
-                    Item {
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: trayRow.implicitWidth
+                    BarBox {
                         visible: sysTray.count > 0
 
                         Row {
-                            id: trayRow
-
-                            anchors.centerIn: parent
                             spacing: 6
 
                             Repeater {
@@ -682,22 +1067,453 @@ ShellRoot {
 
                     }
 
-                    BarSeparator {
-                        visible: sysTray.count > 0
+                    // Clock — click toggles the command center
+                    BarBox {
+                        Layout.rightMargin: root.pad
+                        tint: root.col16
+                        interactive: true
+
+                        Item {
+                            id: clockRoot
+
+                            Layout.fillHeight: true
+                            Layout.preferredWidth: clockText.implicitWidth
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.toggleCc(modelData)
+                            }
+
+                            BarText {
+                                id: clockText
+
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Qt.locale().toString(clock.date, "dddd - dd/MM/yyyy - hh:mm")
+                                color: root.col16
+
+                                SystemClock {
+                                    id: clock
+
+                                    precision: SystemClock.Seconds
+                                }
+
+                            }
+
+                        }
+
                     }
 
-                    // Clock
-                    BarText {
-                        id: clockText
+                }
 
-                        text: Qt.locale().toString(clock.date, "dddd - dd/MM/yyyy - hh:mm")
-                        color: root.col16
-                        Layout.rightMargin: root.pad
+            }
 
-                        SystemClock {
-                            id: clock
+        }
 
-                            precision: SystemClock.Seconds
+    }
+
+    // ── command center click-catcher: a transparent full-screen layer under
+    // the popup on every monitor; clicking anywhere outside the popup closes it
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            property var modelData
+
+            screen: modelData
+            visible: root.ccOpen
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+
+            anchors {
+                top: true
+                left: true
+                right: true
+                bottom: true
+            }
+
+            WlrLayershell.layer: WlrLayer.Top
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: root.ccOpen = false
+            }
+
+        }
+
+    }
+
+    // ── command center panel: media, volume, brightness, quick actions,
+    // calendar — anchored under the clock on the screen whose clock was clicked
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            property var modelData
+
+            screen: modelData
+            visible: root.ccOpen && root.ccScreen === modelData
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+            implicitWidth: 340
+            implicitHeight: ccBox.implicitHeight
+
+            anchors {
+                top: true
+                right: true
+            }
+
+            margins {
+                top: (root.barTops[modelData.name] ?? 0) + root.barHeight
+                right: root.pad
+            }
+
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+
+            Rectangle {
+                id: ccBox
+
+                anchors.fill: parent
+                radius: 10
+                color: root.colBg
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.25)
+                implicitHeight: ccCol.implicitHeight + 20
+
+                ColumnLayout {
+                    id: ccCol
+
+                    anchors {
+                        fill: parent
+                        margins: 10
+                    }
+
+                    spacing: 10
+
+                    // ── media ──
+                    CcSection {
+                        visible: root.activePlayer !== null
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            Text {
+                                text: "󰎈"
+                                font.family: root.iconFont
+                                font.pixelSize: root.iconSize + 7
+                                color: root.activePlayer?.isPlaying ? root.col16 : root.col3
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: 150
+                                    }
+
+                                }
+
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                                Text {
+                                    text: root.audioTitle !== "" ? root.audioTitle : "No media"
+                                    color: root.col14
+                                    font.pixelSize: root.fontSize
+                                    font.family: root.fontFamily
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                Text {
+                                    text: root.audioAuthor
+                                    visible: root.audioAuthor !== ""
+                                    color: root.col5
+                                    font.pixelSize: root.fontSize - 1
+                                    font.family: root.fontFamily
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                            }
+
+                        }
+
+                        // progress: thin accent fill on a dim groove
+                        // (hidden for livestreams — no meaningful length)
+                        RowLayout {
+                            visible: root.activePlayer !== null && !root.mediaLive
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: root.fmtSec(root.activePlayer?.position ?? 0)
+                                color: root.col5
+                                font.pixelSize: root.fontSize - 1
+                                font.family: root.fontFamily
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 4
+                                radius: 2
+                                color: Qt.alpha(root.col16, 0.15)
+
+                                Rectangle {
+                                    width: parent.width * ((root.activePlayer && root.activePlayer.length > 0) ? Math.min(1, (root.activePlayer.position ?? 0) / root.activePlayer.length) : 0)
+                                    height: parent.height
+                                    radius: 2
+                                    color: root.col16
+                                }
+
+                            }
+
+                            Text {
+                                text: root.fmtSec(root.activePlayer?.length ?? 0)
+                                color: root.col5
+                                font.pixelSize: root.fontSize - 1
+                                font.family: root.fontFamily
+                            }
+
+                        }
+
+                        Row {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: 8
+
+                            CcButton {
+                                glyph: "󰒮"
+                                onActivate: () => root.activePlayer?.previous()
+                            }
+
+                            CcButton {
+                                implicitWidth: 44
+                                glyph: root.activePlayer?.isPlaying ? "󰏤" : "󰐊"
+                                onActivate: () => root.activePlayer?.togglePlaying()
+                            }
+
+                            CcButton {
+                                glyph: "󰒭"
+                                onActivate: () => root.activePlayer?.next()
+                            }
+
+                        }
+
+                    }
+
+                    // ── volume + brightness ──
+                    CcSection {
+                        RowLayout {
+                            visible: root.sinkAudio !== null
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            CcButton {
+                                implicitWidth: 28
+                                glyph: root.volumeIcon(root.sinkAudio?.muted ?? false, root.sinkAudio?.volume ?? 0)
+                                onActivate: () => {
+                                    if (root.sinkAudio)
+                                        root.sinkAudio.muted = !root.sinkAudio.muted;
+                                }
+                            }
+
+                            CcSlider {
+                                id: volSlider
+
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 1
+                                stepSize: 0.01
+                                value: volSlider.pressed ? volSlider.value : (root.sinkAudio?.volume ?? 0)
+                                onMoved: {
+                                    if (root.sinkAudio)
+                                        root.sinkAudio.volume = volSlider.value;
+                                }
+                            }
+
+                            CcValueText {
+                                text: Math.floor(volSlider.value * 100) + "%"
+                            }
+
+                        }
+
+                        RowLayout {
+                            visible: root.backlightPath !== ""
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            CcButton {
+                                implicitWidth: 28
+                                glyph: "󰃟"
+                                onActivate: () => {
+                                    // tap the icon: jump to 0 / back to previous
+                                    if (root.brightPerc > 0) {
+                                        root.ccPrevBright = root.brightNow;
+                                        root.brightNow = 0;
+                                    } else {
+                                        root.brightNow = root.ccPrevBright > 0 ? root.ccPrevBright : Math.round(root.brightMax / 3);
+                                    }
+
+                                    brightSet.command = ["brightnessctl", "-q", "set", Math.round(100 * root.brightNow / Math.max(1, root.brightMax)) + "%"];
+                                    brightSet.running = true;
+                                }
+                            }
+
+                            CcSlider {
+                                id: brightSlider
+
+                                Layout.fillWidth: true
+                                from: 0
+                                to: 100
+                                stepSize: 1
+                                value: brightSlider.pressed ? brightSlider.value : root.brightPerc
+                                onPressedChanged: {
+                                    if (pressed)
+                                        return ;
+
+                                    root.brightNow = Math.round(brightSlider.value / 100 * root.brightMax);
+                                    brightSet.command = ["brightnessctl", "-q", "set", Math.round(brightSlider.value) + "%"];
+                                    brightSet.running = true;
+                                }
+                            }
+
+                            CcValueText {
+                                text: Math.round(brightSlider.value) + "%"
+                            }
+
+                        }
+
+                    }
+
+                    // ── quick actions ──
+                    CcSection {
+                        Row {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: 8
+
+                            CcButton {
+                                glyph: "󰄀"
+                                onActivate: () => ccScreenshot.running = true
+                            }
+
+                            CcButton {
+                                glyph: "󰌾"
+                                onActivate: () => ccLock.running = true
+                            }
+
+                            CcButton {
+                                glyph: "󰻠"
+                                onActivate: () => btop.running = true
+                            }
+
+                        }
+
+                    }
+
+                    // ── calendar ──
+                    CcSection {
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            CcButton {
+                                glyph: "‹"
+                                onActivate: () => root.ccMonth = new Date(root.ccMonth.getFullYear(), root.ccMonth.getMonth() - 1, 1)
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: Qt.locale().standaloneMonthName(root.ccMonth.getMonth(), Locale.LongFormat) + " " + root.ccMonth.getFullYear()
+                                color: root.col14
+                                font.pixelSize: root.fontSize
+                                font.family: root.fontFamily
+                                font.bold: true
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.ccMonth = new Date(ccClock.date.getFullYear(), ccClock.date.getMonth(), 1)
+                                }
+
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                            }
+
+                            CcButton {
+                                glyph: "›"
+                                onActivate: () => root.ccMonth = new Date(root.ccMonth.getFullYear(), root.ccMonth.getMonth() + 1, 1)
+                            }
+
+                        }
+
+                        Row {
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: 2
+
+                            Repeater {
+                                model: root.ccWeekdays
+
+                                Item {
+                                    width: 40
+                                    height: 20
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData
+                                        color: root.col3
+                                        font.pixelSize: root.fontSize - 1
+                                        font.family: root.fontFamily
+                                    }
+
+                                }
+
+                            }
+
+                        }
+
+                        Grid {
+                            Layout.alignment: Qt.AlignHCenter
+                            columns: 7
+                            spacing: 2
+
+                            Repeater {
+                                model: root.ccCells
+
+                                Item {
+                                    id: ccDay
+
+                                    readonly property bool isToday: !modelData.other && new Date(root.ccMonth.getFullYear(), root.ccMonth.getMonth(), modelData.day).toDateString() === ccClock.date.toDateString()
+
+                                    width: 40
+                                    height: 24
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 5
+                                        color: ccDay.isToday ? Qt.alpha(root.col16, 0.40) : "transparent"
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.day
+                                        color: modelData.other ? root.col3 : (ccDay.isToday ? root.col15 : root.col14)
+                                        font.pixelSize: root.fontSize - 1
+                                        font.family: root.fontFamily
+                                        font.bold: ccDay.isToday
+                                    }
+
+                                }
+
+                            }
+
                         }
 
                     }
