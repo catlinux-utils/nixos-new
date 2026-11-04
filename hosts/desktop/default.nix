@@ -71,7 +71,6 @@
     printing.enable = true;
     geolocation.enable = true;
     tailscale.enable = true;
-    syncthing.enable = true;
   };
 
   # first-install marker — do NOT bump together with the nixpkgs pin
