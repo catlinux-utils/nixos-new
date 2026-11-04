@@ -16,7 +16,7 @@ Only items actionable right now. Phases and long-term work live in [PLAN.md](PLA
       (`cat`), locale (`Europe/Warsaw`, `en_US.UTF-8`, `pl` keyboard), git email (the
       legacy-flake identity, set in §2.2)
 - [ ] Clone the repo onto the other machines at `~/github/nixos` (`cfg.nh.flakeDir` now points there)
-- [ ] First deploy per host: set `cfg.user.initialHashedPassword` first (locked account otherwise
+- [ ] First deploy per host: set `cfg.user.initialPassword` first (locked account otherwise
       — see PLAN Phase 2), then `nh os switch --dry` → `nh os test` → `nh os switch`
 - [ ] After the desktop's first deploy: verify the theming flow — login seeds
       `~/.local/state/theming/current` + palette renders (bar/mako/kitty/gtk/rofi/hyprlock

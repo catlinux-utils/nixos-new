@@ -288,7 +288,7 @@ nh os switch
 nh home switch
 ```
 
-**If you set `cfg.user.initialHashedPassword` in the host config** (required for first login — see PLAN Phase 2), you can log in as your user immediately. Otherwise the account is locked until you set a password via `passwd` from a root shell.
+**If you set `cfg.user.initialPassword` in the host config** (required for first login — see PLAN Phase 2), you can log in as your user immediately. Otherwise the account is locked until you set a password via `passwd` from a root shell.
 
 **WSL host** — different flow: the flake lives on the WSL Linux side (`cfg.nh.flakeDir` = `/home/cat/nixos` in `hosts/wsl/default.nix` — never on `/mnt/c`, 9p is too slow for nix), and you run `wsl.exe -d NixOS` to enter.
 

@@ -23,8 +23,8 @@ These modules apply on every host — only their value options are configurable:
 | `nix.nix` | — | Lix, flakes, allowUnfree, store optimisation, pinned registry, no channels, GC-survivor settings for direnv |
 | `nh.nix` | `cfg.nh.flakeDir` (path, `/etc/nixos`; mkHost defaults it to `/home/<user>/github/nixos`) | `nh` CLI + daily GC (`--keep 5 --keep-since 3d`); flake path via `NH_FLAKE` |
 | `locale.nix` | `cfg.locale.timeZone` (str, `Europe/Warsaw`) · `cfg.locale.defaultLocale` (str, `en_US.UTF-8`) · `cfg.locale.keyboard` (str, `pl`) | timezone, locale set, console + X/Wayland keymap |
-| `users.nix` | `cfg.user.name` (str, `cat`) · `cfg.user.fullName` (str, `ThePolishcat`) · `cfg.user.initialHashedPassword` (nullOr str, `null`) | creates the main user (wheel, zsh login shell); password only for first deploy |
-| `mkHost.nix` (lib/) | `cfg.git.remote` (nullOr str, `null`) | when the flake dir (`cfg.nh.flakeDir`) exists but has no `.git` (e.g. the git-cleaned copy from `scripts/nixos-copy-repo`), an activation script inits one with this remote and hands it to `cfg.user.name` — hardware-configuration changes can then be committed and pushed from the host (identity: `cfg.home.git`) |
+| `users.nix` | `cfg.user.name` (str, `cat`) · `cfg.user.fullName` (str, `ThePolishcat`) · `cfg.user.initialPassword` (nullOr str, `"cat"`) | creates the main user (wheel, zsh login shell); password only for first deploy |
+| `mkHost.nix` (lib/) | `cfg.git.remote` (nullOr str, `null`) | origin URL for the flake working copy; `scripts/nixos-copy-repo` reads it from the host file and preconfigures the delivered copy's git (origin + main tracking, owned by `cfg.user.name`) — hardware-configuration changes can then be committed and pushed from the host (identity: `cfg.home.git`) |
 
 ## System feature switches
 
@@ -114,7 +114,7 @@ maintenance is the `cfg.btrfsMaintenance` switch (`modules/nixos/maintenance/btr
 | `cfg.compat.nix-ld.libraries` | listOf package, `[]` | libs for non-Nix binaries |
 | `cfg.backup.restic.jobs` | attrsOf anything, `{}` | assigned to `services.restic.backups` (26.05-verified fields); credentials via `config.sops.secrets.<name>.path` |
 | `cfg.backup.borg.jobs` | attrsOf anything, `{}` | assigned to `services.borgbackup.jobs`; secrets via `passCommand`/`environment` referencing sops files, never values |
-| `cfg.user.initialHashedPassword` | nullOr str, `null` | first-deploy password — locked account without it (see PLAN Phase 2) |
+| `cfg.user.initialPassword` | nullOr str, `"cat"` | first-deploy password — locked account without it (see PLAN Phase 2) |
 | `cfg.updates.auto.dates` / `.operation` / `.allowReboot` | str, `04:40` · enum `switch|boot`, `switch` · bool, off | timer schedule · switch vs stage-for-reboot · reboot consent |
 | `cfg.boot.secureBoot.autoKeys.enable` / `.measuredBoot.enable` | bool, off | auto-generate + auto-enroll the sbctl key bundle into firmware NVRAM · systemd-pcrlock PCR policy (caps boot generations at 4) |
 | `cfg.attic.port` / `.environmentFile` / `.settings` | port, `8080` · nullOr path, `null` (required when enabled) · attrs, `{}` | listen port (firewall-opened) · sops-decrypted env file — `config.sops.secrets.<name>.path`, never a value · settings.toml passthrough |

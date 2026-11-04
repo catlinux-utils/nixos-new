@@ -33,7 +33,7 @@ A host is one directory plus one flake line — `lib/mkHost.nix` does the assemb
    leave the irrelevant toggles (audio, graphics, NetworkManager) off.
 
 6. **First-deploy safety (locked-account rule):** before the first `nh os switch` on a fresh
-   machine, the host file must set `cfg.user.initialHashedPassword` (or enroll the admin key
+   machine, the host file must set `cfg.user.initialPassword` (or enroll the admin key
    into root's `openssh.authorizedKeys`). With no password the account is locked: key-SSH
    works, but `sudo`, console and GDM login all fail — nothing fixable remotely. Flag this to
    the user if it's missing from a new host file.

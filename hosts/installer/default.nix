@@ -55,9 +55,10 @@ in
     user = {
       name = "nixos";
       fullName = "Live installer (nixos)";
-      # mirrors upstream installation-device's "" (it wins anyway) and gates
-      # the promptless keyring seed (modules/home/keyring.nix)
-      initialHashedPassword = "";
+      # upstream installation-device.nix already sets initialHashedPassword = ""
+      # for this user; null keeps users.nix from setting a second password
+      # option on the same account (eval warning otherwise)
+      initialPassword = null;
     };
 
     # the live environment boots into the repo's Hyprland desktop (GDM

@@ -80,7 +80,7 @@ Notes:
   (home of the passwordless `nixos` user) — install straight from there with
   `nixos-install --flake ~/github/nixos#<host>`, no clone needed. The copy is
   git-cleaned (no `.git`); re-clone or pull for editing history.
-- The `cat` user ships with initial password `cat` (`cfg.user.initialHashedPassword`
+- The `cat` user ships with initial password `cat` (`cfg.user.initialPassword`
   in the host config) — change it on first login.
 - Helper scripts: `nixos-disk`, `nixos-mount` (mount / `--umount`), `nixos-format-part`,
   `nixos-copy-repo` (repo onto the target pre-reboot) —

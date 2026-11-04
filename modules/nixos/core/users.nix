@@ -16,12 +16,12 @@
       default = "ThePolishcat";
       description = "Full name (GECOS) of the main user.";
     };
-    initialHashedPassword = lib.mkOption {
+    initialPassword = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
-      default = "$6$rounds=656000$abcdefghijklmnop$pQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQeQe"; # "cat" hashed
+      default = "cat";
       description = ''
-        Hashed password applied at first deploy only (`mkpasswd -m sha-512`).
-        Default is "cat" (replace with your own: run `mkpasswd -m sha-512 cat` on target).
+        Plaintext password applied at first deploy only (`users.users.<name>.initialPassword`).
+        Default is "cat" (replace with your own in the host file).
         Leave null only when SSH keys for the main user are already in place:
         with no password set the account is locked — key-SSH works, but sudo,
         console and display-manager login all fail.
@@ -41,8 +41,8 @@
       # mkDefault: upstream installation-device.nix (imported by the installer
       # host) sets "" for its passwordless `nixos` user and must win over this
       # placeholder on live media
-      initialHashedPassword = lib.mkIf (config.cfg.user.initialHashedPassword != null) (
-        lib.mkDefault config.cfg.user.initialHashedPassword
+      initialPassword = lib.mkIf (config.cfg.user.initialPassword != null) (
+        lib.mkDefault config.cfg.user.initialPassword
       );
     };
   };

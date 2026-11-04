@@ -156,7 +156,7 @@ forced:
 7. installer — `pkgs.path` in `imports` forces the `pkgs` module arg (only reachable through
    `config`) → infinite recursion; now `inputs.nixpkgs`. Base mirrors the iso variant's media
    overrides (26.05 defaults `grub.enable` on for non-containers; stage-1 asserts a root fs).
-   Dead `gdm.wayland` flag dropped (GNOME 50). `initialHashedPassword` set via `mkDefault` so
+   Dead `gdm.wayland` flag dropped (GNOME 50). `initialPassword` set via `mkDefault` so
    upstream's passwordless `""` wins on live media.
 8. HM ssh — deprecated aliases → `programs.ssh.settings."*"`, `enableDefaultConfig = false`.
 
@@ -238,7 +238,7 @@ is refreshed by the weekly flake-update cron.
 **Rollout order** — server (or a `build-vm` sandbox) first, laptop second, daily-driver desktop
 last: the first real deploy exercises the spec on the lowest-stakes machine.
 
-**First deploy, every host** — set `cfg.user.initialHashedPassword` (or enroll the admin key into
+**First deploy, every host** — set `cfg.user.initialPassword` (or enroll the admin key into
 root's `openssh.authorizedKeys`) before the first `nh os switch`: with no password set the account
 is locked — key-SSH works, but `sudo`, console and GDM login all fail, leaving nothing fixable
 remotely.

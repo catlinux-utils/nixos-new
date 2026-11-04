@@ -48,7 +48,7 @@
     # the Windows side own them); no firewall — WSL traffic is filtered on
     # the Windows side and nftables here would only block Windows→WSL access.
     # Passwordless sudo comes from NixOS-WSL (wheelNeedsPassword = false), so
-    # no initialHashedPassword is needed before the first `nh os switch`.
+    # no initialPassword is needed before the first `nh os switch`.
     networking.firewall.enable = false;
     compat.nix-ld.enable = true; # vscode-server (VS Code WSL remote)
   };
