@@ -4,6 +4,11 @@
 
 set -euo pipefail
 
+# ─── Config ──────────────────────────────────────────────────────────
+DISK=""
+INTERACTIVE="no"       # yes = interactive partition selection (default if no -p)
+AUTO_YES="no"          # yes = skip confirmations
+
 # ─── Pretty ──────────────────────────────────────────────────────────
 RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
 info() { echo -e "${BLU}[info]${NC} $*"; }
@@ -11,7 +16,7 @@ ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
 warn() { echo -e "${YEL}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC}  $*"; }
 
-# ─── State ───────────────────────────────────────────────────────────
+# ─── Partition state ─────────────────────────────────────────────────
 declare -A PART_PATH      # label -> /dev/...
 declare -A PART_LABEL     # label -> label (identity)
 declare -A PART_FS        # label -> fs type
@@ -20,6 +25,7 @@ declare -A PART_CRYPT_LABEL # label -> LUKS label
 declare -A PART_SUBVOLS   # label -> "subvol1 subvol2 ..."
 declare -A PART_MOUNT     # label -> mountpoint (for subvol creation)
 
+# ─── Usage ───────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: nixos-format-part [options]
@@ -58,10 +64,6 @@ EOF
 }
 
 # ─── Parse args ──────────────────────────────────────────────────────
-DISK=""
-INTERACTIVE=false
-AUTO_YES=false
-
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -97,8 +99,8 @@ parse_args() {
         local label="${kv%%=*}" mount="${kv#*=}"
         PART_MOUNT["$label"]="$mount"
         ;;
-      -i|--interactive) INTERACTIVE=true; shift ;;
-      -y|--yes) AUTO_YES=true; shift ;;
+      -i|--interactive) INTERACTIVE="yes"; shift ;;
+      -y|--yes) AUTO_YES="yes"; shift ;;
       -h|--help) usage; exit 0 ;;
       -*) err "Unknown option: $1"; usage; exit 1 ;;
       *) err "Unexpected argument: $1"; usage; exit 1 ;;
@@ -207,7 +209,7 @@ validate_config() {
 }
 
 confirm_proceed() {
-  $AUTO_YES && return 0
+  [[ "$AUTO_YES" == "yes" ]] && return 0
   echo
   warn "Will format the following partitions:"
   for label in "${!PART_PATH[@]}"; do
@@ -293,9 +295,9 @@ format_partition() {
 
 # ─── Main ────────────────────────────────────────────────────────────
 main() {
-  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
   parse_args "$@"
-  $INTERACTIVE && select_partitions_interactive
+  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
+  [[ "$INTERACTIVE" == "yes" ]] && select_partitions_interactive
   validate_config
   confirm_proceed
 

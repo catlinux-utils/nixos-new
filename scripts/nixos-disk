@@ -5,8 +5,9 @@
 
 set -euo pipefail
 
-# ─── Config (set via flags or prompts) ──────────────────────────────
+# ─── Config ──────────────────────────────────────────────────────────
 DISK=""
+MNT="/mnt"
 ENCRYPT_ROOT="yes"
 ENCRYPT_HOME="no"
 ENCRYPT_SWAP="yes"
@@ -21,13 +22,14 @@ BOOT_SIZE="1G"
 ROOT_SIZE=""           # empty = rest of disk
 HOME_SIZE=""           # empty = separate partition if ENCRYPT_HOME=yes
 
-# ─── Pretty ─────────────────────────────────────────────────────────
+# ─── Pretty ──────────────────────────────────────────────────────────
 RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
 info() { echo -e "${BLU}[info]${NC} $*"; }
 ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
 warn() { echo -e "${YEL}[warn]${NC} $*"; }
 err()  { echo -e "${RED}[err]${NC}  $*"; }
 
+# ─── Usage ───────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
 Usage: nixos-disk [options] <disk>
@@ -46,6 +48,7 @@ Options:
   --root-size SIZE          Root partition size (default: rest)
   --home-size SIZE          Home partition size (default: rest)
   --hostname NAME           Hostname for generated config (default: nixos)
+  --mnt PATH                Mountpoint for subvolume creation (default: /mnt)
   -h, --help                Show this help
 
 Examples:
@@ -55,7 +58,7 @@ Examples:
 EOF
 }
 
-# ─── Parse args ─────────────────────────────────────────────────────
+# ─── Parse args ──────────────────────────────────────────────────────
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -72,6 +75,7 @@ parse_args() {
       --root-size) ROOT_SIZE="$2"; shift 2 ;;
       --home-size) HOME_SIZE="$2"; shift 2 ;;
       --hostname) HOSTNAME="$2"; shift 2 ;;
+      --mnt) MNT="$2"; shift 2 ;;
       -h|--help) usage; exit 0 ;;
       -*) err "Unknown option: $1"; usage; exit 1 ;;
       *) DISK="$1"; shift ;;
@@ -79,7 +83,7 @@ parse_args() {
   done
 }
 
-# ─── Interactive prompts ────────────────────────────────────────────
+# ─── Interactive prompts ─────────────────────────────────────────────
 prompt_config() {
   echo -e "${BLU}=== NixOS Disk Configuration ===${NC}"
   echo
@@ -105,7 +109,7 @@ prompt_config() {
     esac
   done
 
-  # Encryption
+  # Encryption and swap
   echo
   read -rp "$(echo -e "${BLU}Encrypt root? [Y/n]:${NC} ")" ans
   ENCRYPT_ROOT="${ans:-y}"
@@ -115,7 +119,8 @@ prompt_config() {
   }
 
   if [[ "$LAYOUT" != "server" ]]; then
-    read -rp "$(echo -e "${BLU}Create swap partition? [${USE_SWAP}]:${NC} ")" ans
+    local swap_def="Y/n"; [[ "$USE_SWAP" =~ ^[Yy] ]] || swap_def="y/N"
+    read -rp "$(echo -e "${BLU}Create swap partition? [${swap_def}]:${NC} ")" ans
     USE_SWAP="${ans:-$USE_SWAP}"
     if [[ "$USE_SWAP" =~ ^[Yy] ]]; then
       read -rp "$(echo -e "${BLU}Encrypt swap? [Y/n]:${NC} ")" ans
@@ -149,9 +154,7 @@ prompt_config() {
   read -rp "$(echo -e "${BLU}Hostname [${HOSTNAME}]:${NC} ")" ans; HOSTNAME="${ans:-$HOSTNAME}"
 }
 
-# ─── Partition helpers ──────────────────────────────────────────────
-part_num() { echo "${1}$( [[ "$1" =~ nvme ]] && echo "p" || echo "" )${2}"; }
-
+# ─── Partition helpers ───────────────────────────────────────────────
 create_partitions() {
   info "Wiping and creating GPT on $DISK..."
   sgdisk --zap-all "$DISK"
@@ -214,16 +217,16 @@ create_subvolumes() {
   fi
 }
 
-# ─── Main ───────────────────────────────────────────────────────────
+# ─── Main ────────────────────────────────────────────────────────────
 main() {
-  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
   parse_args "$@"
+  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
   [[ -z "$DISK" ]] && prompt_config
 
   # Show plan
   echo
   warn "Plan for $DISK:"
-  echo "  Layout:      $LAYOUT"
+  echo "  Layout:       $LAYOUT"
   echo "  Encrypt root: $ENCRYPT_ROOT"
   echo "  Encrypt home: $ENCRYPT_HOME"
   echo "  Encrypt swap: $ENCRYPT_SWAP"
@@ -262,16 +265,16 @@ main() {
   [[ "$ENCRYPT_ROOT" =~ ^[Yy] ]] && root_dev="/dev/mapper/cryptroot" || root_dev="$CRYPTROOT"
   format_partition "$ESP" "ESP" "$FS_BOOT" "no"
   format_partition "$CRYPTROOT" "cryptroot" "$FS_ROOT" "$ENCRYPT_ROOT"
-  create_subvolumes "/mnt" "cryptroot" "$FS_ROOT" "$root_dev"
+  create_subvolumes "$MNT" "cryptroot" "$FS_ROOT" "$root_dev"
 
   [[ "$ENCRYPT_HOME" =~ ^[Yy] && -n "$CRYPTHOME" ]] && {
     format_partition "$CRYPTHOME" "crypthome" "$FS_HOME" "yes"
-    create_subvolumes "/mnt/home" "crypthome" "$FS_HOME" "/dev/mapper/crypthome"
+    create_subvolumes "$MNT/home" "crypthome" "$FS_HOME" "/dev/mapper/crypthome"
   }
 
   [[ "$LAYOUT" == "server" && -n "$CRYPTDATA" ]] && {
     format_partition "$CRYPTDATA" "cryptdata" "btrfs" "yes"
-    create_subvolumes "/mnt/var/lib" "cryptdata" "btrfs" "/dev/mapper/cryptdata"
+    create_subvolumes "$MNT/var/lib" "cryptdata" "btrfs" "/dev/mapper/cryptdata"
   }
 
   [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] && "$ENCRYPT_SWAP" =~ ^[Yy] && -n "$CRYPTSWAP" ]] && {
