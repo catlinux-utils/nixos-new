@@ -71,6 +71,11 @@ in
         ../desktop/wallpapers/ember.png
       ];
       hyprland.wallpaper = ../desktop/wallpapers/dusk.png;
+
+      # slim live env: drop the editor and media player — the installer needs
+      # the session + terminal tooling; browser, file manager and gparted stay
+      vscode.enable = false;
+      mpv.enable = false;
     };
 
     networking = {

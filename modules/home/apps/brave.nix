@@ -4,8 +4,9 @@
   ...
 }:
 {
-  # rides the system desktop switch — no browser on headless hosts
-  config = lib.mkIf osConfig.cfg.desktop.enable {
+  # rides the system desktop switch — no browser on headless hosts;
+  # cfg.home.brave.enable drops it per host (the installer ISO does)
+  config = lib.mkIf (osConfig.cfg.desktop.enable && osConfig.cfg.home.brave.enable) {
     # native HM namespace (not the legacy programs.chromium wrapper trick):
     # release-26.05 supports brave directly, incl. its BraveSoftware config dir
     programs.brave = {
