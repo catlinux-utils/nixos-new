@@ -22,7 +22,7 @@
     };
 
     # where this flake lives on this machine (drives nh)
-    nh.flakeDir = /etc/nixos; # TODO: real repo path
+    nh.flakeDir = /home/cat/github/nixos;
 
     # git identity
     home.git = {

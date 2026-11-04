@@ -30,14 +30,10 @@ sudo ./scripts/nixos-mount /dev/nvme0n1
 sudo nixos-generate-config --show-hardware-config --no-filesystems \
   > hosts/desktop/hardware-configuration.nix
 
-# 4. Commit the hardware config
-git add hosts/desktop/hardware-configuration.nix
-git commit -m "desktop: add hardware config"
+# 4. Install (root: nixos-install lays down the target's system closure)
+sudo nixos-install --flake .#desktop --root /mnt
 
-# 5. Install
-nixos-install --flake .#desktop --root /mnt
-
-# 6. Reboot into the new system
+# 5. Reboot into the new system
 reboot
 ```
 
@@ -59,14 +55,10 @@ sudo ./scripts/nixos-mount /dev/nvme0n1
 sudo nixos-generate-config --show-hardware-config --no-filesystems \
   > hosts/desktop/hardware-configuration.nix
 
-# 4. Commit the hardware config
-git add hosts/desktop/hardware-configuration.nix
-git commit -m "desktop: add hardware config"
+# 4. Install (root: nixos-install lays down the target's system closure)
+sudo nixos-install --flake .#desktop --root /mnt
 
-# 5. Install
-nixos-install --flake .#desktop --root /mnt
-
-# 6. Reboot into the new system
+# 5. Reboot into the new system
 reboot
 ```
 
@@ -75,14 +67,12 @@ reboot
 ### Post-Install: On the booted target machine, clone repo & rebuild
 
 ```bash
-# Clone flake to where nh expects it (default /etc/nixos)
-git clone https://github.com/ThePolishcat/nixos-new.git /etc/nixos
-cd /etc/nixos
+# With the installer ISO flow the repo is already at ~/github/nixos
+# (copied onto the target before reboot). Otherwise clone it there:
+git clone https://github.com/ThePolishcat/nixos-new.git ~/github/nixos
+cd ~/github/nixos
 
-# Fix ownership so your user can run nh
-chown -R cat:users /etc/nixos
-
-# First rebuild — dry-run, then switch
+# First rebuild — dry-run, then switch (nh reads cfg.nh.flakeDir = ~/github/nixos)
 nh os switch --dry
 nh os switch
 
@@ -109,7 +99,7 @@ sudo ./scripts/nixos-disk \
   /dev/nvme0n1
 
 sudo ./scripts/nixos-mount /dev/nvme0n1
-nixos-install --flake .#desktop --root /mnt
+sudo nixos-install --flake .#desktop --root /mnt
 ```
 
 ### Laptop: separate encrypted /home
@@ -122,7 +112,7 @@ sudo ./scripts/nixos-disk \
   /dev/nvme0n1
 
 sudo ./scripts/nixos-mount /dev/nvme0n1
-nixos-install --flake .#laptop --root /mnt
+sudo nixos-install --flake .#laptop --root /mnt
 ```
 
 ### Server: root + separate data partition
@@ -131,7 +121,7 @@ nixos-install --flake .#laptop --root /mnt
 sudo ./scripts/nixos-disk --layout server /dev/nvme0n1
 
 sudo ./scripts/nixos-mount /dev/nvme0n1
-nixos-install --flake .#server --root /mnt
+sudo nixos-install --flake .#server --root /mnt
 ```
 
 ### Existing Partitions (non-interactive format-part)
@@ -147,7 +137,7 @@ sudo ./scripts/nixos-format-part \
   -y
 
 sudo ./scripts/nixos-mount /dev/nvme0n1
-nixos-install --flake .#desktop --root /mnt
+sudo nixos-install --flake .#desktop --root /mnt
 ```
 
 ---
@@ -205,12 +195,7 @@ This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detec
 
 `sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs even with `--no-filesystems`.
 
-**Commit it:**
-
-```bash
-git add hosts/desktop/hardware-configuration.nix
-git commit -m "desktop: add hardware config"
-```
+**Commit it later, from a machine with the repo's `.git`** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via the repo copy onto the target (see Post-Install) or by pushing from any machine that has it; commit + push from the booted host as the follow-up.
 
 Repeat for each host (`laptop`, `server`). The `wsl` host doesn't need one — NixOS-WSL owns boot and the filesystem.
 
@@ -218,23 +203,21 @@ Repeat for each host (`laptop`, `server`). The `wsl` host doesn't need one — N
 
 ## Post-Install: Copy Repo to Host & First Rebuild
 
-After `nixos-install` completes and you reboot into the new system, the flake isn't on the host yet. Clone it to the location `cfg.nh.flakeDir` expects (default `/etc/nixos`), then run the first rebuild:
+After `nixos-install` completes and you reboot into the new system, the flake lives at `~/github/nixos` (`cfg.nh.flakeDir` on desktop/laptop/server) — the installer-ISO flow copies the repo there before reboot; on other flows, clone it as your user:
 
 ```bash
-# On the target machine (as root or your user with sudo):
+# On the target machine, as your user (no sudo — it's your home dir):
 
-# 1. Clone the repo to /etc/nixos (adjust URL/branch)
-git clone https://github.com/ThePolishcat/nixos-new.git /etc/nixos
-cd /etc/nixos
+# 1. Skip if the repo is already at ~/github/nixos (installer-ISO flow);
+#    otherwise clone it (adjust URL/branch):
+git clone https://github.com/ThePolishcat/nixos-new.git ~/github/nixos
 
-# 2. Ensure your user owns it (so nh can write the flake lock, etc.)
-chown -R cat:users /etc/nixos
-
-# 3. First rebuild — dry-run to verify, then switch
+# 2. First rebuild — dry-run to verify, then switch
+cd ~/github/nixos
 nh os switch --dry
 nh os switch
 
-# 4. (Optional) Home Manager only
+# 3. (Optional) Home Manager only
 nh home switch
 ```
 

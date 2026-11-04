@@ -30,7 +30,8 @@ The ISO embeds the **committed** repo tree (available in the live session at
 
 ## Usage
 
-The flake lives wherever the host's `cfg.nh.flakeDir` points (default `/etc/nixos`):
+The flake lives wherever the host's `cfg.nh.flakeDir` points — `~/github/nixos` on all
+real hosts (`/etc/nixos` is only the option's fallback default):
 
 ```bash
 nh os switch    # build & activate OS + Home Manager for this host
@@ -64,15 +65,15 @@ sudo ./scripts/nixos-mount /dev/nvme0n1
 sudo nixos-generate-config --show-hardware-config --no-filesystems \
   > hosts/desktop/hardware-configuration.nix
 
-# 4. Install
-nixos-install --flake .#desktop --root /mnt
+# 4. Install (sudo: nixos-install lays down the target's system closure)
+sudo nixos-install --flake .#desktop --root /mnt
 
-# 6. Copy the cloned repo onto the new system (before reboot)
-mkdir -p /mnt/home/cat/github
-cp -r . /mnt/home/cat/github/nixos
-chown -R 1000:100 /mnt/home/cat/github/nixos   # numeric IDs: target isn't booted yet
+# 5. Copy the cloned repo onto the new system (before reboot; /mnt needs root)
+sudo mkdir -p /mnt/home/cat/github
+sudo cp -r . /mnt/home/cat/github/nixos
+sudo chown -R 1000:100 /mnt/home/cat/github/nixos   # numeric IDs: target isn't booted yet
 
-# 7. Reboot, then run `nh os switch` from ~/github/nixos
+# 6. Reboot, then run `nh os switch` from ~/github/nixos
 reboot
 ```
 

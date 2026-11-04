@@ -179,7 +179,7 @@ file manager and gparted stay useful during an install).
 |---|---|---|---|---|
 | `cfg.user.name` | `cat` | `cat` | `cat` | `cat` |
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
-| `cfg.nh.flakeDir` | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/etc/nixos` (TODO real path) | `/home/cat/nixos` |
+| `cfg.nh.flakeDir` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/nixos` (WSL-specific) |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
 | `cfg.home.hyprland.wallpaper` | `./wallpapers/dusk.png` (install-time default) | – | – | – |
 | `cfg.home.hyprland.lock` | ✓ | – | – | – |
