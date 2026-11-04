@@ -21,10 +21,9 @@
       keyboard = "pl";
     };
 
-    # where this flake lives on this machine (drives nh)
-    nh.flakeDir = /home/cat/github/nixos;
-
     # git identity
+    git.remote = "git@github.com:ThePolishcat/nixos-new.git";
+
     home.git = {
       name = "ThePolishcat";
       email = "88453875+PolskiKocurek@users.noreply.github.com";

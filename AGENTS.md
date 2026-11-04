@@ -156,10 +156,9 @@ in the same commit.
 ## Recipes
 
 ### Add a host
-
 1. Create `hosts/<name>/default.nix` — the self-contained host entry: one `cfg = { ... }` tree,
-   sectioned identity (`user`), locale, `nh.flakeDir`, git identity (`home.git`), then feature
-   switches.
+   sectioned identity (`user`), locale, git remote (`git.remote`) + identity (`home.git`), then
+   feature switches.
 2. Create `hosts/<name>/hardware-configuration.nix` — real one from `nixos-generate-config` on the
    machine (never hand-write disk config).
 3. Register in `flake.nix`: `nixosConfigurations.<name> = mkHost { hostname = "<name>"; };`

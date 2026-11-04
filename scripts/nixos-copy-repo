@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# nixos-copy-repo — copy this repo onto the target system before first boot
+# The target username is read from hosts/<host>/default.nix (cfg.user.name) —
+# nothing hardcoded, so the copy lands where cfg.nh.flakeDir points.
+
+set -euo pipefail
+
+# ─── Config ──────────────────────────────────────────────────────────
+MNT="/mnt"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+HOST=""
+TREE_UID="1000"    # uid:gid for the copied tree — NixOS's first user
+
+# ─── Pretty ──────────────────────────────────────────────────────────
+RED='\033[0;31m'; GRN='\033[0;32m'; YEL='\033[1;33m'; BLU='\033[0;34m'; NC='\033[0m'
+info() { echo -e "${BLU}[info]${NC} $*"; }
+ok()   { echo -e "${GRN}[ok]${NC}  $*"; }
+warn() { echo -e "${YEL}[warn]${NC} $*"; }
+err()  { echo -e "${RED}[err]${NC}  $*"; }
+
+# ─── Usage ───────────────────────────────────────────────────────────
+usage() {
+  cat <<EOF
+Usage: nixos-copy-repo [options] <host>
+
+Copies this repo to \$MNT/home/<user>/github/nixos so the installed system
+boots with the flake (and any uncommitted changes — e.g. the generated
+hardware-configuration.nix) already at the path cfg.nh.flakeDir points at.
+<user> is read from the host's cfg.user.name; nothing is hardcoded.
+
+Options:
+  --mnt PATH     Mount point (default: /mnt)
+  --uid N        uid:gid to own the copied tree (default: 1000 — NixOS's
+                 first user; numeric because the target isn't booted yet)
+  -h, --help     Show help
+EOF
+}
+
+# ─── Parse args ──────────────────────────────────────────────────────
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      --mnt) MNT="$2"; shift 2 ;;
+      --uid) TREE_UID="$2"; shift 2 ;;
+      -h|--help) usage; exit 0 ;;
+      -*) err "Unknown option: $1"; usage; exit 1 ;;
+      *)
+        [[ -n "$HOST" ]] && { err "Only one host argument expected."; usage; exit 1; }
+        HOST="$1"; shift ;;
+    esac
+  done
+}
+
+# ─── Main ────────────────────────────────────────────────────────────
+main() {
+  parse_args "$@"
+  [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
+  [[ -z "$HOST" ]] && { err "Host name required."; usage; exit 1; }
+
+  local hostfile="$REPO/hosts/$HOST/default.nix"
+  [[ -f "$hostfile" ]] || { err "No such host: $HOST ($hostfile missing)."; exit 1; }
+
+  # cfg.user.name — the name = "..." inside the user = { ... } block
+  local target_user
+  target_user=$(sed -n '/user = {/,/};/p' "$hostfile" \
+                | sed -n 's/^ *name = "\(.*\)";.*/\1/p' | head -1)
+  [[ -z "$target_user" ]] && { err "cfg.user.name not found in $hostfile."; exit 1; }
+  info "Target user (from hosts/$HOST): $target_user"
+
+  local dest="$MNT/home/$target_user/github/nixos"
+  [[ -d "$MNT/home" ]] || { err "$MNT/home not mounted — run scripts/nixos-mount first."; exit 1; }
+  [[ -e "$dest" ]] && warn "Replacing existing $dest"
+
+  mkdir -p "$dest"
+  rm -rf "$dest"
+  cp -R "$REPO" "$dest"
+  chown -R "$TREE_UID:$TREE_UID" "$dest"
+  chmod -R u+w "$dest"
+  ok "Repo copied to $dest (owned by $TREE_UID:$TREE_UID)"
+  ok "After first boot, run \`nh os switch\` from ~/$target_user/github/nixos"
+}
+
+main "$@"

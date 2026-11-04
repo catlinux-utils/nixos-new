@@ -74,7 +74,7 @@ as the live reference. The load-bearing parts:
   `modules/nixos/home-options.nix`, `modules/home/{gaming,home-tools,xdg}.nix`) stay at the tree
   root.
 - **`hosts/<name>/default.nix`** — the self-contained host entry: one `cfg = { ... }` tree,
-  sectioned identity (`user`), locale, `nh.flakeDir`, git identity (`home.git`), then feature
+  sectioned identity (`user`), locale, git identity (`home.git`), then feature
   switches; plus the per-host nixos-hardware import (Phase 2). No implementation logic. The
   `wsl` host is the platform exception: it imports `nixosModules.wsl` via `specialArgs.inputs`
   and has no `hardware-configuration.nix` — NixOS-WSL owns boot and the filesystem.

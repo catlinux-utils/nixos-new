@@ -9,20 +9,25 @@ Complete disk preparation, installation, and post-install steps for this flake.
 | `scripts/nixos-disk` | Interactive or flag-driven disk partitioning + formatting (LUKS + Btrfs/ext4/xfs) |
 | `scripts/nixos-mount` | Mount prepared disk with all subvolumes for `nixos-install`; `--umount` unmounts and closes LUKS |
 | `scripts/nixos-format-part` | Format selected existing partitions per-partition (FS, encryption, subvolumes) |
+| `scripts/nixos-copy-repo` | Copy this repo onto the target before reboot (`~/github/nixos` of the host's `cfg.user.name`) |
 
 ---
 
 ## Quick Start (Interactive — Full End-to-End)
 
+The interactive scripts pick the disk themselves — `nixos-disk` and
+`nixos-format-part -i` prompt for it, `nixos-mount` auto-detects the disk
+carrying `cryptroot`. No drive names needed.
+
 ### Option A: New Disk (partition + format)
 
 ```bash
 # 1. Boot installer ISO or live Linux (as root)
-sudo ./scripts/nixos-disk /dev/nvme0n1
-# → prompts for: encryption, filesystems, layout, sizes
+sudo ./scripts/nixos-disk
+# → prompts for: disk, encryption, filesystems, layout, sizes
 
-# 2. Mount everything
-sudo ./scripts/nixos-mount /dev/nvme0n1
+# 2. Mount everything (auto-detects the disk)
+sudo ./scripts/nixos-mount
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
 #    Run from repo root (on target or via SSH); sudo — the btrfs probe needs
@@ -33,7 +38,10 @@ sudo nixos-generate-config --show-hardware-config --no-filesystems \
 # 4. Install (root: nixos-install lays down the target's system closure)
 sudo nixos-install --flake .#desktop --root /mnt
 
-# 5. Reboot into the new system
+# 5. Copy the repo onto the target (user read from hosts/desktop's cfg.user.name)
+sudo ./scripts/nixos-copy-repo desktop
+
+# 6. Reboot into the new system
 reboot
 ```
 
@@ -41,15 +49,16 @@ reboot
 
 ```bash
 # 1. Boot installer ISO or live Linux (as root)
-# Format selected partitions interactively:
-sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
+# Format selected partitions interactively (auto-detects the disk, prompts
+# per-partition):
+sudo ./scripts/nixos-format-part -i
 # Or non-interactive:
-# sudo ./scripts/nixos-format-part -p ESP=/dev/nvme0n1p1 -p cryptroot=/dev/nvme0n1p2 \
+# sudo ./scripts/nixos-format-part -p ESP=/dev/disk/by-id/<disk-id>-part1 -p cryptroot=/dev/disk/by-id/<disk-id>-part2 \
 #   -f ESP=vfat -f cryptroot=btrfs -e ESP=no -e cryptroot=yes \
 #   -l cryptroot=cryptroot -s cryptroot="@ @home @snapshots @log @nix" -m cryptroot=/mnt -y
 
-# 2. Mount everything
-sudo ./scripts/nixos-mount /dev/nvme0n1
+# 2. Mount everything (auto-detects the disk)
+sudo ./scripts/nixos-mount
 
 # 3. Generate hardware config INTO THE REPO (tracked, host-specific)
 sudo nixos-generate-config --show-hardware-config --no-filesystems \
@@ -58,7 +67,10 @@ sudo nixos-generate-config --show-hardware-config --no-filesystems \
 # 4. Install (root: nixos-install lays down the target's system closure)
 sudo nixos-install --flake .#desktop --root /mnt
 
-# 5. Reboot into the new system
+# 5. Copy the repo onto the target (user read from hosts/desktop's cfg.user.name)
+sudo ./scripts/nixos-copy-repo desktop
+
+# 6. Reboot into the new system
 reboot
 ```
 
@@ -67,8 +79,10 @@ reboot
 ### Post-Install: On the booted target machine, clone repo & rebuild
 
 ```bash
-# With the installer ISO flow the repo is already at ~/github/nixos
-# (copied onto the target before reboot). Otherwise clone it there:
+# With the installer ISO flow (or nixos-copy-repo step) the repo is already
+# at ~/github/nixos — and the first activation turns it into a git repo with
+# origin set (cfg.git.remote), so commit/push works right away.
+# Otherwise clone it there:
 git clone https://github.com/ThePolishcat/nixos-new.git ~/github/nixos
 cd ~/github/nixos
 
@@ -89,6 +103,15 @@ nh home switch
 
 ## Non-Interactive (CI / Scripted)
 
+Flag-driven `nixos-disk` / `nixos-format-part` still take an explicit disk —
+destructive formatting shouldn't auto-guess the target. Find the stable path
+first (whole-disk entries only):
+
+```bash
+lsblk -dno NAME,SIZE,MODEL,TRAN,TYPE
+ls -l /dev/disk/by-id/ | grep -v part-
+```
+
 ### Desktop: single encrypted root, btrfs, swap partition
 
 ```bash
@@ -96,9 +119,9 @@ sudo ./scripts/nixos-disk \
   --encrypt-root yes --encrypt-home no --encrypt-swap yes \
   --fs-root btrfs --fs-home btrfs --fs-boot vfat \
   --swap-size 8G --boot-size 1G \
-  /dev/nvme0n1
+  /dev/disk/by-id/<disk-id>
 
-sudo ./scripts/nixos-mount /dev/nvme0n1
+sudo ./scripts/nixos-mount
 sudo nixos-install --flake .#desktop --root /mnt
 ```
 
@@ -109,18 +132,18 @@ sudo ./scripts/nixos-disk \
   --encrypt-root yes --encrypt-home yes --encrypt-swap yes \
   --fs-root btrfs --fs-home btrfs --fs-boot vfat \
   --root-size 50G --home-size 200G \
-  /dev/nvme0n1
+  /dev/disk/by-id/<disk-id>
 
-sudo ./scripts/nixos-mount /dev/nvme0n1
+sudo ./scripts/nixos-mount
 sudo nixos-install --flake .#laptop --root /mnt
 ```
 
 ### Server: root + separate data partition
 
 ```bash
-sudo ./scripts/nixos-disk --layout server /dev/nvme0n1
+sudo ./scripts/nixos-disk --layout server /dev/disk/by-id/<disk-id>
 
-sudo ./scripts/nixos-mount /dev/nvme0n1
+sudo ./scripts/nixos-mount
 sudo nixos-install --flake .#server --root /mnt
 ```
 
@@ -128,7 +151,7 @@ sudo nixos-install --flake .#server --root /mnt
 
 ```bash
 sudo ./scripts/nixos-format-part \
-  -p ESP=/dev/nvme0n1p1 -p cryptroot=/dev/nvme0n1p2 \
+  -p ESP=/dev/disk/by-id/<disk-id>-part1 -p cryptroot=/dev/disk/by-id/<disk-id>-part2 \
   -f ESP=vfat -f cryptroot=btrfs \
   -e ESP=no -e cryptroot=yes \
   -l cryptroot=cryptroot \
@@ -136,7 +159,7 @@ sudo ./scripts/nixos-format-part \
   -m cryptroot=/mnt \
   -y
 
-sudo ./scripts/nixos-mount /dev/nvme0n1
+sudo ./scripts/nixos-mount
 sudo nixos-install --flake .#desktop --root /mnt
 ```
 
@@ -161,14 +184,14 @@ If partitions already exist and you want to format them individually:
 ### Interactive
 
 ```bash
-sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
+sudo ./scripts/nixos-format-part -i
 ```
 
 ### Non-interactive
 
 ```bash
 sudo ./scripts/nixos-format-part \
-  -p ESP=/dev/nvme0n1p1 -p cryptroot=/dev/nvme0n1p2 \
+  -p ESP=/dev/disk/by-id/<disk-id>-part1 -p cryptroot=/dev/disk/by-id/<disk-id>-part2 \
   -f ESP=vfat -f cryptroot=btrfs \
   -e ESP=no -e cryptroot=yes \
   -l cryptroot=cryptroot \
@@ -195,7 +218,7 @@ This writes/overwrites `hosts/desktop/hardware-configuration.nix` with the detec
 
 `sudo` is required: the tool probes every btrfs mount under `/mnt` with `btrfs subvolume show`, which needs root — without it the command dies with `Failed to retrieve subvolume info for /` (the `/` is actually `/mnt`; upstream [nixpkgs#417803](https://github.com/NixOS/nixpkgs/issues/417803)). The probe runs even with `--no-filesystems`.
 
-**Commit it later, from a machine with the repo's `.git`** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via the repo copy onto the target (see Post-Install) or by pushing from any machine that has it; commit + push from the booted host as the follow-up.
+**Commit it later, from the booted host** (the live session's repo copy is git-cleaned — no `.git` — so `git commit` can't run there). The generated file survives the install via `scripts/nixos-copy-repo`; on the host, `cfg.git.remote` makes the first activation turn the working copy into a git repo with `origin` set, so `git add hosts/<host>/hardware-configuration.nix && git commit && git push` just works (identity: `cfg.home.git`).
 
 Repeat for each host (`laptop`, `server`). The `wsl` host doesn't need one — NixOS-WSL owns boot and the filesystem.
 
@@ -203,7 +226,7 @@ Repeat for each host (`laptop`, `server`). The `wsl` host doesn't need one — N
 
 ## Post-Install: Copy Repo to Host & First Rebuild
 
-After `nixos-install` completes and you reboot into the new system, the flake lives at `~/github/nixos` (`cfg.nh.flakeDir` on desktop/laptop/server) — the installer-ISO flow copies the repo there before reboot; on other flows, clone it as your user:
+After `nixos-install` completes and you reboot into the new system, the flake lives at `~/github/nixos` (`cfg.nh.flakeDir` on desktop/laptop/server) — `scripts/nixos-copy-repo` (quick-start step 5) put it there; on other flows, clone it as your user:
 
 ```bash
 # On the target machine, as your user (no sudo — it's your home dir):

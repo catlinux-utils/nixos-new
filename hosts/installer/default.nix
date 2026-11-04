@@ -30,7 +30,7 @@ let
   # git-cleaned flake tree as a store path — no `.git`, so it lands as a
   # plain (path-)flake dir; good for `nixos-install --flake`, not for commits.
   repoSrc = self;
-  repoDest = "/home/nixos/github/nixos";
+  repoDest = "/home/${config.cfg.user.name}/github/nixos";
 in
 {
   imports = [
@@ -124,7 +124,7 @@ in
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # boot-to-desktop: greetd autologins the `nixos` user straight into the
+  # boot-to-desktop: greetd autologins the live user straight into the
   # uwsm Hyprland session (same UX the GDM block provided, without GDM's
   # greeter dragging the whole GNOME/ibus/speech stack — ~0.7-1G of closure).
   # The uwsm command mirrors the hyprland-uwsm session entry's Exec
@@ -135,7 +135,7 @@ in
     settings = {
       initial_session = {
         command = "${lib.getExe pkgs.uwsm} start -F -- /run/current-system/sw/bin/Hyprland";
-        user = "nixos";
+        user = config.cfg.user.name;
       };
       default_session = {
         # shown only on logout
@@ -206,10 +206,10 @@ in
   # Writable (a store-path symlink couldn't be edited) and re-laid fresh every
   # boot, so image updates always ship the current tree.
   system.activationScripts.installerRepo = lib.stringAfter [ "users" "groups" ] ''
-    mkdir -p /home/nixos/github
+    mkdir -p /home/${config.cfg.user.name}/github
     rm -rf ${repoDest}
     cp -R ${repoSrc} ${repoDest}
-    chown -R nixos:users ${repoDest}
+    chown -R ${config.cfg.user.name}:users ${repoDest}
     chmod -R u+w ${repoDest}
   '';
 

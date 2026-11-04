@@ -108,9 +108,26 @@ parse_args() {
   done
 }
 
+# ─── Disk pick ───────────────────────────────────────────────────────
+# Auto-detect: the disk carrying an ESP partition (same heuristic as
+# nixos-mount); fall back to a picker over the available disks.
+pick_disk() {
+  for d in $(lsblk -dno PATH -e 7,11); do
+    if lsblk -rno PATH,PARTLABEL "$d" 2>/dev/null | awk '$2=="ESP"' | grep -q .; then
+      DISK="$d"
+      info "Auto-detected disk: $DISK"
+      return
+    fi
+  done
+  info "Available disks:"
+  lsblk -d -o NAME,SIZE,MODEL,TRAN,TYPE | grep -v loop
+  read -rp "$(echo -e "${BLU}Target disk:${NC} ")" DISK
+  [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
+}
+
 # ─── Interactive selection ───────────────────────────────────────────
 select_partitions_interactive() {
-  [[ -z "$DISK" ]] && { err "Disk required for interactive mode (-d)."; exit 1; }
+  [[ -z "$DISK" ]] && pick_disk
   [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
 
   info "Scanning partitions on $DISK..."

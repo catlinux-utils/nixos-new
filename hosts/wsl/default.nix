@@ -34,9 +34,11 @@
 
     # where this flake lives on this machine (drives nh) — must stay on the
     # WSL Linux filesystem; /mnt/c is too slow for nix
-    nh.flakeDir = /home/cat/nixos;
+    nh.flakeDir = "/home/${config.cfg.user.name}/nixos";
 
     # git identity
+    git.remote = "git@github.com:ThePolishcat/nixos-new.git";
+
     home.git = {
       name = "ThePolishcat";
       email = "88453875+PolskiKocurek@users.noreply.github.com";

@@ -51,13 +51,12 @@ variants — is [docs/INSTALL.md](docs/INSTALL.md). Abridged, from a live enviro
 git clone https://github.com/ThePolishcat/nixos-new.git
 cd nixos-new
 
-# 1. Partition & format the target drive (interactive)
-sudo ./scripts/nixos-disk /dev/nvme0n1
-#    Reusing existing partitions instead? Format in place:
-#    sudo ./scripts/nixos-format-part -d /dev/nvme0n1 -i
+# 1. Partition & format the target drive — interactive prompts, incl. the
+#    disk picker (reusing existing partitions instead? sudo ./scripts/nixos-format-part -i)
+sudo ./scripts/nixos-disk
 
-# 2. Mount (creates /mnt/efi/EFI on the ESP for nixos-install)
-sudo ./scripts/nixos-mount /dev/nvme0n1
+# 2. Mount — auto-detects the disk carrying cryptroot
+sudo ./scripts/nixos-mount
 
 # 3. Generate the hardware config into the repo
 #    (sudo: the btrfs probe needs root; the redirect in your own shell keeps
@@ -68,10 +67,8 @@ sudo nixos-generate-config --show-hardware-config --no-filesystems \
 # 4. Install (sudo: nixos-install lays down the target's system closure)
 sudo nixos-install --flake .#desktop --root /mnt
 
-# 5. Copy the cloned repo onto the new system (before reboot; /mnt needs root)
-sudo mkdir -p /mnt/home/cat/github
-sudo cp -r . /mnt/home/cat/github/nixos
-sudo chown -R 1000:100 /mnt/home/cat/github/nixos   # numeric IDs: target isn't booted yet
+# 5. Copy the repo onto the new system (reads the target user from the host file)
+sudo ./scripts/nixos-copy-repo desktop
 
 # 6. Reboot, then run `nh os switch` from ~/github/nixos
 reboot
@@ -85,7 +82,8 @@ Notes:
   git-cleaned (no `.git`); re-clone or pull for editing history.
 - The `cat` user ships with initial password `cat` (`cfg.user.initialHashedPassword`
   in the host config) — change it on first login.
-- Helper scripts: `nixos-disk`, `nixos-mount` (mount / `--umount`), `nixos-format-part` —
+- Helper scripts: `nixos-disk`, `nixos-mount` (mount / `--umount`), `nixos-format-part`,
+  `nixos-copy-repo` (repo onto the target pre-reboot) —
   documented in [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Documentation
