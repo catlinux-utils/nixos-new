@@ -7,8 +7,7 @@ Complete disk preparation, installation, and post-install steps for this flake.
 | Script | Purpose |
 |--------|---------|
 | `scripts/nixos-disk` | Interactive or flag-driven disk partitioning + formatting (LUKS + Btrfs/ext4/xfs) |
-| `scripts/nixos-mount` | Mount prepared disk with all subvolumes for `nixos-install` |
-| `scripts/nixos-umount` | Safely unmount and close LUKS |
+| `scripts/nixos-mount` | Mount prepared disk with all subvolumes for `nixos-install`; `--umount` unmounts and closes LUKS |
 | `scripts/nixos-format-part` | Format selected existing partitions per-partition (FS, encryption, subvolumes) |
 
 ---

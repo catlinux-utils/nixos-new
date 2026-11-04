@@ -56,7 +56,7 @@ hosts/<host>/disko.nix  disk layout (Btrfs-on-LUKS) per host (Phase 6), consumed
 hosts/installer/       live ISO (Phase 6) — a mkHost host whose config boots as an image:
                        GDM-autologin Hyprland live env; built with
                        nixos-rebuild build-image --image-variant iso
-scripts/               nixos-disk (partition+format), nixos-mount, nixos-umount, nixos-format-part
+scripts/               nixos-disk (partition+format), nixos-mount (mount/--umount), nixos-format-part
 modules/nixos/         system feature modules (auto-imported, cfg.* options), grouped
                        in category folders: core/ (always-on baseline), boot/,
                        desktop/ (DEs + audio/graphics/geolocation), devices/,

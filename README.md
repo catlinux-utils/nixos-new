@@ -84,7 +84,7 @@ Notes:
   git-cleaned (no `.git`); re-clone or pull for editing history.
 - The `cat` user ships with initial password `cat` (`cfg.user.initialHashedPassword`
   in the host config) — change it on first login.
-- Helper scripts: `nixos-disk`, `nixos-mount`, `nixos-umount`, `nixos-format-part` —
+- Helper scripts: `nixos-disk`, `nixos-mount` (mount / `--umount`), `nixos-format-part` —
   documented in [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Documentation
