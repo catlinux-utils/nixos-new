@@ -17,6 +17,11 @@ to nixpkgs **26.05** + Home Manager **release-26.05**.
 - Validation runs **locally** — the desktop machine is nix-capable (NixOS, currently the legacy
   flake's deploy; this repo lives next to it at `~/github/nixos-new`). The `wsl` host (PLAN Phase
   1.5) remains registered for whenever WSL validation is wanted, but nothing is pending on it.
+- **Never run system-mutating commands** — `nh os switch` / `nh os test` / `nixos-rebuild switch`,
+  image builds, service restarts, anything that changes the running OS — unless the user
+  explicitly asks for exactly that. Deploying is the user's action. To test live changes (QML,
+  scripts), launch the program directly from the repo path as a temporary instance instead
+  (e.g. `qs -p modules/home/desktop/hyprland/quickshell`).
 - Never claim a build/eval/fmt ran unless you actually ran it. Run before claiming:
   - `nix flake check`
   - `nix fmt`
@@ -187,7 +192,9 @@ passwordless `nixos` user (`cfg.user.name` points at it; no locked `cat` user), 
 into the repo's Hyprland desktop via GDM Wayland autologin. It imports the
 upstream installer profiles via absolute `pkgs.path` references and `disabledModules` drops
 upstream's `installer/cd-dvd/channel.nix` + `clone-config.nix` (channel-era mechanisms; the
-live env is flake-aware via the repo's own nix.nix). It has no `hardware-configuration.nix`
+live env is flake-aware via the repo's own nix.nix). The flake's own source (`self` via
+mkHost specialArgs) is copied into the live session at `~/github/nixos` by an activation
+script, enabling offline `nixos-install --flake` from the CD. It has no `hardware-configuration.nix`
 and `cfg.boot` stays off — the `iso` image variant owns its own bootloader. Build on a Nix
 machine: `nixos-rebuild build-image --flake .#installer --image-variant iso` — CI only
 evaluates the ISO derivation (`config.system.build.images.iso`), never builds it.

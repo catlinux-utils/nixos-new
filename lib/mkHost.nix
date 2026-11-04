@@ -2,6 +2,7 @@
 # per-host args. Relative paths resolve from lib/, hence the ../.
 {
   lib,
+  self,
   home-manager,
   inputs,
   unstable-overlay,
@@ -14,7 +15,11 @@
 
 lib.nixosSystem {
   inherit system;
-  specialArgs = { inherit inputs; };
+  # `self` = the flake's own git-cleaned source tree (a store path); the
+  # installer ISO uses it to embed the repo in the live environment
+  specialArgs = {
+    inherit inputs self;
+  };
 
   modules = [
     { networking.hostName = hostname; }

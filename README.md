@@ -25,6 +25,9 @@ The installer is a regular host that builds as an image (it has no
 nixos-rebuild build-image --flake .#installer --image-variant iso
 ```
 
+The ISO embeds the **committed** repo tree (available in the live session at
+`~/github/nixos`) — commit before building or the image ships a stale tree.
+
 ## Usage
 
 The flake lives wherever the host's `cfg.nh.flakeDir` points (default `/etc/nixos`):
@@ -75,8 +78,10 @@ reboot
 
 Notes:
 
-- The installer ISO ships this repo pre-cloned at `/etc/nixos` — `cd /etc/nixos`
-  and skip step 0.
+- The installer ISO ships this repo in the live session at `~/github/nixos`
+  (home of the passwordless `nixos` user) — install straight from there with
+  `nixos-install --flake ~/github/nixos#<host>`, no clone needed. The copy is
+  git-cleaned (no `.git`); re-clone or pull for editing history.
 - The `cat` user ships with initial password `cat` (`cfg.user.initialHashedPassword`
   in the host config) — change it on first login.
 - Helper scripts: `nixos-disk`, `nixos-mount`, `nixos-umount`, `nixos-format-part` —

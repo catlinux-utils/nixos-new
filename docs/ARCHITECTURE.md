@@ -90,6 +90,10 @@ as the live reference. The load-bearing parts:
   (channel-era mechanisms at odds with flake installs). `cfg.user.name` points at the
   profile's passwordless `nixos` account so `users.nix` and Home Manager target it instead of
   creating a locked `cat` user. `cfg.boot` stays off — the ISO variant owns the loader.
+  The flake's own source (`self`, passed through mkHost specialArgs) is copied to
+  `/home/nixos/github/nixos` by an activation script at boot, so the live session can
+  `nixos-install --flake ~/github/nixos#<host>` offline (the store path rides the image
+  closure); the copy is git-cleaned — no `.git`.
 - **`modules/nixos/desktop/base.nix`** — shared desktop plumbing (fonts, portals, xdg). DE modules
   enable it themselves, so a host sets exactly one switch to get a working session; an `assertions`
   guard makes enabling two DEs fail evaluation.

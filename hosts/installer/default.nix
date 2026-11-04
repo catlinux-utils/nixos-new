@@ -4,6 +4,9 @@
 #
 #   nixos-rebuild build-image --flake .#installer --image-variant iso
 #
+# NOTE: the ISO embeds the COMMITTED repo tree (copied to ~/github/nixos in the
+# live session) — commit/push before building or the image ships a stale tree.
+#
 # Flake-aware live environment: upstream's channel.nix and clone-config.nix are
 # disabled (they provision a Nixpkgs channel and clone the live config into
 # /etc/nixos — both at odds with flake installs); the repo's own always-on
@@ -12,6 +15,7 @@
   lib,
   pkgs,
   inputs,
+  self,
   ...
 }:
 let
@@ -20,6 +24,12 @@ let
   # module system has a config, and `pkgs` is only reachable through
   # config._module.args — forcing it here is an infinite recursion.
   nixosModules = inputs.nixpkgs + "/nixos/modules";
+
+  # The repo's own source, embedded in the live environment. `self` is the
+  # git-cleaned flake tree as a store path — no `.git`, so it lands as a
+  # plain (path-)flake dir; good for `nixos-install --flake`, not for commits.
+  repoSrc = self;
+  repoDest = "/home/nixos/github/nixos";
 in
 {
   imports = [
@@ -102,6 +112,20 @@ in
 
   # for `nixos-install --flake` from the live env (nh rides the always-on nh.nix)
   environment.systemPackages = [ pkgs.git ];
+
+  # Drop the full repo into the live session at ~/github/nixos. /home is tmpfs
+  # on the ISO, so the copy runs at activation (after users/groups exist);
+  # referencing the store path here also pulls the source into the ISO's
+  # closure, making offline `nixos-install --flake ~/github/nixos#<host>` work.
+  # Writable (a store-path symlink couldn't be edited) and re-laid fresh every
+  # boot, so image updates always ship the current tree.
+  system.activationScripts.installerRepo = lib.stringAfter [ "users" "groups" ] ''
+    mkdir -p /home/nixos/github
+    rm -rf ${repoDest}
+    cp -R ${repoSrc} ${repoDest}
+    chown -R nixos:users ${repoDest}
+    chmod -R u+w ${repoDest}
+  '';
 
   system.stateVersion = "26.05";
 

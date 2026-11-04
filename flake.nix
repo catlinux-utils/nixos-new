@@ -64,6 +64,7 @@
       mkHost = import ./lib/mkHost.nix {
         inherit
           lib
+          self
           home-manager
           inputs
           unstable-overlay
