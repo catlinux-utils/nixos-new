@@ -127,14 +127,17 @@ in
   # boot-to-desktop: greetd autologins the live user straight into the
   # uwsm Hyprland session (same UX the GDM block provided, without GDM's
   # greeter dragging the whole GNOME/ibus/speech stack — ~0.7-1G of closure).
-  # The uwsm command mirrors the hyprland-uwsm session entry's Exec
-  # (programs/wayland/uwsm.nix: `uwsm start -F -- <binPath>`). No `cfg.boot` —
-  # the ISO variant owns its own bootloader.
+  # The uwsm command mirrors Hyprland's own hyprland-uwsm session entry.
+  # No `cfg.boot` — the ISO variant owns its own bootloader.
   services.greetd = {
     enable = true;
     settings = {
       initial_session = {
-        command = "${lib.getExe pkgs.uwsm} start -F -- /run/current-system/sw/bin/Hyprland";
+        # mirrors Hyprland's own hyprland-uwsm.desktop Exec (the entry resolves
+        # through the desktop file, so the session runs via start-hyprland —
+        # launching the bare Hyprland binary makes Hyprland complain about a
+        # debugging-environment launch)
+        command = "${lib.getExe pkgs.uwsm} start -e -D Hyprland hyprland.desktop";
         user = config.cfg.user.name;
       };
       default_session = {
