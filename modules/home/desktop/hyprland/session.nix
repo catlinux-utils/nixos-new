@@ -32,5 +32,14 @@
       export ELECTRON_OZONE_PLATFORM_HINT=auto
       export NIXOS_OZONE_WL=1
     '';
+
+    # pin the terminal uwsm picks for Terminal=true desktop entries (e.g. the
+    # quickshell bar's `uwsm app -- btop.desktop`): without this list uwsm's
+    # fallback scan can land on kitty-open.desktop ("kitty +open %U"), which
+    # composes `kitty %U -e btop` and errors out in kitty's URL-opener dialog
+    xdg.configFile."xdg-terminals.list".text = ''
+      kitty.desktop
+      -kitty-open.desktop
+    '';
   };
 }

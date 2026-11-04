@@ -421,7 +421,7 @@ ShellRoot {
     Process {
         id: btop
 
-        command: ["sh", "-c", "pidof btop >/dev/null || uwsm app -- kitty -e btop"]
+        command: ["sh", "-c", "pidof btop >/dev/null || uwsm app -- btop.desktop"]
         running: false
     }
 
@@ -881,6 +881,7 @@ ShellRoot {
 
                                 BarIcon {
                                     text: volumeIcon(volumeRoot.defaultSink?.audio?.muted ?? false, volumeRoot.defaultSink?.audio?.volume || 0)
+                                    color: volumeRoot.defaultSink?.audio?.muted ? root.col3 : root.col14
                                 }
 
                                 BarText {

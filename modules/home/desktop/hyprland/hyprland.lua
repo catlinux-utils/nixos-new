@@ -14,6 +14,10 @@ hl.monitor({
 })
 
 hl.config({
+    ecosystem = {
+        no_update_news = true,
+    },
+
     general = {
         gaps_in = 0,
         gaps_out = 0,
