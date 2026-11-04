@@ -37,7 +37,7 @@
     nh.flakeDir = "/home/${config.cfg.user.name}/nixos";
 
     # git identity
-    git.remote = "https://github.com/catlinux-utils/nixos-new.git";
+    git.remote = "git@github.com:catlinux-utils/nixos-new.git";
 
     home.git = {
       name = "ThePolishcat";

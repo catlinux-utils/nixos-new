@@ -48,7 +48,7 @@ variants — is [docs/INSTALL.md](docs/INSTALL.md). Abridged, from a live enviro
 
 ```bash
 # 0. Clone this repo
-git clone https://github.com/catlinux-utils/nixos-new.git
+git clone git@github.com:catlinux-utils/nixos-new.git
 cd nixos-new
 
 # 1. Partition & format the target drive — interactive prompts, incl. the

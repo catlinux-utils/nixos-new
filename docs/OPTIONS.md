@@ -181,7 +181,7 @@ file manager and gparted stay useful during an install).
 | `cfg.user.name` | `cat` | `cat` | `cat` | `cat` |
 | `cfg.locale.*` | defaults | defaults | defaults | defaults |
 | `cfg.nh.flakeDir` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/github/nixos` | `/home/cat/nixos` (WSL-specific) |
-| `cfg.git.remote` | `https://github.com/catlinux-utils/nixos-new.git` | same | same | same |
+| `cfg.git.remote` | `git@github.com:catlinux-utils/nixos-new.git` | same | same | same |
 | `cfg.home.git.name` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` | `ThePolishcat` |
 | `cfg.home.hyprland.wallpaper` | `./wallpapers/dusk.png` (install-time default) | – | – | – |
 | `cfg.home.hyprland.lock` | ✓ | – | – | – |

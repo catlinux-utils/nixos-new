@@ -83,7 +83,7 @@ reboot
 # at ~/github/nixos — and the first activation turns it into a git repo with
 # origin set (cfg.git.remote), so commit/push works right away.
 # Otherwise clone it there:
-git clone https://github.com/catlinux-utils/nixos-new.git ~/github/nixos
+git clone git@github.com:catlinux-utils/nixos-new.git ~/github/nixos
 cd ~/github/nixos
 
 # First rebuild — dry-run, then switch (nh reads cfg.nh.flakeDir = ~/github/nixos)
@@ -233,7 +233,7 @@ After `nixos-install` completes and you reboot into the new system, the flake li
 
 # 1. Skip if the repo is already at ~/github/nixos (installer-ISO flow);
 #    otherwise clone it (adjust URL/branch):
-git clone https://github.com/catlinux-utils/nixos-new.git ~/github/nixos
+git clone git@github.com:catlinux-utils/nixos-new.git ~/github/nixos
 
 # 2. First rebuild — dry-run to verify, then switch
 cd ~/github/nixos
