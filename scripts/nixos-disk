@@ -84,6 +84,17 @@ parse_args() {
 }
 
 # ─── Interactive prompts ─────────────────────────────────────────────
+prompt_fs() {
+  local -n ref="$1"
+  local label="$2" pattern="$3" ans
+  while true; do
+    read -rp "$(echo -e "${BLU}${label} [${ref}]:${NC} ")" ans
+    ref="${ans:-$ref}"
+    [[ "$ref" =~ $pattern ]] && break
+    err "Invalid: $ref"
+  done
+}
+
 prompt_config() {
   echo -e "${BLU}=== NixOS Disk Configuration ===${NC}"
   echo
@@ -130,19 +141,9 @@ prompt_config() {
 
   # Filesystems
   echo
-  PS3="$(echo -e "${BLU}Root filesystem:${NC} ")"
-  options=("btrfs" "ext4" "xfs")
-  select FS_ROOT in "${options[@]}"; do [[ -n "$FS_ROOT" ]] && break; done
-
-  [[ "$ENCRYPT_HOME" =~ ^[Yy] ]] && {
-    PS3="$(echo -e "${BLU}Home filesystem:${NC} ")"
-    options=("btrfs" "ext4" "xfs")
-    select FS_HOME in "${options[@]}"; do [[ -n "$FS_HOME" ]] && break; done
-  }
-
-  PS3="$(echo -e "${BLU}Boot filesystem:${NC} ")"
-  options=("vfat" "ext4")
-  select FS_BOOT in "${options[@]}"; do [[ -n "$FS_BOOT" ]] && break; done
+  prompt_fs FS_ROOT "Root filesystem" '^(btrfs|ext4|xfs)$'
+  [[ "$ENCRYPT_HOME" =~ ^[Yy] ]] && prompt_fs FS_HOME "Home filesystem" '^(btrfs|ext4|xfs)$'
+  prompt_fs FS_BOOT "Boot filesystem" '^(vfat|ext4)$'
 
   # Sizes
   echo
