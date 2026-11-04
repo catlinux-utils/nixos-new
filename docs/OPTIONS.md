@@ -141,7 +141,7 @@ the `hyprland/` folder on `cfg.desktop.hyprland.enable`.
 
 | Option | Type, default | Effect |
 |---|---|---|
-| `cfg.home.shell.enable` | bool, on | zsh + catlinux theme + fzf/eza/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer + yt-dlp/ffmpeg/ncdu/duf/zip utilities |
+| `cfg.home.shell.enable` | bool, on | zsh + catlinux theme + fzf/lsd/btop/bat/zoxide/atuin/yazi/lazygit/tealdeer + yt-dlp/ffmpeg/ncdu/duf/nix-tree/nix-prefetch-git utilities |
 | `cfg.home.git.enable` | bool, on | git + delta + lfs, `init.defaultBranch = main` |
 | `cfg.home.git.name` / `.email` | nullOr str, `null` | git identity (null = unset) |
 | `cfg.home.terminal.enable` | bool, on | kitty |

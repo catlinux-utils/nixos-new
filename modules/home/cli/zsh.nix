@@ -31,9 +31,11 @@
       };
       shellAliases = {
         cat = "bat";
-        ls = "eza --icons";
-        ll = "eza --icons -l";
-        la = "eza --icons -la";
+        # lsd's zsh integration defines its own ls/ll/la — keep the custom ones
+        ls = lib.mkForce "lsd";
+        ll = lib.mkForce "lsd -l";
+        la = lib.mkForce "lsd -la";
+        l = "ll";
       };
 
       # the catlinux prompt theme (ported from the legacy flake) — replaces
@@ -120,8 +122,21 @@
     };
 
     programs.fzf.enable = true;
-    programs.eza.enable = true;
-    programs.btop.enable = true;
+    programs.lsd = {
+      enable = true;
+      enableZshIntegration = true;
+    };
+    programs.btop = {
+      enable = true;
+      # AMD GPU monitoring (legacy-flake port)
+      package = pkgs.btop.override { rocmSupport = true; };
+      settings = {
+        color_theme = "TTY";
+        theme_background = false;
+        update_ms = 2000;
+        rounded_corners = true;
+      };
+    };
     programs.bat.enable = true;
     programs.zoxide.enable = true;
     programs.atuin = {
@@ -145,6 +160,9 @@
       duf
       unzip
       p7zip
+      nix-tree
+      nix-prefetch-git
+      nix-prefetch-github
     ];
   };
 }
