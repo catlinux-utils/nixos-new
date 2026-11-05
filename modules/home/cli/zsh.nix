@@ -7,17 +7,12 @@
 }:
 {
   config = lib.mkIf osConfig.cfg.home.shell.enable {
-    # command-not-found via nix-index (per-package database, zsh hook)
-    programs.nix-index = {
-      enable = true;
-      enableZshIntegration = true;
-    };
+    # command-not-found lives in cli/nix-index.nix (single owner of programs.nix-index)
 
     programs.zsh = {
       enable = true;
       autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
-      # case-insensitive tab completion
       completionInit = ''
         autoload -U compinit && compinit
         zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
@@ -38,8 +33,7 @@
         l = "ll";
       };
 
-      # the catlinux prompt theme (ported from the legacy flake) — replaces
-      # starship, which was removed with the port (the theme owns the prompt)
+      # the catlinux prompt theme — replaces starship (the theme owns the prompt)
       plugins = [
         {
           name = "catlinux-zsh-theme";
@@ -53,12 +47,10 @@
         }
       ];
 
-      # ollama subcommand + model completions (ported from the legacy flake)
+      # ollama subcommand + model completions
       initContent = ''
-        # nix-index's command-not-found handler spams a database error when the
-        # index hasn't been built yet (live media, fresh hosts) — plain message
-        # instead until `nix-index` has been run once. initContent runs after
-        # the integrations, so this wins on shells without the DB.
+        # plain command-not-found until the nix-index DB exists (initContent
+        # runs after integrations, so this wins on DB-less shells)
         if ! [ -e "$HOME/.cache/nix-index/files" ]; then
           command_not_found_handler() {
             echo "zsh: command not found: $1" >&2
@@ -128,7 +120,7 @@
     };
     programs.btop = {
       enable = true;
-      # AMD GPU monitoring (legacy-flake port)
+      # AMD GPU monitoring
       package = pkgs.btop.override { rocmSupport = true; };
       settings = {
         color_theme = "TTY";
@@ -141,18 +133,15 @@
     programs.zoxide.enable = true;
     programs.atuin = {
       enable = true;
-      # atuin's default up-arrow binding opens its full-screen history TUI —
-      # keep plain zsh history on ↑, atuin search stays on ctrl-r
+      # keep plain zsh history on ↑ (atuin's TUI), atuin search stays on ctrl-r
       flags = [ "--disable-up-arrow" ];
     };
     programs.yazi.enable = true;
     programs.lazygit.enable = true;
     programs.tealdeer.enable = true;
 
-    # general-purpose utilities (no programs.* wrapper exists for these);
-    # the heavy tails are per-host kill switches — the installer ISO turns
-    # them off (yt-dlp drags the deno runtime, prefetch tools drag the
-    # nix-*-dev closure)
+    # general-purpose utilities (no programs.* wrapper); the heavy tails are
+    # per-host kill switches — the installer ISO turns them off (closure size)
     home.packages =
       with pkgs;
       [

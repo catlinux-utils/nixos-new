@@ -37,9 +37,8 @@
       cfg = config.cfg.backup;
     in
     {
-      # everything else (service wiring, timers, assertions) is upstream's;
-      # no host enables this until the Phase 3 master age key exists, since
-      # the credentials these jobs need are sops-encrypted
+      # service wiring, timers, assertions are upstream's; no host enables this
+      # until the Phase 3 master age key exists (credentials are sops-encrypted)
       services.restic.backups = cfg.restic.jobs;
 
       services.borgbackup.jobs = cfg.borg.jobs;

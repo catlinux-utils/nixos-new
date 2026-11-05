@@ -16,7 +16,6 @@
         general = {
           # pidof guard so repeated idle/sleep events don't stack lockers
           lock_cmd = "pidof hyprlock || hyprlock";
-          # lock before the machine goes to sleep
           before_sleep_cmd = "loginctl lock-session";
           after_sleep_cmd = "hyprctl dispatch dpms on";
           ignore_dbus_inhibit = false;

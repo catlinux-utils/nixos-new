@@ -6,24 +6,15 @@
 }:
 {
   config = lib.mkIf (osConfig.cfg.desktop.hyprland.enable && osConfig.cfg.home.hyprland.lock) {
-    # screen locker; the PAM service backing its password prompt is created
-    # system-side in modules/nixos/desktop/hyprland.nix
-    #
-    # HM's own config generation is left empty (settings = { }) — no
-    # hyprlock.conf is written by it, so these two xdg entries own the file
-    # pair. The entry point is a dispatcher: hardcoded fallback $lock* color
-    # variables, then an optional matugen overlay that redefines them (colors
-    # only — hyprlock's sections are append-only lists and a runtime
-    # re-declaration would fan out duplicate widgets), then the layout file
-    # sourced last. hyprlang expands $var at line parse time and keeps the
-    # last definition, so the overlay wins when present; a missing source file
-    # is only logged and skipped, keeping the fallbacks. Colors use hyprlock's
-    # rgb(RRRRRR)/rgba(RRRRRRAA) hex forms — bare #hex does not parse.
+    # screen locker (PAM service system-side). settings = { } so these xdg
+    # entries own the file pair: fallback $lock* colors, then an optional
+    # matugen overlay (colors only — sections are append-only lists), then the
+    # layout; last $var definition wins, missing sources are skipped.
+    # Colors: rgb(RRRRRR)/rgba(RRRRRRAA) only — bare #hex does not parse.
     programs.hyprlock.enable = true;
 
     xdg.configFile."hypr/hyprlock.conf".text = ''
-      # fallback palette (hand-tuned family of Theme.qml / the vendored rofi
-      # theme); the matugen overlay below redefines these when theming is on
+      # fallback palette (hand-tuned family of Theme.qml / the vendored rofi theme)
       $lockFg = rgb(EBEFFE)
       $lockInner = rgba(18161A66)
       $lockOuter = rgb(707F9B)

@@ -1,7 +1,6 @@
-# Upstream wires the rest for us: the sshd jail attaches when
-# services.openssh.enable (cfg.ssh.enable), the DEFAULT jail reads the journal
-# (backend = systemd), and the banaction follows nftables when the firewall
-# module turned networking.nftables.enable on.
+# Upstream wires the rest: the sshd jail attaches when services.openssh.enable
+# (cfg.ssh.enable), the DEFAULT jail reads the journal, the banaction follows
+# networking.nftables.
 {
   lib,
   config,

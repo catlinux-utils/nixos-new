@@ -109,8 +109,7 @@ parse_args() {
 }
 
 # ─── Disk pick ───────────────────────────────────────────────────────
-# Auto-detect: the disk carrying an ESP partition (same heuristic as
-# nixos-mount); fall back to a picker over the available disks.
+# Auto-detect: the disk carrying an ESP (same heuristic as nixos-mount).
 pick_disk() {
   for d in $(lsblk -dno PATH -e 7,11); do
     if lsblk -rno PATH,PARTLABEL "$d" 2>/dev/null | awk '$2=="ESP"' | grep -q .; then
@@ -127,6 +126,8 @@ pick_disk() {
 
 # ─── Interactive selection ───────────────────────────────────────────
 select_partitions_interactive() {
+  # prompts read stdin; a closed/piped stdin would spin the select loops
+  [[ -t 0 ]] || { err "Interactive selection needs a terminal (pass -p for non-interactive)."; exit 1; }
   [[ -z "$DISK" ]] && pick_disk
   [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
 
@@ -170,7 +171,6 @@ select_partitions_interactive() {
     PART_PATH["$label"]="$path"
     PART_LABEL["$label"]="$label"
 
-    # Prompt for FS
     echo
     PS3="$(echo -e "${BLU}Filesystem for $label ($path):${NC} ")"
     options=("btrfs" "ext4" "xfs" "vfat" "swap" "skip")
@@ -180,7 +180,6 @@ select_partitions_interactive() {
     [[ "$fs" == "skip" ]] && continue
     PART_FS["$label"]="$fs"
 
-    # Prompt for encryption (not for vfat/swap)
     if [[ "$fs" != "vfat" && "$fs" != "swap" ]]; then
       read -rp "$(echo -e "${BLU}Encrypt $label with LUKS2? [Y/n]:${NC} ")" ans
       local enc="${ans:-y}"
@@ -193,7 +192,6 @@ select_partitions_interactive() {
       PART_CRYPT["$label"]="no"
     fi
 
-    # Prompt for subvolumes if btrfs
     if [[ "$fs" == "btrfs" ]]; then
       read -rp "$(echo -e "${BLU}Btrfs subvolumes (space-separated, empty=none):${NC} ")" subvols
       [[ -n "$subvols" ]] && PART_SUBVOLS["$label"]="$subvols"
@@ -271,6 +269,8 @@ format_partition() {
         mkfs.btrfs -L "$clabel" "$mapper"
         if [[ -n "$subvols" ]]; then
           info "Creating subvolumes..."
+          mkdir -p "$mount"
+          mountpoint -q "$mount" && { err "$mount already mounted — unmount it first"; return 1; }
           mount "$mapper" "$mount"
           for sv in $subvols; do
             btrfs subvolume create "$mount/$sv"
@@ -296,6 +296,8 @@ format_partition() {
         mkfs.btrfs -L "$label" "$path"
         if [[ -n "$subvols" ]]; then
           info "Creating subvolumes..."
+          mkdir -p "$mount"
+          mountpoint -q "$mount" && { err "$mount already mounted — unmount it first"; return 1; }
           mount "$path" "$mount"
           for sv in $subvols; do
             btrfs subvolume create "$mount/$sv"
@@ -314,6 +316,8 @@ format_partition() {
 main() {
   parse_args "$@"
   [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
+  # interactive selection is the default when no partitions were given via -p
+  [[ ${#PART_PATH[@]} -eq 0 ]] && INTERACTIVE="yes"
   [[ "$INTERACTIVE" == "yes" ]] && select_partitions_interactive
   validate_config
   confirm_proceed

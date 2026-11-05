@@ -23,7 +23,9 @@
 
       mimeApps = {
         enable = true;
-        defaultApplications = {
+        # nvim.desktop comes from cli/neovim.nix (independently flippable) —
+        # gate so defaults don't dangle without it
+        defaultApplications = lib.mkIf osConfig.cfg.home.neovim.enable {
           "text/plain" = [ "nvim.desktop" ];
           "text/markdown" = [ "nvim.desktop" ];
           "application/json" = [ "nvim.desktop" ];

@@ -5,31 +5,31 @@
   ...
 }:
 let
-  # the running wallpaper: wallswitch overwrites this file on every pick and
-  # palette.nix's oneshot seeds it from cfg.home.hyprland.wallpaper exactly
-  # once — the repo-pinned path is only the install-time default
+  # the running wallpaper: wallswitch overwrites it on every pick; palette.nix's
+  # oneshot seeds it once — the repo-pinned path is only the install-time default
   current = "${config.home.homeDirectory}/.local/state/theming/current";
 in
 {
   config =
-    lib.mkIf (osConfig.cfg.desktop.hyprland.enable && osConfig.cfg.home.hyprland.wallpaper != null)
+    lib.mkIf
+      (
+        osConfig.cfg.desktop.hyprland.enable
+        && osConfig.cfg.home.theming.enable
+        && osConfig.cfg.home.hyprland.wallpaper != null
+      )
       {
         services.hyprpaper.enable = true;
 
-        # HM's hyprpaper module only creates the systemd unit (store-path
-        # ExecStart) — the binary itself never lands on the user PATH, and
-        # waypaper's startup check `shutil.which("hyprpaper")` then fails and
-        # the picker exits with the "no wallpaper backends" dialog
+        # HM's module only creates the systemd unit — the binary never lands on
+        # the user PATH, and waypaper's `shutil.which("hyprpaper")` check then
+        # fails ("no wallpaper backends" dialog)
         home.packages = [ config.services.hyprpaper.package ];
 
-        # hyprpaper 0.8.x dropped the old `preload`/`wallpaper=mon,path` lines
-        # (its config is hyprlang now: wallpaper entries keyed by monitor, an
-        # empty monitor matching every output). HM's settings renderer targets
-        # the old syntax, so the conf is written verbatim here — settings stay
-        # empty so the HM module generates nothing.
-        # Dynamic switching is `wallswitch` (palette.nix): it overwrites `current`
-        # and restarts this unit — the pinned nixpkgs pair (hyprctl 0.55 + hyprpaper
-        # 0.8) is protocol-incompatible, so hyprctl hyprpaper requests can't do it.
+        # hyprpaper 0.8 dropped the old preload/wallpaper= syntax and HM's
+        # settings renderer still targets it — conf written verbatim, settings
+        # stay empty so HM generates nothing. Switching is `wallswitch`
+        # (palette.nix): it overwrites `current` and restarts this unit (the
+        # pinned hyprctl/hyprpaper pair is protocol-incompatible — no IPC switch).
         xdg.configFile."hypr/hyprpaper.conf".text = ''
           splash = false
           ipc = true

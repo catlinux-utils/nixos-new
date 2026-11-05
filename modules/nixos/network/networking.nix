@@ -7,6 +7,9 @@
   options.cfg.networking = {
     networkManager.enable = lib.mkEnableOption "NetworkManager (desktop networking)";
 
+    # the one deliberate "enabled by default" exception to the
+    # enable-nothing-by-default rule — a machine shouldn't boot wide open;
+    # hosts opt out (wsl, installer) rather than in
     firewall.enable = lib.mkEnableOption "the nftables-backed firewall" // {
       default = true;
     };
@@ -39,8 +42,8 @@
 
       users.users.${config.cfg.user.name}.extraGroups = [ "networkmanager" ];
 
-      # wifi.powersave upstream is nullOr bool (null = leave NM's default);
-      # macAddress "stable" keeps one random MAC per network, not per connect
+      # upstream powersave is nullOr bool (null = NM's default); "stable" keeps
+      # one random MAC per network, not per connect
       networking.networkmanager.wifi.powersave = lib.mkIf config.cfg.networking.wifi.powersave.enable true;
       networking.networkmanager.wifi.macAddress = lib.mkIf config.cfg.networking.wifi.macRandomization.enable "stable";
     })

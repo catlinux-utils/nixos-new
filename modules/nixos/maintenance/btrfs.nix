@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  pkgs,
   ...
 }:
 {
@@ -41,6 +42,10 @@
         };
         systemd.services.btrfs-balance = lib.mkIf (!config.cfg.btrfsMaintenance.light) {
           wantedBy = [ "btrfs-balance.timer" ];
+          # btrfs-progs isn't pulled in by anything else (autoScrub uses an
+          # absolute store path) — without this the unit fails with
+          # "command not found"
+          path = [ pkgs.btrfs-progs ];
           serviceConfig.Type = "oneshot";
           script = "btrfs balance start -dusage=50 /";
         };

@@ -22,8 +22,8 @@
 
   config = lib.mkIf config.cfg.boot.enable {
     boot.loader = {
-      # systemd-boot is the fallback loader; boot.secureBoot (lanzaboote UKIs)
-      # forces it off and installs its signed variant instead
+      # systemd-boot is the fallback loader; boot.secureBoot (lanzaboote)
+      # forces it off for its signed variant
       systemd-boot = {
         enable = true;
         # belt-and-suspenders alongside `nh clean`
@@ -39,7 +39,6 @@
     boot.initrd.systemd.enable = true;
     boot.tmp.cleanOnBoot = true;
 
-    # silent boot
     boot.consoleLogLevel = 3;
     boot.kernelParams = [ "quiet" ];
 

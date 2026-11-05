@@ -3,8 +3,7 @@
 nixpkgs-unstable: final: prev: {
   unstable = import nixpkgs-unstable {
     # NOT `inherit (prev) system` — that reads pkgs.system, the deprecated
-    # alias (nixpkgs warns "'system' has been renamed …" at eval time).
-    # stdenv.hostPlatform.system is the supported spelling.
+    # alias (eval warning); stdenv.hostPlatform.system is supported.
     system = prev.stdenv.hostPlatform.system;
     config.allowUnfree = true;
   };

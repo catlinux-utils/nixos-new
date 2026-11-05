@@ -2,6 +2,8 @@
 # nixos-copy-repo — copy this repo onto the target system before first boot
 # The target username is read from hosts/<host>/default.nix (cfg.user.name) —
 # nothing hardcoded, so the copy lands where cfg.nh.flakeDir points.
+# Parsing is a plain sed on the canonical nixfmt layout (fails loudly on a
+# reformat). The copy carries gitignored files too (e.g. decrypted secrets).
 
 set -euo pipefail
 
@@ -60,7 +62,6 @@ main() {
   local hostfile="$REPO/hosts/$HOST/default.nix"
   [[ -f "$hostfile" ]] || { err "No such host: $HOST ($hostfile missing)."; exit 1; }
 
-  # cfg.user.name — the name = "..." inside the user = { ... } block
   local target_user
   target_user=$(sed -n '/user = {/,/};/p' "$hostfile" \
                 | sed -n 's/^ *name = "\(.*\)";.*/\1/p' | head -1)
@@ -71,16 +72,14 @@ main() {
   [[ -d "$MNT/home" ]] || { err "$MNT/home not mounted — run scripts/nixos-mount first."; exit 1; }
   [[ -e "$dest" ]] && warn "Replacing existing $dest"
 
+  # mkdir + rm first: lets cp rename instead of nesting into dest/nixos
   mkdir -p "$dest"
   rm -rf "$dest"
   cp -R "$REPO" "$dest"
 
-  # Turn the copy into a git repo with origin + main tracking preconfigured —
-  # the ISO's embedded tree is git-cleaned (no .git), and `git branch
-  # --set-upstream-to` refuses an unborn branch, so the tracking config is
-  # written directly; plain `git pull`/`git push` then work from boot one.
-  # Remote comes from the host file (cfg.git.remote); copies that already
-  # carry history (installed from a real clone) are left untouched.
+  # Preconfigure origin + main tracking directly (`git branch
+  # --set-upstream-to` refuses an unborn branch); remote from cfg.git.remote.
+  # Copies that already carry history are left untouched.
   local remote
   remote=$(sed -n 's/^ *git.remote = "\(.*\)";.*/\1/p' "$hostfile" | head -1)
   if [[ -n "$remote" && ! -e "$dest/.git" ]]; then
@@ -91,12 +90,12 @@ main() {
     info "Git repo initialised in the copy (origin: $remote)"
   fi
 
+  # best-effort fetch so origin/main exists from boot one; MUST run before
+  # the chown (root-written refs would break the user's first pull/push)
+  [[ -e "$dest/.git" ]] && git -C "$dest" fetch origin >/dev/null 2>&1 || true
+
   chown -R "$TREE_UID:$TREE_UID" "$dest"
   chmod -R u+w "$dest"
-
-  # best-effort initial fetch so origin/main exists from boot one (needs
-  # network + working auth; failure is fine — the repo still pulls later)
-  [[ -e "$dest/.git" ]] && git -C "$dest" fetch origin >/dev/null 2>&1 || true
 
   ok "Repo copied to $dest (owned by $TREE_UID:$TREE_UID)"
   ok "After first boot, run \`nh os switch\` from ~/$target_user/github/nixos"

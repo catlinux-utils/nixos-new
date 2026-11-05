@@ -27,22 +27,18 @@
     };
 
     # per-device/per-GPU hardware quirks, imported per host via specialArgs
-    # `inputs` (Phase 2 hardware decisions) — tracks master, no release
-    # branches; refreshed by the manual flake-update workflow
+    # `inputs` — tracks master, refreshed by the manual flake-update workflow
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     # Secure Boot (dormant, cfg.boot.secureBoot). Deliberately does NOT follow
-    # nixpkgs: `pkgs.lzbt` does not exist in 26.05, and lanzaboote's module
-    # defaults its package to `self.packages.<system>.lzbt`, built from the
-    # nixos-unstable nixpkgs this input carries itself. Officially an
-    # nixos-unstable-only module — enable per host only after a real eval on a
-    # Nix machine, and only on UEFI hardware.
+    # nixpkgs: `pkgs.lzbt` doesn't exist in 26.05 — the module defaults to its
+    # own lzbt built from the nixos-unstable nixpkgs carried here.
+    # nixos-unstable-only: eval on a Nix machine before enabling (UEFI only).
     lanzaboote.url = "github:nix-community/lanzaboote/v1.2.0";
   };
 
   outputs =
-    # inputs@ binds the whole attrset — modules reach later-added inputs
-    # (nixos-wsl, sops-nix, nixos-hardware, disko, lanzaboote) through
+    # inputs@ binds the whole attrset — modules reach later-added inputs via
     # specialArgs.inputs
     inputs@{
       self,
@@ -69,20 +65,18 @@
       nixosConfigurations = {
         desktop = mkHost { hostname = "desktop"; };
 
-        # Same machine as `desktop`, slim profile: full Hyprland workstation
-        # without the gaming stack, ollama, printing, kdeconnect, geolocation
-        # and tailscale — deploy with `nh os switch --flake .#desktop-lite`
+        # Same machine as `desktop`, slim: full Hyprland workstation minus
+        # gaming/ollama/printing/kdeconnect/geolocation/tailscale —
+        # deploy with `nh os switch --flake .#desktop-lite`
         desktop-lite = mkHost { hostname = "desktop-lite"; };
 
         laptop = mkHost { hostname = "laptop"; };
         server = mkHost { hostname = "server"; };
         wsl = mkHost { hostname = "wsl"; };
 
-        # The installer ISO is assembled like a host (mkHost — full Home
-        # Manager session for the profile's passwordless `nixos` user) but is
-        # an IMAGE, not a switch target: hosts/installer/default.nix adds the
-        # `iso` image variant. Built on a Nix machine:
-        #   nixos-rebuild build-image --flake .#installer --image-variant iso
+        # The installer ISO: assembled like a host (mkHost, full HM session)
+        # but an IMAGE, not a switch target — hosts/installer adds the `iso`
+        # variant; build with --image-variant iso (see that file)
         installer = mkHost { hostname = "installer"; };
       };
 

@@ -96,17 +96,17 @@ prompt_fs() {
 }
 
 prompt_config() {
+  # prompts read stdin; a closed/piped stdin would abort or spin the selects
+  [[ -t 0 ]] || { err "Interactive config needs a terminal (pass options + disk non-interactively)."; exit 1; }
   echo -e "${BLU}=== NixOS Disk Configuration ===${NC}"
   echo
 
-  # Disk
   info "Available disks:"
   lsblk -d -o NAME,SIZE,MODEL,TRAN,TYPE | grep -v loop
   echo
   read -rp "$(echo -e "${BLU}Target disk (e.g. /dev/nvme0n1):${NC} ")" DISK
   [[ -b "$DISK" ]] || { err "Not a block device: $DISK"; exit 1; }
 
-  # Layout preset
   echo
   PS3="$(echo -e "${BLU}Layout preset:${NC} ")"
   options=("auto (root+home on single encrypt)" "manual (choose each)" "server (root + data)" "Quit")
@@ -120,7 +120,6 @@ prompt_config() {
     esac
   done
 
-  # Encryption and swap
   echo
   read -rp "$(echo -e "${BLU}Encrypt root? [Y/n]:${NC} ")" ans
   ENCRYPT_ROOT="${ans:-y}"
@@ -139,13 +138,11 @@ prompt_config() {
     fi
   fi
 
-  # Filesystems
   echo
   prompt_fs FS_ROOT "Root filesystem" '^(btrfs|ext4|xfs)$'
   [[ "$ENCRYPT_HOME" =~ ^[Yy] ]] && prompt_fs FS_HOME "Home filesystem" '^(btrfs|ext4|xfs)$'
   prompt_fs FS_BOOT "Boot filesystem" '^(vfat|ext4)$'
 
-  # Sizes
   echo
   read -rp "$(echo -e "${BLU}Boot size [${BOOT_SIZE}]:${NC} ")" ans; BOOT_SIZE="${ans:-$BOOT_SIZE}"
   [[ "$USE_SWAP" =~ ^[Yy] ]] && { read -rp "$(echo -e "${BLU}Swap size [${SWAP_SIZE}]:${NC} ")" ans; SWAP_SIZE="${ans:-$SWAP_SIZE}"; }
@@ -162,6 +159,17 @@ create_partitions() {
   sgdisk -n 1:0:+$BOOT_SIZE -t 1:EF00 -c 1:"ESP" "$DISK"
   local part=2
 
+  # swap first: the branches below end in fill-rest partitions (-n :0:0).
+  # unencrypted swap gets a real partition too (type 8200)
+  if [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] ]]; then
+    if [[ "$ENCRYPT_SWAP" =~ ^[Yy] ]]; then
+      sgdisk -n $part:0:+$SWAP_SIZE -t $part:8309 -c $part:"cryptswap" "$DISK"
+    else
+      sgdisk -n $part:0:+$SWAP_SIZE -t $part:8200 -c $part:"swap" "$DISK"
+    fi
+    ((part++))
+  fi
+
   if [[ "$LAYOUT" == "server" ]]; then
     sgdisk -n $part:0:+${ROOT_SIZE:-100G} -t $part:8309 -c $part:"cryptroot" "$DISK"
     ((part++))
@@ -169,15 +177,10 @@ create_partitions() {
   elif [[ "$ENCRYPT_HOME" =~ ^[Yy] ]]; then
     sgdisk -n $part:0:+${ROOT_SIZE:-50G} -t $part:8309 -c $part:"cryptroot" "$DISK"
     ((part++))
+    # last: HOME_SIZE empty = rest of disk
     sgdisk -n $part:0:+${HOME_SIZE:-0} -t $part:8309 -c $part:"crypthome" "$DISK"
   else
     sgdisk -n $part:0:0 -t $part:8309 -c $part:"cryptroot" "$DISK"
-  fi
-
-  # Swap partition if not using swapfile
-  if [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] && "$ENCRYPT_SWAP" =~ ^[Yy] ]]; then
-    ((part++))
-    sgdisk -n $part:0:+$SWAP_SIZE -t $part:8309 -c $part:"cryptswap" "$DISK"
   fi
 }
 
@@ -208,6 +211,9 @@ format_partition() {
 create_subvolumes() {
   local mountpoint="$1" label="$2" fs="$3" device="$4"
   if [[ "$fs" == "btrfs" ]]; then
+    mkdir -p "$mountpoint"
+    # don't stack mounts on a re-run (a set -e abort leaves open LUKS)
+    mountpoint -q "$mountpoint" && { err "$mountpoint already mounted — run nixos-mount --umount first"; return 1; }
     mount "$device" "$mountpoint"
     case $label in
       cryptroot) for sv in @ @home @snapshots @log @nix; do btrfs subvolume create "$mountpoint/$sv"; done ;;
@@ -224,7 +230,6 @@ main() {
   [[ $EUID -ne 0 ]] && { err "Run as root (sudo)."; exit 1; }
   [[ -z "$DISK" ]] && prompt_config
 
-  # Show plan
   echo
   warn "Plan for $DISK:"
   echo "  Layout:       $LAYOUT"
@@ -248,19 +253,18 @@ main() {
   read -rp "$(echo -e "${YEL}Proceed? Type 'YES':${NC} ")" ans
   [[ "$ans" == "YES" ]] || { info "Aborted."; exit 0; }
 
-  # Execute
   create_partitions
   sleep 1
   partprobe "$DISK"
   sleep 1
 
-  # Find partitions by GPT partition name (PARTLABEL exists right after sgdisk;
-  # fs LABEL doesn't until formatting)
+  # lookup by GPT PARTLABEL (exists right after sgdisk, fs LABEL doesn't)
   ESP=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="ESP" {print $1}')
   CRYPTROOT=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptroot" {print $1}')
   CRYPTHOME=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="crypthome" {print $1}')
   CRYPTDATA=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptdata" {print $1}')
   CRYPTSWAP=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="cryptswap" {print $1}')
+  SWAPDEV=$(lsblk -rno PATH,PARTLABEL "$DISK" | awk '$2=="swap" {print $1}')
 
   local root_dev
   [[ "$ENCRYPT_ROOT" =~ ^[Yy] ]] && root_dev="/dev/mapper/cryptroot" || root_dev="$CRYPTROOT"
@@ -283,7 +287,11 @@ main() {
     mkswap /dev/mapper/cryptswap
   }
 
-  # Close all
+  [[ "$LAYOUT" != "server" && "$USE_SWAP" =~ ^[Yy] && ! "$ENCRYPT_SWAP" =~ ^[Yy] && -n "$SWAPDEV" ]] && {
+    info "Formatting swap..."
+    mkswap "$SWAPDEV"
+  }
+
   cryptsetup close cryptroot 2>/dev/null || true
   [[ -n "$CRYPTHOME" ]] && cryptsetup close crypthome 2>/dev/null || true
   [[ -n "$CRYPTDATA" ]] && cryptsetup close cryptdata 2>/dev/null || true

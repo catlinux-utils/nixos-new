@@ -1,15 +1,11 @@
-# Slim variant of `desktop` for the same machine — the full Hyprland
-# workstation profile with the heavy/peripheral features dropped: no gaming
-# stack (+ its 32-bit GL closure), no ollama (the multi-GB ROCm build), no
-# printing/scanning, kdeconnect, geolocation or tailscale. Home apps stay
-# untouched (vscode/mpv/pinta/yt-dlp/prefetchTools all on). Shares the disk
-# layout, so the placeholder hardware-configuration matches desktop's.
+# Slim variant of `desktop`, same machine — heavy/peripheral features dropped:
+# gaming (+ 32-bit GL), ollama (multi-GB ROCm), printing/scanning, kdeconnect,
+# geolocation, tailscale. Home apps stay. Shares desktop's disk layout, so the
+# placeholder hardware-configuration matches.
 {
   imports = [
     ./hardware-configuration.nix
-    # nixos-hardware quirks — replace with actual model(s), e.g.
-    # inputs.nixos-hardware.nixosModules.lenovo-thinkpad-x1-carbon-gen9
-    # inputs.nixos-hardware.nixosModules.asus-rog-zephyrus-g14-2022
+    # nixos-hardware quirks — replace with actual model(s)
   ];
 
   cfg = {
@@ -36,11 +32,9 @@
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
-    # theming: matugen palette from the running wallpaper + waypaper picker
-    # (SUPER+SHIFT+W). The vendored set ships to ~/Pictures/Wallpapers;
-    # `wallpaper` is the install-time default — it seeds
-    # ~/.local/state/theming/current exactly once and is never re-applied
-    # afterwards. Replace the files to change the collection.
+    # matugen palette from the running wallpaper + waypaper picker
+    # (SUPER+SHIFT+W); `wallpaper` is the install-time default — seeds
+    # ~/.local/state/theming/current exactly once, never re-applied after
     home.theming.enable = true;
     home.theming.wallpapers = [
       ../desktop/wallpapers/dusk.png

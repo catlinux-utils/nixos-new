@@ -12,11 +12,9 @@
         name = "JetBrainsMono Nerd Font";
         size = 11;
       };
-      # colors from the matugen palette (modules/home/theming/palette.nix):
-      # kitty REJECTS absolute paths here ("Non-relative patterns are
-      # unsupported"), so the include is relative to ~/.config/kitty/ —
-      # globinclude silently skips a missing file and kitty defaults apply
-      # until the first palette render
+      # matugen palette colors; kitty rejects absolute includes, so the path is
+      # relative to ~/.config/kitty/ — globinclude silently skips a missing
+      # file and kitty defaults apply until the first palette render
       settings.globinclude = "../../.cache/theming/kitty-colors.conf";
       settings.confirm_os_window_close = 0;
       settings.scrollback_lines = 10000;

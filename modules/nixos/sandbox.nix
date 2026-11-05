@@ -14,10 +14,13 @@
     (lib.mkIf config.cfg.sandbox.flatpak.enable {
       services.flatpak.enable = true;
 
-      # Flathub remote bootstrap (26.05's services.flatpak has no remotes
-      # option); Flatseal ships via Flathub — no nixpkgs attr on 26.05
+      # Flathub bootstrap (26.05's services.flatpak has no remotes option;
+      # Flatseal has no nixpkgs attr on 26.05). Needs network-online: without
+      # it the unit fails on boots where the net isn't up yet
       systemd.services.flatpak-flathub = {
         wantedBy = [ "multi-user.target" ];
+        after = [ "network-online.target" ];
+        wants = [ "network-online.target" ];
         path = [ pkgs.flatpak ];
         script = ''
           flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.repo

@@ -21,8 +21,7 @@
       "kernel.unprivileged_bpf_disabled" = 1;
       "net.core.bpf_jit_harden" = 2;
 
-      # network — refuse ICMP redirects and source-routed packets; strict
-      # reverse-path filtering (drop packets whose source is unroutable)
+      # network — refuse ICMP redirects and source-routed packets (rp_filter below)
       "net.ipv4.conf.all.accept_source_route" = 0;
       "net.ipv4.conf.default.accept_source_route" = 0;
       "net.ipv6.conf.all.accept_source_route" = 0;
@@ -33,12 +32,14 @@
       "net.ipv6.conf.default.accept_redirects" = 0;
       "net.ipv4.conf.all.send_redirects" = 0;
       "net.ipv4.conf.default.send_redirects" = 0;
-      "net.ipv4.conf.all.rp_filter" = 1;
-      "net.ipv4.conf.default.rp_filter" = 1;
+      # loose (2), not strict (1): strict silently drops asymmetric traffic
+      # (Tailscale subnet routing / exit nodes); loose still blocks spoofing
+      "net.ipv4.conf.all.rp_filter" = 2;
+      "net.ipv4.conf.default.rp_filter" = 2;
       "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
 
-      # fs.protected_fifos/regular stay off the desktop hosts — they can break
-      # multi-user /tmp patterns (why NixOS itself doesn't set them)
+      # protected_fifos/regular (2): server-only trade-off — can break O_CREAT
+      # patterns against root-owned daemons' files (why NixOS leaves them unset)
       "fs.protected_symlinks" = 1;
       "fs.protected_hardlinks" = 1;
       "fs.protected_fifos" = 2;

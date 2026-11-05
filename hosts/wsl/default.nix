@@ -1,7 +1,6 @@
-# Phase 1.5 — WSL dev host: once the distro is bootstrapped (`wsl --import`,
-# see PLAN.md), this machine validates the flake locally from Windows.
-# Platform wiring — never touch boot.loader* here: WSL owns boot, networking
-# is Windows-side, WSLg provides graphics/audio.
+# Phase 1.5 — WSL dev host: validates the flake locally from Windows (see
+# PLAN.md). Never touch boot.loader* here — WSL owns boot, networking is
+# Windows-side, WSLg provides graphics/audio.
 {
   inputs,
   config,
@@ -32,8 +31,7 @@
       keyboard = "pl";
     };
 
-    # where this flake lives on this machine (drives nh) — must stay on the
-    # WSL Linux filesystem; /mnt/c is too slow for nix
+    # drives nh — must stay on the WSL Linux fs; /mnt/c is too slow for nix
     nh.flakeDir = "/home/${config.cfg.user.name}/nixos";
 
     # git identity
@@ -44,11 +42,10 @@
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
-    # features — dev host: boot/networking/audio/graphics stay off (WSL and
-    # the Windows side own them); no firewall — WSL traffic is filtered on
-    # the Windows side and nftables here would only block Windows→WSL access.
-    # Passwordless sudo comes from NixOS-WSL (wheelNeedsPassword = false), so
-    # no initialPassword is needed before the first `nh os switch`.
+    # dev host: boot/networking/audio/graphics off (WSL and the Windows side
+    # own them). No firewall: nftables here would only block Windows→WSL
+    # access. NixOS-WSL gives passwordless sudo — no initialPassword needed
+    # before the first `nh os switch`.
     networking.firewall.enable = false;
     compat.nix-ld.enable = true; # vscode-server (VS Code WSL remote)
   };

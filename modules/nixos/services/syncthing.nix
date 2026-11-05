@@ -16,6 +16,9 @@
       # the Web UI owns devices/folders until they are declared here
       overrideDevices = false;
       overrideFolders = false;
+      # open sync/discovery ports in the firewall — without them LAN peers
+      # are unreachable and sync silently falls back to relays
+      openDefaultPorts = true;
     };
   };
 }

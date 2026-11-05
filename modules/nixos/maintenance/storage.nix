@@ -10,8 +10,8 @@
     # weekly TRIM for SSDs (interval defaults to "weekly")
     services.fstrim.enable = true;
 
-    # scans every detected drive (DEVICESCAN); mail notifications stay off
-    # until an SMTP relay decision exists
+    # scans every detected drive (DEVICESCAN); mail notifications off until an
+    # SMTP relay decision exists
     services.smartd.enable = true;
   };
 }

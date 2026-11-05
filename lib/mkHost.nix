@@ -1,5 +1,5 @@
-# Curried: flake.nix supplies the global args, each host call supplies the
-# per-host args. Relative paths resolve from lib/, hence the ../.
+# Curried: flake.nix supplies the global args, each host call the per-host
+# args. Relative paths resolve from lib/, hence the ../.
 {
   lib,
   self,
@@ -15,8 +15,8 @@
 
 lib.nixosSystem {
   inherit system;
-  # `self` = the flake's own git-cleaned source tree (a store path); the
-  # installer ISO uses it to embed the repo in the live environment
+  # `self` = the flake's git-cleaned source (store path); the installer
+  # ISO embeds it in the live environment
   specialArgs = {
     inherit inputs self;
   };
@@ -28,6 +28,8 @@ lib.nixosSystem {
         options.cfg.git.remote = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
+          # declared here, not a feature module: per-host knob consumed by
+          # scripts/nixos-copy-repo
           description = ''
             Origin URL for the flake working copy at cfg.nh.flakeDir.
             scripts/nixos-copy-repo reads it from the host file and
@@ -39,14 +41,13 @@ lib.nixosSystem {
 
         config = {
           networking.hostName = hostname;
-          # default flake home: derived from the identity option, not a hardcoded
-          # username; hosts override it (wsl) and the installer inherits it as-is
+          # derived from the identity option, not hardcoded; wsl overrides,
+          # the installer inherits
           cfg.nh.flakeDir = lib.mkDefault "/home/${config.cfg.user.name}/github/nixos";
 
-          # NOTE: git wiring of the delivered working copy (origin + tracking)
-          # lives in scripts/nixos-copy-repo — the only path that puts the repo
-          # on a host — not in an activation script; keep it that way unless a
-          # second delivery path appears.
+          # git wiring of the delivered working copy (origin + tracking) lives
+          # in scripts/nixos-copy-repo — keep it there unless a second
+          # delivery path appears.
 
         };
       }
@@ -62,19 +63,18 @@ lib.nixosSystem {
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.extraSpecialArgs = { inherit inputs; };
-        # unmanaged files HM takes over get a .backup copy instead of
-        # failing activation
+        # files HM takes over get a .backup copy instead of failing activation
         home-manager.backupFileExtension = "backup";
-        # user name comes from users.nix's option (lazy evaluation makes
-        # this work); username/homeDirectory are pinned to the NixOS user
-        # so the HM modules never depend on HM's own defaults
+        # user name from users.nix's option (lazy evaluation makes this work);
+        # username/homeDirectory pinned to the NixOS user so HM defaults never win
         home-manager.users.${config.cfg.user.name} = {
           imports = [ ../modules/home ];
           home.username = config.cfg.user.name;
           home.homeDirectory = "/home/${config.cfg.user.name}";
         };
-        # HM has no home.stateVersion default — set it here, once, per host
-        # (first-install marker: do NOT bump it together with the nixpkgs pin)
+        # no HM home.stateVersion default — set once here (first-install
+        # marker: do NOT bump with the nixpkgs pin); hard definition so a
+        # duplicate fails eval loudly
         home-manager.sharedModules = [ { home.stateVersion = "26.05"; } ];
       }
     )

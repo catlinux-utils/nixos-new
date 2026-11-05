@@ -3,9 +3,10 @@
   ...
 }:
 {
-  # Options for home-manager features, declared in the NixOS tree so hosts
-  # set every knob under the single cfg.* namespace. The home modules are
-  # option-less and read these via osConfig.cfg.home.*.
+  # Home-manager feature options, declared in the NixOS tree so hosts set every
+  # knob under the single cfg.* namespace; home modules are option-less and read
+  # these via osConfig.cfg.home.*. Most default true (hosts opt OUT) and gate on
+  # cfg.desktop.enable home-side, so headless hosts stay clean.
   options.cfg.home = {
     shell.enable = lib.mkOption {
       type = lib.types.bool;
@@ -97,8 +98,7 @@
       description = "OBS Studio — opt-in screen recording";
     };
 
-    # desktop app bundles — default on with the desktop, but each can be
-    # dropped per host; the installer ISO turns them all off (slim live env)
+    # desktop app bundles — droppable per host; the installer ISO turns all off
     vscode.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;

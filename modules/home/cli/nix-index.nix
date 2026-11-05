@@ -12,8 +12,7 @@
       enableZshIntegration = true;
     };
 
-    # `,pkg` runs a binary straight from the store, resolved via the
-    # nix-index database (build it once with `nix-index`)
+    # `,pkg` runs a binary straight from the store via the nix-index database
     home.packages = [ pkgs.comma ];
   };
 }

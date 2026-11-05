@@ -1,9 +1,7 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # nixos-hardware quirks — replace with actual model, e.g.
-    # inputs.nixos-hardware.nixosModules.hpe-proliant-microserver-gen10
-    # inputs.nixos-hardware.nixosModules.supermicro-x11ssh-f
+    # nixos-hardware quirks — replace with actual model
   ];
 
   cfg = {
@@ -31,7 +29,7 @@
     };
 
     # features — headless: no desktop, no audio/graphics/NM; compat is nix-ld
-    # only (vscode-server) — host matrix: PLAN.md §1.7
+    # only (vscode-server)
     boot.enable = true;
     boot.secureBoot.enable = true; # UKIs via lanzaboote; ESP at /efi
     boot.secureBoot.autoKeys.enable = true;
@@ -51,8 +49,8 @@
     # server hardening — PLAN.md §2.1
     hardening.enable = true;
     fail2ban.enable = true;
-    # monitoring is opt-in per service (Tailscale/localhost reach by default):
-    # cfg.monitoring.nodeExporter.enable / .netdata.enable / .uptimeKuma.enable
+    # monitoring is opt-in per service (Tailscale/localhost reach):
+    # cfg.monitoring.nodeExporter/.netdata/.uptimeKuma.enable
   };
 
   # first-install marker — do NOT bump together with the nixpkgs pin

@@ -1,20 +1,8 @@
-# Secure Boot via lanzaboote — the UKI boot path. lzbt builds a signed UKI
-# (kernel + initrd + cmdline) per generation into ESP/EFI/Linux; the signed
-# systemd-boot it installs discovers them, so the boot menu stays short and
-# non-NixOS entries (e.g. Windows Boot Manager, auto-listed) are easy to
-# reach. Firmware Secure Boot may stay OFF — UKIs are signed regardless, and
-# SB becomes a firmware toggle once enrolled.
-#
-# The flake input deliberately does NOT follow nixpkgs (see flake.nix): the
-# module defaults its `package` to lanzaboote's own `lzbt` build (nixpkgs 26.05
-# has no lzbt), and the module itself is officially nixos-unstable-only.
-#
-# First-use flow (per host): enable + rebuild → autoGenerateKeys creates the
-# sbctl key bundle under pkiBundle on first boot → autoEnrollKeys stages
-# PK/KEK/db for systemd-boot to enroll into the firmware on the next boot
-# (includeMicrosoftKeys is upstream's default; loader.conf gets
-# `secure-boot-enroll = force`). After enrollment the machine only boots
-# signed artifacts.
+# Secure Boot via lanzaboote: signed UKIs per generation in ESP/EFI/Linux,
+# discovered by its signed systemd-boot. Firmware SB may stay OFF — UKIs are
+# signed regardless. Input does NOT follow nixpkgs (26.05 has no lzbt). First
+# use: enable + rebuild → keys under pkiBundle → PK/KEK/db auto-enrolled next
+# boot — only signed artifacts boot afterwards.
 {
   inputs,
   lib,
@@ -53,15 +41,15 @@
       enable = true;
       # sbctl key bundle, created by autoGenerateKeys on first boot
       pkiBundle = "/var/lib/sbctl";
-      # short boot menu: one entry per kept generation, Windows easy to reach.
-      # systemd-pcrlock (measuredBoot) hard-caps stored generations at 4
+      # short menu: one entry per kept generation; pcrlock (measuredBoot) caps
+      # stored generations at 4
       configurationLimit = lib.mkDefault (
         if config.cfg.boot.secureBoot.measuredBoot.enable then 4 else 5
       );
 
       measuredBoot = lib.mkIf config.cfg.boot.secureBoot.measuredBoot.enable {
         enable = true;
-        # firmware + GPT + boot-loader code + Secure Boot policy
+        # firmware (0) + option ROMs (2) + boot-manager code (4) + SB policy (7)
         pcrs = lib.mkDefault [
           0
           2

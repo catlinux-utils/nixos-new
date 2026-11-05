@@ -39,6 +39,7 @@ Mounts:
   - crypthome -> /mnt/home (if exists, subvolume @home)
   - cryptdata -> /mnt/var/lib (if exists, subvolumes docker, containers, etc.)
   - cryptswap -> swapon (if exists)
+  - swap -> swapon (plain, unencrypted swap partition; if exists)
 EOF
 }
 
@@ -64,6 +65,7 @@ find_parts() {
   CRYPTHOME=$(lsblk -rno PATH,PARTLABEL "$DISK" 2>/dev/null | awk '$2=="crypthome" {print $1}')
   CRYPTDATA=$(lsblk -rno PATH,PARTLABEL "$DISK" 2>/dev/null | awk '$2=="cryptdata" {print $1}')
   CRYPTSWAP=$(lsblk -rno PATH,PARTLABEL "$DISK" 2>/dev/null | awk '$2=="cryptswap" {print $1}')
+  SWAPDEV=$(lsblk -rno PATH,PARTLABEL "$DISK" 2>/dev/null | awk '$2=="swap" {print $1}')
 }
 
 # ─── Helpers ─────────────────────────────────────────────────────────
@@ -120,18 +122,20 @@ main() {
     info "cryptroot is not LUKS-encrypted; mounting directly."
   fi
 
-  # Open remaining LUKS
   if [[ "$OPEN_LUKS" == "yes" ]]; then
     [[ -n "$CRYPTHOME" ]] && open_luks "$CRYPTHOME" "crypthome"
     [[ -n "$CRYPTDATA" ]] && open_luks "$CRYPTDATA" "cryptdata"
     [[ -n "$CRYPTSWAP" ]] && open_luks "$CRYPTSWAP" "cryptswap"
   fi
 
-  # Mount root subvolumes
   mkdir -p "$MNT"
   info "Mounting root subvolumes..."
   mount_subvol "$ROOTDEV" @ "$MNT"
-  mount_subvol "$ROOTDEV" @home "$MNT/home"
+  # separate encrypted home overrides root's @home — don't stack mounts
+  # (duplicates confuse nixos-generate-config)
+  if [[ -z "$CRYPTHOME" ]]; then
+    mount_subvol "$ROOTDEV" @home "$MNT/home"
+  fi
   mount_subvol "$ROOTDEV" @snapshots "$MNT/.snapshots"
   mount_subvol "$ROOTDEV" @log "$MNT/var/log"
   mount_subvol "$ROOTDEV" @nix "$MNT/nix"
@@ -143,12 +147,10 @@ main() {
   # nixos-install expects an EFI dir on the ESP (case-sensitive vfat)
   mkdir -p "$MNT/efi/EFI"
 
-  # Separate /home
   if [[ -n "$CRYPTHOME" ]]; then
     mount_subvol /dev/mapper/crypthome @home "$MNT/home"
   fi
 
-  # Server data
   if [[ -n "$CRYPTDATA" ]]; then
     mount_subvol /dev/mapper/cryptdata docker "$MNT/var/lib/docker"
     mount_subvol /dev/mapper/cryptdata containers "$MNT/var/lib/containers"
@@ -157,10 +159,22 @@ main() {
     mount_subvol /dev/mapper/cryptdata libvirt "$MNT/var/lib/libvirt"
   fi
 
-  # Swap
+  # encrypted + plain; tolerate already-active swap (nonzero exit)
   if [[ -n "$CRYPTSWAP" ]]; then
-    swapon /dev/mapper/cryptswap
-    ok "Swap on /dev/mapper/cryptswap"
+    if grep -qs "cryptswap" /proc/swaps; then
+      ok "Swap already on /dev/mapper/cryptswap"
+    else
+      swapon /dev/mapper/cryptswap
+      ok "Swap on /dev/mapper/cryptswap"
+    fi
+  fi
+  if [[ -n "$SWAPDEV" ]]; then
+    if grep -qs "$SWAPDEV" /proc/swaps; then
+      ok "Swap already on $SWAPDEV"
+    else
+      swapon "$SWAPDEV"
+      ok "Swap on $SWAPDEV"
+    fi
   fi
 
   ok "All mounted at $MNT"
@@ -177,6 +191,7 @@ unmount_close() {
 
   info "Closing swap..."
   swapoff /dev/mapper/cryptswap 2>/dev/null || true
+  [[ -n "$SWAPDEV" ]] && swapoff "$SWAPDEV" 2>/dev/null || true
 
   info "Closing LUKS..."
   for name in cryptroot crypthome cryptdata cryptswap; do

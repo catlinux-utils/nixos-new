@@ -1,10 +1,7 @@
-# Monitoring services — flip whichever fits. None of them open the firewall:
-# the node exporter (9100) and Netdata (19999) listen on all interfaces but
-# stay unreachable until a port is opened per host — scrape over Tailscale or
-# add it to cfg.networking.firewall.allowedTCPPorts; Uptime Kuma binds
-# 127.0.0.1:3001 and expects a reverse proxy or an SSH tunnel. Dashboards
-# don't page anyone — configure a push channel (Uptime Kuma's built-in
-# notifiers cover ntfy and healthchecks-style pings).
+# Monitoring services — flip whichever fits. None open the firewall: the node
+# exporter (9100) and Netdata (19999) stay unreachable until a port is opened
+# per host (scrape over Tailscale); Uptime Kuma binds 127.0.0.1:3001 (reverse
+# proxy or SSH tunnel). Dashboards don't page — configure a push channel.
 {
   lib,
   config,

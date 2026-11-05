@@ -39,8 +39,7 @@
       extraGroups = [ "wheel" ];
       shell = pkgs.zsh;
       # mkDefault: upstream installation-device.nix (imported by the installer
-      # host) sets "" for its passwordless `nixos` user and must win over this
-      # placeholder on live media
+      # host) sets "" for its passwordless `nixos` user and must win here
       initialPassword = lib.mkIf (config.cfg.user.initialPassword != null) (
         lib.mkDefault config.cfg.user.initialPassword
       );

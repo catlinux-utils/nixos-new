@@ -1,7 +1,6 @@
-# Phase 6 — scheduled auto-updates via upstream system.autoUpgrade. Dormant:
-# no host flips it yet — PLAN leaves the manual-nh-vs-auto trade-off to each
-# host. Flake-aware: pulls this repo from cfg.nh.flakeDir (--refresh is set
-# automatically in flake mode).
+# Phase 6 — scheduled auto-updates via upstream system.autoUpgrade. Dormant
+# (the manual-nh-vs-auto trade-off is left to each host); flake-aware, pulls
+# this repo from cfg.nh.flakeDir.
 {
   lib,
   config,
@@ -46,6 +45,6 @@
         ;
     };
 
-    # nix.gc.automatic stays off — nh.clean owns garbage collection.
+    # nix.gc.automatic stays off — nh.clean owns garbage collection
   };
 }

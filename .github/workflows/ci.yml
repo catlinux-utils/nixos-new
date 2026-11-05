@@ -11,8 +11,8 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
       - name: Check formatting (RFC 101)
         run: nix fmt -- --check .
       - name: Flake check (evaluates every host)
@@ -28,9 +28,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        host: [desktop, laptop, server, wsl]
+        host: [desktop, desktop-lite, laptop, server, wsl]
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
       - name: Build host toplevel
         run: nix build --print-build-logs .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel

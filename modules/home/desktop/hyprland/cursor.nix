@@ -14,8 +14,8 @@
       size = 24;
     };
 
-    # uwsm sources ~/.config/uwsm/env-* at session start; the Hyprland cursor
-    # env gets its own file (env-hyprland) so each writer stays separate
+    # uwsm sources ~/.config/uwsm/env-* at session start; a separate
+    # env-hyprland file keeps each writer separate
     xdg.configFile."uwsm/env-hyprland".text = ''
       export HYPRCURSOR_THEME=Adwaita
       export HYPRCURSOR_SIZE=24

@@ -1,16 +1,7 @@
-# Live installer ISO — a full mkHost host (Home Manager session for the
-# profile's passwordless `nixos` user) that is built as an IMAGE, not switched
-# onto a machine. Build the ISO on a Nix machine:
-#
+# Live installer ISO — a full mkHost host built as an IMAGE, not switched:
 #   nixos-rebuild build-image --flake .#installer --image-variant iso
-#
-# NOTE: the ISO embeds the COMMITTED repo tree (copied to ~/github/nixos in the
-# live session) — commit/push before building or the image ships a stale tree.
-#
-# Flake-aware live environment: upstream's channel.nix and clone-config.nix are
-# disabled (they provision a Nixpkgs channel and clone the live config into
-# /etc/nixos — both at odds with flake installs); the repo's own always-on
-# modules provide Lix, flakes and the pinned registry instead.
+# Embeds the COMMITTED repo tree (~/github/nixos) — commit/push before
+# building. Flake-aware: upstream's channel.nix + clone-config.nix disabled.
 {
   lib,
   config,
@@ -20,24 +11,17 @@
   ...
 }:
 let
-  # The pinned nixpkgs source. This must come from inputs (specialArgs), NOT
-  # from the `pkgs` module arg: imports and disabledModules resolve before the
-  # module system has a config, and `pkgs` is only reachable through
-  # config._module.args — forcing it here is an infinite recursion.
+  # From inputs, NOT the `pkgs` module arg: imports/disabledModules resolve
+  # before config exists — forcing `pkgs` here is infinite recursion.
   nixosModules = inputs.nixpkgs + "/nixos/modules";
 
-  # The repo's own source, embedded in the live environment. `self` is the
-  # git-cleaned flake tree as a store path — no `.git`, so it lands as a
-  # plain (path-)flake dir; good for `nixos-install --flake`, not for commits.
+  # `self`: git-cleaned flake tree (store path, no .git) — for nixos-install, not commits
   repoSrc = self;
   repoDest = "/home/${config.cfg.user.name}/github/nixos";
 in
 {
   imports = [
-    # the upstream installer stack: live-env toolkit (parted, gptfdisk,
-    # cryptsetup, vim, …), supported filesystems, passwordless `nixos`/root
-    # accounts, passwordless sudo, getty autologin, NetworkManager, sshd,
-    # hardware.enableAllHardware, swraid, low-memory tuning
+    # upstream installer stack: live-env toolkit, passwordless nixos/root + sudo, autologin, NM, sshd
     (nixosModules + "/profiles/base.nix")
     (nixosModules + "/profiles/installation-device.nix")
   ];
@@ -49,20 +33,15 @@ in
   ];
 
   cfg = {
-    # identity — reuse the profile's passwordless `nixos` account: the
-    # always-on users.nix merges zsh + wheel into it, Home Manager targets it,
-    # and no locked `cat` user appears in the live environment
+    # reuses the profile's passwordless `nixos` account (users.nix merges zsh + wheel, HM targets it)
     user = {
       name = "nixos";
       fullName = "Live installer (nixos)";
-      # upstream installation-device.nix already sets initialHashedPassword = ""
-      # for this user; null keeps users.nix from setting a second password
-      # option on the same account (eval warning otherwise)
+      # upstream sets initialHashedPassword = ""; null avoids a second password option (eval warning)
       initialPassword = null;
     };
 
-    # the live environment boots into the repo's Hyprland desktop (GDM
-    # autologin below); theming rides the desktop host's wallpaper set
+    # boots into the repo's Hyprland desktop (greetd autologin below); wallpapers from the desktop host
     desktop.hyprland.enable = true;
     home = {
       theming.enable = true;
@@ -74,15 +53,10 @@ in
       ];
       hyprland.wallpaper = ../desktop/wallpapers/dusk.png;
 
-      # no screen lock: the live `nixos` user's empty password can't unlock
-      # hyprlock (no nullok on its PAM service), so a 5-min idle would strand
-      # the session behind an unrecoverable lock screen — and live media has
-      # nothing to protect
+      # no screen lock: the empty-password `nixos` user can't unlock hyprlock (no PAM nullok)
       hyprland.lock = false;
 
-      # slim live env: editor, media player, image editor, yt-dlp (deno) and
-      # the nix prefetch tools (nix-*-dev closure) are dead weight here;
-      # browser, file manager and gparted stay for real install work
+      # slim live env: editor/media/image/yt-dlp/prefetch tools off; browser, file manager, gparted stay
       vscode.enable = false;
       mpv.enable = false;
       pinta.enable = false;
@@ -91,22 +65,17 @@ in
     };
 
     networking = {
-      # upstream enables NetworkManager too; this switch adds our module's
-      # wait-online un-stall + group wiring
+      # upstream enables NM too; this adds our wait-online un-stall + group wiring
       networkManager.enable = true;
       resolved.enable = true;
+      # the default-on firewall would block upstream's live-media sshd — same reason wsl disables it
+      firewall.enable = false;
     };
   };
 
-  # autostart: open the repo's install guide when the live session starts —
-  # a systemd user service bound to graphical-session.target (activated by
-  # uwsm), the same channel as the polkit agent. kitty runs as the service's
-  # foreground main PID (no --detach: the detached child's failure is
-  # invisible, exit 0 is all the journal ever sees) and ExecStartPre waits
-  # for the wayland socket — target activation can race the compositor's
-  # first socket setup. bat pages the guide read-only (same viewer as the
-  # shell's cat); kitty/bat via HM (useGlobalPkgs: same pkgs here), absolute
-  # store paths because a bare PATH in a user unit isn't guaranteed.
+  # autostart: open the install guide (graphical-session.target). kitty stays
+  # foreground so failures reach the journal; ExecStartPre waits for the
+  # wayland socket (activation races the compositor)
   home-manager.users.${config.cfg.user.name}.systemd.user.services.installer-guide = {
     Unit = {
       Description = "Open the install guide (~/github/nixos/docs/INSTALL.md)";
@@ -116,28 +85,24 @@ in
     Service = {
       Type = "simple";
       ExecStartPre =
-        # block up to ~15s for WAYLAND_DISPLAY and its socket to exist
-        # (dollar-signs doubled: systemd expands $VAR itself at command
-        # start, these must be expanded by bash per loop iteration)
+        # ~15s wait for the wayland socket ($$ = literal for systemd)
         "${pkgs.bash}/bin/bash -c 'for i in $(seq 1 150); do [ -n \"$$WAYLAND_DISPLAY\" ] && [ -S \"$$XDG_RUNTIME_DIR/$$WAYLAND_DISPLAY\" ] && exit 0; sleep 0.1; done; echo \"no wayland socket ($$WAYLAND_DISPLAY in $$XDG_RUNTIME_DIR)\" >&2; exit 1'";
       ExecStart = "${pkgs.kitty}/bin/kitty ${pkgs.bat}/bin/bat %h/github/nixos/docs/INSTALL.md";
     };
     Install.WantedBy = [ "graphical-session.target" ];
   };
 
-  # boot-to-desktop: greetd autologins the live user straight into the
-  # uwsm Hyprland session (same UX the GDM block provided, without GDM's
-  # greeter dragging the whole GNOME/ibus/speech stack — ~0.7-1G of closure).
-  # The uwsm command mirrors Hyprland's own hyprland-uwsm session entry.
-  # No `cfg.boot` — the ISO variant owns its own bootloader.
+  # greetd autologin into the uwsm Hyprland session (no `cfg.boot` — the ISO
+  # variant owns the bootloader); GDM off — two DMs collide on
+  # display-manager.service
+  services.displayManager.gdm.enable = false;
   services.greetd = {
     enable = true;
+    # keep boot console noise off the text greeter (shown on logout)
+    useTextGreeter = true;
     settings = {
       initial_session = {
-        # mirrors Hyprland's own hyprland-uwsm.desktop Exec (the entry resolves
-        # through the desktop file, so the session runs via start-hyprland —
-        # launching the bare Hyprland binary makes Hyprland complain about a
-        # debugging-environment launch)
+        # mirrors Hyprland's own hyprland-uwsm.desktop Exec — a bare-binary launch trips a debugging warning
         command = "${lib.getExe pkgs.uwsm} start -e -D Hyprland hyprland.desktop";
         user = config.cfg.user.name;
       };
@@ -148,14 +113,11 @@ in
       };
     };
   };
-  # keyring unlock at greetd PAM is automatic: the greetd module defaults
-  # enableGnomeKeyring on when services.gnome.gnome-keyring is enabled
+  # greetd has no keyring toggle — its PAM substacks `login`, whose
+  # enableGnomeKeyring is set by desktop/hyprland.nix (deleting it breaks keyring here)
 
-  # fonts: drop the CJK sets (pl-locale installer) and the ~220 MiB full Nerd
-  # Font — plain JetBrains Mono + symbols-only cover the same glyphs via
-  # fontconfig (the bar's icon font falls back through fontconfig by design,
-  # see quickshell/shell.qml). The alias keeps every "JetBrainsMono Nerd
-  # Font" request (kitty, hyprlock, the bar) resolving.
+  # drop CJK + ~220 MiB Nerd Font — JetBrains Mono + symbols-only cover the glyphs
+  # via fontconfig; the alias keeps "JetBrainsMono Nerd Font" requests resolving
   fonts.packages = lib.mkForce (
     with pkgs;
     [
@@ -178,16 +140,11 @@ in
     '')
   ];
 
-  # UEFI-only ISO: no BIOS (grub) boot entry needed on any target machine
-  # (~60 MiB); ModemManager rides NetworkManager's mkDefault — no WWAN on
-  # install targets (~70 MiB with libqmi/mbim)
+  # ModemManager rides NM's mkDefault — no WWAN on install targets (~70 MiB)
   networking.modemmanager.enable = false;
 
-  # Image-only host: `nix flake check` (and any non-image eval) sees this BASE
-  # config, while the `iso` variant (iso-image.nix) owns boot and mounts. 26.05
-  # defaults grub on for non-containers and stage-1 asserts a root fs — mirror
-  # the variant's media overrides here so the base stays assert-clean; the
-  # variant re-wins them at the same priority with the real live-ISO layout.
+  # base stays assert-clean for non-image eval (grub default, stage-1 root fs);
+  # the iso variant re-wins these at the same priority
   boot.loader.grub.enable = lib.mkImageMediaOverride false;
   fileSystems."/" = lib.mkImageMediaOverride {
     fsType = "tmpfs";
@@ -203,27 +160,22 @@ in
   # for `nixos-install --flake` from the live env (nh rides the always-on nh.nix)
   environment.systemPackages = [ pkgs.git ];
 
-  # Drop the full repo into the live session at ~/github/nixos. /home is tmpfs
-  # on the ISO, so the copy runs at activation (after users/groups exist);
-  # referencing the store path here also pulls the source into the ISO's
-  # closure, making offline `nixos-install --flake ~/github/nixos#<host>` work.
-  # Writable (a store-path symlink couldn't be edited) and re-laid fresh every
-  # boot, so image updates always ship the current tree.
+  # repo copy at ~/github/nixos: in the ISO closure (offline nixos-install),
+  # fresh every boot (/home is tmpfs) but guarded — activation runs on every
+  # `nh os switch` and must not clobber in-session edits
   system.activationScripts.installerRepo = lib.stringAfter [ "users" "groups" ] ''
-    mkdir -p /home/${config.cfg.user.name}/github
-    rm -rf ${repoDest}
-    cp -R ${repoSrc} ${repoDest}
-    chown -R ${config.cfg.user.name}:users ${repoDest}
-    chmod -R u+w ${repoDest}
+    if [ ! -e ${repoDest} ]; then
+      mkdir -p /home/${config.cfg.user.name}/github
+      cp -R ${repoSrc} ${repoDest}
+      chown -R ${config.cfg.user.name}:users ${repoDest}
+      chmod -R u+w ${repoDest}
+    fi
   '';
 
   system.stateVersion = "26.05";
 
-  # The `iso` image variant — merged into the base config by the variant
-  # machinery (deferredModule). installation-device.nix already resets
-  # swapDevices, boot.initrd.luks.devices and fileSystems for media; repeated
-  # here as insurance so a future hardware-configuration import can't leak
-  # real disk layout onto the CD.
+  # `iso` image variant; the media resets are insurance against a future
+  # hardware-configuration import leaking real disk layout onto the CD
   image.modules.iso = {
     swapDevices = lib.mkImageMediaOverride [ ];
     boot.initrd.luks.devices = lib.mkImageMediaOverride { };

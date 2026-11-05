@@ -10,21 +10,17 @@
       enable = true;
 
       # uwsm (system-side withUWSM) owns session/target activation; HM's own
-      # hyprland-session.target flow stays off so wayland.* user units bind
-      # to graphical-session.target instead
+      # hyprland-session.target stays off so wayland.* user units bind to
+      # graphical-session.target instead
       systemd.enable = false;
     };
 
-    # the session config is the legacy flake's hyprland.lua vendored verbatim —
-    # a plain file with no Nix interpolation, so it can be copied to non-NixOS
-    # machines as-is; Hyprland (>= 0.53) loads it from ~/.config/hypr/.
-    # Do NOT set wayland.windowManager.hyprland.settings/extraConfig: on
-    # release-26.05 (configType defaults to "lua") HM generates the same
-    # hypr/hyprland.lua path and would fight this file for ownership.
+    # hyprland.lua vendored verbatim (copyable to non-NixOS machines). Do NOT
+    # set settings/extraConfig: HM 26.05 (configType "lua") would generate the
+    # same hypr/hyprland.lua path and fight this file.
     xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
 
-    # shutdown menu for the SUPER+M bind (the bind itself falls back to
-    # `uwsm stop` when the binary is missing)
+    # shutdown menu for the SUPER+M bind (the bind falls back to `uwsm stop`)
     home.packages = [ pkgs.hyprshutdown ];
 
     # Electron/Chromium apps run native Wayland; uwsm sources ~/.config/uwsm/env
@@ -34,9 +30,8 @@
     '';
 
     # pin the terminal uwsm picks for Terminal=true desktop entries (e.g. the
-    # quickshell bar's `uwsm app -- btop.desktop`): without this list uwsm's
-    # fallback scan can land on kitty-open.desktop ("kitty +open %U"), which
-    # composes `kitty %U -e btop` and errors out in kitty's URL-opener dialog
+    # bar's btop launch): without this list the fallback scan can land on
+    # kitty-open.desktop, which errors out in kitty's URL-opener dialog
     xdg.configFile."xdg-terminals.list".text = ''
       kitty.desktop
       -kitty-open.desktop

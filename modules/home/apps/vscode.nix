@@ -6,8 +6,7 @@
 }:
 {
   # rides the system desktop switch — the headless vscode-server story is
-  # nix-ld (modules/nixos/compat.nix), not a local editor install;
-  # cfg.home.vscode.enable drops it per host (the installer ISO does)
+  # nix-ld (modules/nixos/compat.nix); cfg.home.vscode.enable drops it per host
   config = lib.mkIf (osConfig.cfg.desktop.enable && osConfig.cfg.home.vscode.enable) {
     programs.vscode = {
       enable = true;

@@ -1,9 +1,7 @@
-# Power-management governors — pick at most one; the assertion below guards
-# all three pairs (upstream only asserts power-profiles-daemon against the
-# other two, not tlp-vs-auto-cpufreq). GNOME hosts already mkDefault
-# power-profiles-daemon on, so flipping tlp/autoCpufreq on one collides with
-# that default before this assertion even matters — disable it there or stay
-# on ppd.
+# Power-management governors — pick at most one; the assertion below covers all
+# three (upstream only asserts power-profiles-daemon vs the other two, not
+# tlp-vs-auto-cpufreq). GNOME hosts mkDefault ppd on — flipping tlp/autoCpufreq
+# there collides with that default; disable it or stay on ppd.
 {
   lib,
   config,
@@ -19,8 +17,8 @@
 
     thermald.enable = lib.mkEnableOption "thermald, the (Intel) temperature management daemon";
 
-    # logind.conf(5) actions; 26.05 renamed the flat lidSwitch option to
-    # services.logind.settings.Login.HandleLidSwitch (extraConfig is gone)
+    # 26.05 renamed the flat lidSwitch option to
+    # services.logind.settings.Login.HandleLidSwitch (extraConfig gone)
     lidSwitch = lib.mkOption {
       type = lib.types.nullOr (
         lib.types.enum [

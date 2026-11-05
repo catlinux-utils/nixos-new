@@ -1,9 +1,7 @@
 {
   imports = [
     ./hardware-configuration.nix
-    # nixos-hardware quirks — replace with actual model, e.g.
-    # inputs.nixos-hardware.nixosModules.framework-laptop-13-intel-12th-gen
-    # inputs.nixos-hardware.nixosModules.dell-xps-13-9310
+    # nixos-hardware quirks — replace with actual model
   ];
 
   cfg = {
@@ -33,10 +31,8 @@
       email = "88453875+PolskiKocurek@users.noreply.github.com";
     };
 
-    # theming: matugen palette from the running wallpaper + waypaper picker
-    # (SUPER+SHIFT+W). The vendored set ships to ~/Pictures/Wallpapers.
-    # GNOME manages its own wallpaper; theming extracts palette from whatever
-    # is set and recolors GTK/Qt/bar/mako/kitty/hyprlock.
+    # matugen palette from the running wallpaper + waypaper picker
+    # (SUPER+SHIFT+W); GNOME owns the wallpaper, theming extracts the palette
     home.theming.enable = true;
     home.theming.wallpapers = [
       ./wallpapers/dusk.png
@@ -70,10 +66,9 @@
     tailscale.enable = true;
     syncthing.enable = true;
 
-    # laptop candidates — flip when the hardware is known (Phase 2): the GNOME
-    # session already defaults power-profiles-daemon on (cfg.power.* offers the
-    # alternatives, cfg.power.thermald.enable for Intel CPUs), cfg.fprintd.enable
-    # if a fingerprint reader exists, cfg.networking.wifi.* if wanted
+    # laptop candidates — flip when the hardware is known (Phase 2): GNOME
+    # already defaults power-profiles-daemon on (cfg.power.* has alternatives);
+    # cfg.fprintd.enable, cfg.networking.wifi.* if wanted
   };
 
   # first-install marker — do NOT bump together with the nixpkgs pin

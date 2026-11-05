@@ -1,8 +1,6 @@
-# Phase 6 — own binary cache via upstream services.atticd. Dormant: nothing
-# enables it yet; when it lands (server first) cfg.attic.environmentFile must
-# point at a sops-decrypted file — reference config.sops.secrets.<name>.path,
-# never the value (store-leak rule: anything interpolated into a Nix
-# expression lands in the world-readable store).
+# Phase 6 — own binary cache via upstream services.atticd. Dormant; when it
+# lands (server first) cfg.attic.environmentFile must point at a sops-decrypted
+# file (store-leak rule — see secrets.nix).
 {
   lib,
   config,
@@ -23,7 +21,8 @@
       default = null;
       description = ''
         Env file providing ATTIC_SERVER_TOKEN_RS256_SECRET_BASE64 (upstream
-        requires it; generate the key with `attic gen-key`). Point it at a
+        requires it; generate the key with
+        `openssl genrsa -traditional 4096 | base64 -w0`). Point it at a
         sops-decrypted secret file, e.g. config.sops.secrets.atticEnv.path.
       '';
     };

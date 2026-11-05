@@ -9,7 +9,7 @@
     programs.gpg.enable = true;
 
     # ssh-agent support pairs with the keys-only OpenSSH server
-    # (modules/nixos/ssh.nix) — SSH_AUTH_SOCK points at gpg-agent
+    # (modules/nixos/ssh.nix)
     services.gpg-agent = {
       enable = true;
       enableSshSupport = true;
