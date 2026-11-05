@@ -36,6 +36,7 @@
     ssh.enable = true;
     home.tmux.enable = true; # ssh sessions survive disconnects
     networking.resolved.enable = true;
+    chrony.enable = true; # NTS time sync, replaces timesyncd
     # legacy fleet ran podman — flip to virtualisation.podman.enable to switch
     virtualisation.docker.enable = true;
     compat.nix-ld.enable = true;
