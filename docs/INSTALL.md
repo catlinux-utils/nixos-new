@@ -1,6 +1,8 @@
 # Installation Guide
 
 Complete disk preparation, installation, and post-install steps for this flake.
+To get the live media this guide assumes, build the installer ISO first — see
+[BUILD-ISO.md](BUILD-ISO.md) for NixOS and non-NixOS build recipes.
 
 ## Scripts Overview
 

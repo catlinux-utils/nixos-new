@@ -28,6 +28,7 @@ nixos-rebuild build-image --flake .#installer --image-variant iso
 
 The ISO embeds the **committed** repo tree (available in the live session at
 `~/github/nixos`) — commit before building or the image ships a stale tree.
+Build recipes for NixOS and other distros: [docs/BUILD-ISO.md](docs/BUILD-ISO.md).
 
 ## Usage
 
@@ -90,5 +91,6 @@ Notes:
 ## Documentation
 
 - [docs/INSTALL.md](docs/INSTALL.md) — complete installation guide
+- [docs/BUILD-ISO.md](docs/BUILD-ISO.md) — building the installer ISO (NixOS + other distros)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the flake fits together
 - [docs/OPTIONS.md](docs/OPTIONS.md) — the `cfg.*` option reference

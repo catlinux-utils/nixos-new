@@ -68,6 +68,7 @@ modules/home/          home-manager feature modules (auto-imported) in category
                        home-tools.nix, xdg.nix at the root
 docs/ARCHITECTURE.md   how it all fits together
 docs/OPTIONS.md        every cfg.* option: type, default, effect, per-host matrix
+docs/BUILD-ISO.md      building the installer ISO (NixOS + non-NixOS build machines)
 PLAN.md TODO.md        roadmap / actionable next steps
 AGENTS.md README.md    this file / project overview
 ```
