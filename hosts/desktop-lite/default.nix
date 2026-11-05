@@ -3,9 +3,17 @@
 # geolocation, tailscale. Home apps stay. Shares desktop's disk layout, so the
 # placeholder hardware-configuration matches.
 {
+  inputs,
+  ...
+}:
+{
   imports = [
     ./hardware-configuration.nix
-    # nixos-hardware quirks — replace with actual model(s)
+    # same machine as `desktop` — AMD GPU stack, Ryzen 7000 microcode,
+    # B650 suspend fix
+    inputs.nixos-hardware.nixosModules.common-gpu-amd
+    inputs.nixos-hardware.nixosModules.common-cpu-amd
+    inputs.nixos-hardware.nixosModules.gigabyte-b650
   ];
 
   cfg = {

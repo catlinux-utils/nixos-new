@@ -1,7 +1,15 @@
 {
+  inputs,
+  ...
+}:
+{
   imports = [
     ./hardware-configuration.nix
-    # nixos-hardware quirks — replace with actual model(s)
+    # AMD GPU stack (initrd amdgpu, 32-bit GL) + Ryzen 7000 microcode
+    # + B650 suspend fix (immediate-wakeup bug)
+    inputs.nixos-hardware.nixosModules.common-gpu-amd
+    inputs.nixos-hardware.nixosModules.common-cpu-amd
+    inputs.nixos-hardware.nixosModules.gigabyte-b650
   ];
 
   cfg = {
