@@ -218,10 +218,14 @@ first-deploy rule does not bite here (`wsl -d <distro> -u root` is always availa
 
 - [ ] Run `nixos-generate-config` on each machine → replace its placeholder
       `hardware-configuration.nix` (keep the host's `default.nix` wiring intact)
-- [ ] `desktop`: import the matching **nixos-hardware** GPU module per `lspci`
-      (`common-gpu-nvidia` / `common-gpu-amd` — the module owns `videoDrivers`, modesetting, power
-      management), finalize gaming toggles; the `hardware.nvidia` stack choice and initrd
-      `amdgpu` ride this
+- [x] `desktop`: import the matching **nixos-hardware** GPU module per `lspci`
+      — done 2026-11-05: hardware probed as AMD (RX 6600 XT dGPU + Raphael iGPU, Gigabyte
+      B650 GAMING X AX V2 board) — the `hardware.nvidia` stack is moot. Imported
+      `common-gpu-amd` (initrd `amdgpu`, modesetting, 32-bit GL) + `common-cpu-amd`
+      (microcode) + `gigabyte-b650` (suspend immediate-wakeup fix) on `desktop` and
+      `desktop-lite`; `hardware.enableRedistributableFirmware` moved into `cfg.firmware`
+      (was unset — no GPU firmware blobs, microcode off). `laptop`/`server` model modules
+      still pending
 - [ ] `laptop`: import the model's **nixos-hardware** module (quirks, firmware, sensors)
 - [ ] `server`: networking approach (static IP or DHCP reservation; NetworkManager vs
       `systemd-networkd` — NM is serviceable headless, networkd is the natural server fit);
@@ -232,9 +236,10 @@ first-deploy rule does not bite here (`wsl -d <distro> -u root` is always availa
       not independently (stateless root declined, see Phase 6)
 
 **nixos-hardware (all hosts)** — default mechanism for per-model/per-GPU wiring, imported per
-host as `inputs.nixos-hardware.nixosModules.<model-or-common>` (placeholder imports already sit
-in each host file; no `mkHost` change needed). The pin tracks `master` (no release branches) and
-is refreshed by the weekly flake-update cron.
+host as `inputs.nixos-hardware.nixosModules.<model-or-common>` (real imports on `desktop`/
+`desktop-lite` since 2026-11-05; `laptop`/`server` still placeholders; no `mkHost` change
+needed — host files take `inputs` as a module arg). The pin tracks `master` (no release
+branches) and is refreshed by the weekly flake-update cron.
 
 **Rollout order** — server (or a `build-vm` sandbox) first, laptop second, daily-driver desktop
 last: the first real deploy exercises the spec on the lowest-stakes machine.
@@ -265,10 +270,11 @@ filtering; `services.syncthing` defaults `overrideDevices`/`overrideFolders = tr
 
 Remaining candidates (one service = one module; add on demand, not scheduled):
 
-- **desktop**: `hardware.nvidia` stack (open-kernel-module choice — pending `lspci`, Phase 2)
+- **desktop**: `hardware.nvidia` stack — moot (2026-11-05 `lspci`: AMD RX 6600 XT + Raphael iGPU, no NVIDIA)
 - **laptop**: hibernation wiring, `services.undervolt` / `services.throttled` (older-Intel thermal
   fixes), `hardware.sensor.iio`
-- **server**: `services.chrony` (default timesyncd is serviceable), `virtualisation.oci-containers`,
+- **server**: `services.chrony` (landed 2026-11-05: `modules/nixos/services/chrony.nix`,
+  `cfg.chrony.enable`, NTS on via Cloudflare, server only), `virtualisation.oci-containers`,
   `services.samba` (+ wsdd) / `services.nfs.server`, `services.caddy` (ACME),
   `services.adguardhome` or `services.blocky`, `services.jellyfin`, `services.forgejo` /
   `vaultwarden` / `paperless` / `nextcloud`, `services.home-assistant` (long-lived state — pair
@@ -327,8 +333,10 @@ Medium — new modules/options:
       `secure-boot.nix`) keeps the menu short enough to reach it.
 - [x] **Quickshell bar (replaces waybar)** — `modules/home/hyprland/quickshell.nix` + QML vendored
       verbatim into `modules/home/hyprland/quickshell/`; waybar deleted. User unit bound to
-      `graphical-session.target` (uwsm-activated); `playerctl` is the only new runtime dep. QML
-      hardcodes `BAT1` + 9 workspaces — revisit when the laptop's hardware config lands (Phase 2).
+      `graphical-session.target` (uwsm-activated); `playerctl` is the only new runtime dep. The
+      old `BAT1` + 9-workspace hardcodes are gone (2026-11-05): battery resolves any `BAT*`,
+      workspace pills are the bound 1..10 plus extra Hyprland workspaces by name, and the
+      mic/temp/volume segments hide when their device is absent (VMs).
 - [x] **Raw Hyprland config (hyprland.lua)** — `session.nix` only enables the HM module; the
       session config is the legacy `hyprland.lua` vendored verbatim (zero Nix interpolation —
       copyable to non-NixOS machines, repo convention). Rofi (vendored `rofi.rasi`) replaced wofi

@@ -42,6 +42,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.networking.networkManager.enable` | NetworkManager | ✓ | ✓ | – | – |
 | `cfg.networking.firewall.enable` (default **on**) | nftables firewall; ports via sub-options below | ✓ | ✓ | ✓ | ✗ (set false — Windows filters) |
 | `cfg.networking.resolved.enable` | systemd-resolved with DNS-over-TLS (Cloudflare upstreams) | ✓ | ✓ | ✓ | – |
+| `cfg.chrony.enable` | chrony time sync, NTS on (Cloudflare NTS servers) — replaces systemd-timesyncd (upstream mkForce-disables it) | – | – | ✓ | – |
 | `cfg.audio.enable` | PipeWire + rtkit | ✓ | ✓ | – | – (WSLg) |
 | `cfg.graphics.enable` | OpenGL/VA-API base stack | ✓ | ✓ | – | – |
 | `cfg.ssh.enable` | OpenSSH, keys only | ✓ | ✓ | ✓ | – |
@@ -57,7 +58,7 @@ Default off unless noted. "On" = hosts currently setting it.
 | `cfg.compat.nix-ld.enable` | nix-ld loader shim | ✓ | ✓ | ✓ | ✓ |
 | `cfg.compat.envfs.enable` | envfs FUSE (`/bin`, `/usr/bin` shebangs) | ✓ | ✓ | – | – |
 | `cfg.compat.appimage.enable` | AppImage via binfmt | ✓ | ✓ | – | – |
-| `cfg.firmware.enable` | fwupd | ✓ | ✓ | ✓ | – |
+| `cfg.firmware.enable` | fwupd + `hardware.enableRedistributableFirmware` (GPU/Wi-Fi/BT blobs, CPU microcode) | ✓ | ✓ | ✓ | – |
 | `cfg.storage.enable` | weekly fstrim + smartd | ✓ | ✓ | ✓ | – |
 | `cfg.bluetooth.enable` | bluez (battery reporting, auto-enable); blueman applet + GUI via home (gated on `cfg.desktop`) | ✓ | ✓ | – | – |
 | `cfg.printing.enable` | CUPS + Avahi mDNS + SANE (scanner/lp groups) | ✓ | ✓ | – | – |

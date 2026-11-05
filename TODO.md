@@ -38,8 +38,9 @@ Scoped in [PLAN §2.2](PLAN.md); implement after doc sign-off — small items fi
       vs auto trade-off), `cfg.attic.*` (server; waits on the sops key + a secret).
       `cfg.boot.secureBoot.*` is live everywhere but wsl (2026-11-04) — first real boot per host
       still pends: autoKeys generates the sbctl bundle, autoEnrollKeys stages firmware enrollment
-- [ ] nixos-hardware — replace placeholder imports in `hosts/*/default.nix` with real model
-      modules (run `nixos-hardware` detection on each machine)
+- [ ] nixos-hardware — replace placeholder imports in `hosts/laptop` + `hosts/server`
+      `default.nix` with real model modules (`desktop`/`desktop-lite` done 2026-11-05:
+      common-gpu-amd + common-cpu-amd + gigabyte-b650)
 - [ ] Phase 4 leftovers — Plasma/OBS are wired (dormant/opt-in), waiting on a host that uses
       them
 - [ ] Phase 5 leftover — cache strategy (Cachix or GH actions cache) if the CI checks get slow
