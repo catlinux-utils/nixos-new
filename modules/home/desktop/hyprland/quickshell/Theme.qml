@@ -10,6 +10,14 @@ Singleton {
   // stays copyable to non-NixOS machines.
   property var palette: null
 
+  // ── layout metrics (shared by shell.qml and the extracted component files) ──
+  property string fontFamily: "Noto Sans"
+  property int fontSize: 12
+  property string iconFont: "JetBrainsMono Nerd Font" // same font as kitty/vscode/hyprlock
+  property int iconSize: 15                           // nerd-font glyphs, proportional to text
+  property int barHeight: 28                          // panel height (Hyprland reserves this)
+  property int pad: 4                                 // small inset at the bar edges
+
   FileView {
     id: paletteFile
 
